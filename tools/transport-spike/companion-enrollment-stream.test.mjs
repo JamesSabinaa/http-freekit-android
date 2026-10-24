@@ -14,7 +14,7 @@ import { startEnrollmentHttpsFixture } from './companion-enrollment-https.mjs';
 import { startEnrollmentIssuer } from './companion-enrollment-issuer.mjs';
 import { createCompanionStreamServer } from './companion-stream-peer.mjs';
 import { createCryptoFixture } from './companion-enrollment-crypto-fixtures.mjs';
-import { enroll, enrolledControl, enrolledStream, upgradeEnrolled } from './companion-enrollment-stream-client.mjs';
+import { enroll, enrolledControl, enrolledStream, upgradeEnrolled, tlsOptions } from './companion-enrollment-stream-client.mjs';
 import { until } from './companion-stream-peer-client.mjs';
 import { bounded } from './companion-stream-peer-io.mjs';
 import { requestHeader, pattern, uploadLength } from './companion-stream-peer-schema.mjs';
@@ -68,6 +68,16 @@ test('enrolled adapter keeps A22a metadata plus only stream port and redacts ine
   first.terminalNotification.attempted = true; assert.equal(f.owner.inspectEnrollment('unknown').terminalNotification.attempted, false);
   const output = inspect(f.owner) + JSON.stringify(f.owner);
   for (const secret of [f.directory, metadata.desktopId, metadata.gatewayCertificateDer, metadata.gatewaySpkiSha256]) assert(!output.includes(secret));
+  const credential = await enroll(f.owner, createCryptoFixture()), control = f.track(await enrolledControl(f.owner, credential));
+  const flow = f.track(await enrolledStream(f.owner, credential, control)), options = tlsOptions(f.owner, credential, metadata.webSocketPort);
+  const holders = { credential, control, flow, options };
+  const diagnostics = inspect(holders, { depth: Infinity }) + JSON.stringify(holders);
+  for (const secret of [credential.key, credential.cert, credential.enrollmentId, credential.approved.deviceId, metadata.desktopId,
+    metadata.logicalName, control.token, control.ready.sessionId, 'BEGIN PRIVATE KEY', 'BEGIN CERTIFICATE']) assert(!diagnostics.includes(secret));
+  assert.deepEqual(JSON.parse(JSON.stringify(holders)), { credential: { kind: 'EnrolledHostCredential' },
+    control: { kind: 'EnrolledHostConnection' }, flow: { kind: 'EnrolledHostConnection' }, options: { kind: 'EnrolledHostTlsOptions' } });
+  assert(options.key === credential.key && options.cert === credential.cert);
+  assert(control.token === control.ready.sessionId); assert.equal(flow.socket.destroyed, false);
   for (const bad of [{ logicalName: 'host.invalid\n' }, { credentialAuthority: null }]) {
     await assert.rejects(createCompanionStreamServer({ tls: {}, authorize: () => true, ...bad }), e => e.code === 'stream_fixture_configuration');
   }

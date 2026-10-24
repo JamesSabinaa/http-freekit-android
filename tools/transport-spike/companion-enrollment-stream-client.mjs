@@ -2,16 +2,22 @@
 import https from 'node:https';
 import tls from 'node:tls';
 import { createHash, randomBytes, X509Certificate } from 'node:crypto';
+import { inspect } from 'node:util';
 import { ResearchWebSocket } from './research-websocket.mjs';
 import { headers, write, observeClose, bounded, safeError } from './companion-stream-peer-io.mjs';
 import { nextApplication } from './companion-stream-peer-client.mjs';
 import { encodeControl, encodeStream, decodeControl } from './companion-protocol-codec.mjs';
 
+function redacted(value, kind) {
+  Object.defineProperty(value, inspect.custom, { value: () => `${kind}([REDACTED])` });
+  Object.defineProperty(value, 'toJSON', { value: () => ({ kind }) });
+  return value;
+}
 export function tlsOptions(fixture, credential, port) {
   const m = fixture.metadata().material();
-  return { host: '127.0.0.1', port, servername: m.logicalName, rejectUnauthorized: true,
+  return redacted({ host: '127.0.0.1', port, servername: m.logicalName, rejectUnauthorized: true,
     ca: new X509Certificate(Buffer.from(m.gatewayCertificateDer, 'base64url')).toString(),
-    ...(credential ? { key: credential.key, cert: credential.cert } : {}) };
+    ...(credential ? { key: credential.key, cert: credential.cert } : {}) }, 'EnrolledHostTlsOptions');
 }
 export async function enroll(fixture, crypto) {
   const m = fixture.metadata().material(), invitation = fixture.createInvitation().material();
@@ -29,8 +35,8 @@ export async function enroll(fixture, crypto) {
     request.on('error', () => reject(safeError('enrollment_client_failed'))); request.setTimeout(5000, () => request.destroy()); request.end(body);
   }), 6000);
   const approved = (await fixture.approve(registration.enrollmentId)).material();
-  return { approved, enrollmentId: registration.enrollmentId, key: crypto.device.privateKey.export({ type: 'pkcs8', format: 'pem' }),
-    cert: new X509Certificate(Buffer.from(approved.clientCertificateDer, 'base64url')).toString() };
+  return redacted({ approved, enrollmentId: registration.enrollmentId, key: crypto.device.privateKey.export({ type: 'pkcs8', format: 'pem' }),
+    cert: new X509Certificate(Buffer.from(approved.clientCertificateDer, 'base64url')).toString() }, 'EnrolledHostCredential');
 }
 export async function upgradeEnrolled(fixture, credential, path, { token, scenario = path.endsWith('/control') ? 'cancel' : undefined, ...extraTls } = {}) {
   const m = fixture.metadata().material(), socket = tls.connect({ ...tlsOptions(fixture, credential, m.webSocketPort), ...extraTls });
@@ -41,10 +47,10 @@ export async function upgradeEnrolled(fixture, credential, path, { token, scenar
     await write(socket, Buffer.from(`GET ${path} HTTP/1.1\r\nHost: ${m.logicalName}:${m.webSocketPort}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: ${key}\r\nSec-WebSocket-Version: 13\r\n` +
       (scenario ? `X-FreeKit-Research-Scenario: ${scenario}\r\n` : '') + (token ? `X-FreeKit-Session: ${token}\r\n` : '') + '\r\n'));
     const bytes = await bounded(headers(socket), 5000), status = Number(/^HTTP\/1\.1 ([0-9]{3}) /.exec(bytes.toString('ascii'))?.[1]);
-    if (status !== 101) { socket.destroy(); await closed; return { status }; }
+    if (status !== 101) { socket.destroy(); await closed; return redacted({ status }, 'EnrolledHostConnection'); }
     const accept = createHash('sha1').update(key + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11').digest('base64');
     if (!bytes.includes(Buffer.from(`Sec-WebSocket-Accept: ${accept}\r\n`))) throw safeError('enrolled_upgrade_failed');
-    return { status, socket, ws: new ResearchWebSocket(socket, { role: 'client', maxBinaryBytes: 4096 }), closed };
+    return redacted({ status, socket, ws: new ResearchWebSocket(socket, { role: 'client', maxBinaryBytes: 4096 }), closed }, 'EnrolledHostConnection');
   } catch (failure) { socket.destroy(); await closed; throw failure; }
 }
 export async function enrolledControl(fixture, credential) {
