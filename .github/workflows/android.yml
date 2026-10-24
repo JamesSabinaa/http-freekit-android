@@ -97,7 +97,7 @@ jobs:
           ./gradlew --no-daemon --console=plain
           :core-protocol:test
           :core-security:testDebugUnitTest :core-security:assembleDebugAndroidTest :core-security:lintDebug
-          :app:testDebugUnitTest :app:assembleDebug :app:lintDebug
+          :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug
       - name: Record resolved dependency inventories
         run: |
           mkdir -p build/reports/dependencies

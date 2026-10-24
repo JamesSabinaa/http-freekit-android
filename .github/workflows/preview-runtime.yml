@@ -1,0 +1,196 @@
+name: Android preview runtime
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: preview-runtime-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  preview:
+    name: Preview API ${{ matrix.api }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - api: '26'
+            image: system-images;android-26;default;x86_64
+          - api: '37'
+            image: system-images;android-37.0;default;x86_64
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Require Linux KVM
+        run: |
+          if [[ ! -c /dev/kvm ]]; then
+            echo '::error::This runner does not expose /dev/kvm; accelerated Android runtime validation cannot run.'
+            exit 1
+          fi
+          sudo chown "$(id -u):$(id -g)" /dev/kvm
+          sudo chmod u+rw /dev/kvm
+          if [[ ! -r /dev/kvm || ! -w /dev/kvm ]]; then
+            echo '::error::The runner cannot access /dev/kvm; no software-emulation fallback is permitted.'
+            exit 1
+          fi
+      - name: Install Linux emulator runtime dependency
+        run: |
+          # QEMU links libpulse even when the emulator starts with -no-audio.
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends libpulse0
+      - name: Set up JDK 17
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - name: Bootstrap verified Android command-line tools
+        env:
+          ANDROID_TOOLS_ARCHIVE: commandlinetools-linux-15859902_latest.zip
+          ANDROID_TOOLS_SHA256: 4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583
+        run: |
+          sdk_root="$RUNNER_TEMP/preview-android-sdk"
+          archive="$RUNNER_TEMP/preview-android-command-line-tools.zip"
+          curl --fail --location --retry 3 \
+            "https://dl.google.com/android/repository/$ANDROID_TOOLS_ARCHIVE" --output "$archive"
+          printf '%s  %s\n' "$ANDROID_TOOLS_SHA256" "$archive" | sha256sum --check
+          mkdir -p "$sdk_root/cmdline-tools"
+          unzip -q "$archive" -d "$sdk_root/cmdline-tools"
+          mv "$sdk_root/cmdline-tools/cmdline-tools" "$sdk_root/cmdline-tools/latest"
+          {
+            printf 'ANDROID_HOME=%s\n' "$sdk_root"
+            printf 'ANDROID_SDK_ROOT=%s\n' "$sdk_root"
+            printf 'ANDROID_AVD_HOME=%s\n' "$RUNNER_TEMP/preview-avd"
+          } >> "$GITHUB_ENV"
+          printf '%s\n' "$sdk_root/cmdline-tools/latest/bin" "$sdk_root/platform-tools" "$sdk_root/emulator" >> "$GITHUB_PATH"
+      - name: Accept SDK licences and install emulator packages
+        env:
+          SYSTEM_IMAGE: ${{ matrix.image }}
+        run: |
+          answers="$RUNNER_TEMP/preview-sdk-license-answers.txt"
+          printf 'y\n%.0s' {1..100} > "$answers"
+          sdkmanager --sdk_root="$ANDROID_HOME" --licenses < "$answers" > "$RUNNER_TEMP/preview-sdk-licenses.log"
+          sdkmanager --sdk_root="$ANDROID_HOME" 'platforms;android-37.0' 'build-tools;36.0.0' 'platform-tools' 'emulator' "$SYSTEM_IMAGE"
+          emulator -version
+          emulator -accel-check
+          adb version
+          sdkmanager --sdk_root="$ANDROID_HOME" --list_installed
+      - name: Run preview instrumentation on a fresh AVD
+        env:
+          API_LEVEL: ${{ matrix.api }}
+          SYSTEM_IMAGE: ${{ matrix.image }}
+        run: |
+          mkdir -p "$ANDROID_AVD_HOME"
+          printf 'no\n' > "$RUNNER_TEMP/preview-avd-answers.txt"
+          avdmanager create avd --force --name freekit-preview --package "$SYSTEM_IMAGE" --device pixel < "$RUNNER_TEMP/preview-avd-answers.txt"
+          emulator_log="$RUNNER_TEMP/preview-emulator.log"
+          emulator -avd freekit-preview -port 5554 -accel on -gpu swiftshader \
+            -no-window -no-audio -no-boot-anim -no-snapshot -camera-front none -camera-back none \
+            -cores 2 -memory 3072 > "$emulator_log" 2>&1 &
+          emulator_pid=$!
+          cleanup() {
+            status=$?
+            trap - EXIT
+            adb -s emulator-5554 emu kill >/dev/null 2>&1 || true
+            kill "$emulator_pid" >/dev/null 2>&1 || true
+            wait "$emulator_pid" >/dev/null 2>&1 || true
+            exit "$status"
+          }
+          trap cleanup EXIT
+          deadline=$((SECONDS + 600))
+          while true; do
+            if ! kill -0 "$emulator_pid" 2>/dev/null; then
+              tail -n 100 "$emulator_log"
+              echo '::error::The emulator exited before Android completed booting.'
+              exit 1
+            fi
+            if booted="$(timeout 5s adb -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null)"; then
+              if [[ "${booted//$'\r'/}" == 1 ]]; then break; fi
+            fi
+            if (( SECONDS >= deadline )); then
+              tail -n 100 "$emulator_log"
+              echo '::error::Android did not finish booting within 600 seconds.'
+              exit 1
+            fi
+            sleep 5
+          done
+          actual_api="$(adb -s emulator-5554 shell getprop ro.build.version.sdk | tr -d '\r')"
+          if [[ "$actual_api" != "$API_LEVEL" ]]; then
+            echo "::error::Expected API $API_LEVEL but the booted emulator reports $actual_api."
+            exit 1
+          fi
+          export ANDROID_SERIAL=emulator-5554
+          printf 'Booted emulator API=%s Android=%s\n' "$actual_api" "$(adb -s emulator-5554 shell getprop ro.build.version.release | tr -d '\r')"
+          ./gradlew --no-daemon --console=plain :app:connectedDebugAndroidTest \
+            -Pandroid.injected.androidTest.leaveApksInstalledAfterRun=true
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+
+          reports = list(Path("app/build/outputs/androidTest-results/connected").rglob("TEST-*.xml"))
+          if not reports:
+              raise SystemExit("No instrumentation XML reports were produced")
+          expected = {
+              "noCaptureWarningAppearsOnEveryPreviewPage",
+              "sampleComputerAndAppSelectionsSurviveRotation",
+              "simulatedConsentReachesReadyAndStopWithoutClaimingCapture",
+              "deniedNotificationAndCancelledVpnConsentStayInPreview",
+          }
+          cases = []
+          totals = {field: 0 for field in ("tests", "failures", "errors", "skipped")}
+          for report in reports:
+              root = ET.parse(report).getroot()
+              suites = [root] if root.tag == "testsuite" else root.findall(".//testsuite")
+              for suite in suites:
+                  for field in totals:
+                      totals[field] += int(suite.get(field, "0") or "0")
+                  cases.extend(suite.findall("testcase"))
+          if totals["tests"] != len(expected) or any(totals[field] for field in ("failures", "errors", "skipped")):
+              raise SystemExit(f"Preview instrumentation did not execute a fully passing suite: {totals}")
+          if len(cases) != len(expected) or {case.get("name") for case in cases} != expected:
+              raise SystemExit("The expected four named preview tests did not execute exactly once")
+          if any(case.get("classname") != "com.httpfreekit.android.preview.PreviewActivityTest" for case in cases):
+              raise SystemExit("Unexpected preview test class")
+          if any(case.find(result) is not None for case in cases for result in ("failure", "error", "skipped")):
+              raise SystemExit("A preview testcase failed or was skipped")
+          print(json.dumps({"api": os.environ["API_LEVEL"], **totals}, sort_keys=True))
+          PY
+          mkdir -p build/reports/preview
+          screenshot="build/reports/preview/sample-preview-ready-api-${API_LEVEL}.png"
+          adb -s emulator-5554 exec-out run-as com.httpfreekit.android.debug cat files/sample-preview-ready.png > "$screenshot"
+          python3 - "$screenshot" <<'PY'
+          import hashlib
+          from pathlib import Path
+          import struct
+          import sys
+
+          path = Path(sys.argv[1])
+          data = path.read_bytes()
+          if len(data) < 24 or data[:8] != b"\x89PNG\r\n\x1a\n" or data[12:16] != b"IHDR":
+              raise SystemExit("The rendered sample screenshot is absent or is not a PNG")
+          width, height = struct.unpack(">II", data[16:24])
+          if width < 100 or height < 100:
+              raise SystemExit(f"The rendered sample screenshot is unexpectedly small: {width}x{height}")
+          print(f"Sample preview screenshot: {path} {width}x{height} sha256={hashlib.sha256(data).hexdigest()}")
+          PY
+      # Retain test reports and the explicitly sample-only preview PNG: no APKs, emulator logs, keys, AVDs, or userdata.
+      - name: Retain instrumentation reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: preview-api-${{ matrix.api }}-results
+          retention-days: 7
+          if-no-files-found: warn
+          path: |
+            app/build/outputs/androidTest-results/connected/**/*.xml
+            app/build/reports/androidTests/connected/
+            build/reports/preview/sample-preview-ready-api-*.png
