@@ -1,8 +1,8 @@
 # HTTP FreeKit Android
 
-Planning repository for the HTTP FreeKit Android companion. The next delivery is an Android app that captures selected application traffic and sends it to HTTP FreeKit on a computer through an authenticated, encrypted connection. USB, LAN, and WAN are delivery stages of the same design.
+HTTP FreeKit Android companion, under development. The planned app captures selected application traffic and sends it to HTTP FreeKit on a computer through an authenticated, encrypted connection. USB, LAN, and WAN are delivery stages of the same design.
 
-Status: planning only. There is no Android app, gateway, relay, or working secure remote connection in this repository yet.
+Status: foundation implementation in progress. The repository now contains an Android launch screen, a draft pairing parser, and a host transport interoperability test. Pairing, VPN capture, desktop gateway integration, and relay support are not implemented. See [developer build instructions](docs/development.md) and [foundation decisions and evidence](docs/decisions/0001-foundation.md).
 
 ## Start here
 
@@ -22,7 +22,7 @@ The desktop application lives in `../http-freekit`. This repository owns Android
 - Use an established packet forwarding engine after a compatibility and licence investigation. Do not implement TCP from scratch.
 - Build independently unless a deliberate decision is made to adopt AGPL obligations for a fork. HTTP Toolkit's Android repository carries AGPLv3; this repository currently contains no imported upstream implementation.
 
-Android minimum version, packet engine, final application ID, protocol details, and distribution licence must be resolved in the foundation package before production implementation relies on them. Suggested defaults in the documents are proposals, not evidence of completed decisions.
+The foundation currently uses API 26 as the minimum and reserves `com.httpfreekit.android` as the application ID. Project-authored code uses the [MIT licence](LICENSE); see [dependency notices](THIRD_PARTY_NOTICES.md). Packet engine selection, native API compatibility, release signing, and protocol freeze remain open foundation gates. Proposed defaults in the design documents do not establish working capture.
 
 ## Sources
 

@@ -5,6 +5,7 @@
 **/build/
 local.properties
 *.iml
+node_modules/
 .cxx/
 .externalNativeBuild/
 

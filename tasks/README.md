@@ -1,17 +1,19 @@
 # Agent work board
 
-All packages below are unclaimed. These files prepare work for agents; no implementation agents have been started. The coordinating user or agent assigns unique ownership before concurrent work begins. Use separate branches and worktrees. Update this board through the coordinator to avoid agents racing to edit the same rows.
+Package A is assigned to Codex in `../http-freekit-android-a`. Other packages remain unclaimed; no parallel implementation agents have been started. The coordinating user or agent assigns unique ownership before concurrent work begins. Use separate branches and worktrees. Update this board through the coordinator to avoid agents racing to edit the same rows.
 
 ## Assignments
 
 | Package | Owner | Branch | Status | Dependencies |
 | --- | --- | --- | --- | --- |
-| A Foundation and contracts | Unassigned | plan/a-foundation | Ready | None |
+| A Foundation and contracts | Codex | plan/a-foundation | In progress: toolchain, build, and contract validation | None |
 | B Android interface and lifecycle | Unassigned | feat/b-android-shell | Ready for mocked work | A for final toolchain and interfaces |
 | C Capture engine and transport | Unassigned | feat/c-capture | Blocked for production integration | A engine choice and frozen protocol |
 | D Desktop gateway and ADB | Unassigned | feat/d-companion-gateway | Ready for design and spike | A for production protocol; C for end-to-end capture |
 | E WAN and relay | Unassigned | feat/e-wan | Blocked | Authenticated USB milestone and destination policy |
 | F Integration and release | Unassigned | test/f-integration | Ready for planning and fixtures | A for stable fixtures; B C D for device acceptance |
+
+Package A checkpoint: pinned Kotlin/Compose Android build, draft pairing parser and fixtures, nine passing host tests including Node mutual-TLS/WebSocket interoperability, clean Android lint, verified debug APK export, and native candidate API 26 compilation on ARM64/x86_64. See [foundation evidence](../docs/decisions/0001-foundation.md) and [build commands](../docs/development.md). The emulator stayed offline; no device, Keystore, or packet-forwarding proof is claimed. Engine selection, authenticated Android interoperability, and protocol freeze remain open; A is not complete.
 
 The branch names are suggestions, not existing branches. For desktop tasks, create the branch and worktree inside the desktop repository. Record paired repository commits during integration. Each owner requests contract changes through A, rather than silently editing shared fields.
 
@@ -28,7 +30,7 @@ Start each agent with its worktree as the working directory. Give it the package
 
 For D, run the worktree command from ../http-freekit and pass the Android plan's absolute path. Desktop worktrees are siblings of the desktop repository, so ../http-freekit-android remains the canonical planning checkout; do not assume an Android document change in one worktree is visible in another. Share committed contract updates through the coordinator and merge them explicitly before dependent work.
 
-Integrate each branch deliberately after review; do not ask agents to merge one another's unfinished branches. A local Git repository has been initialized for these documents, but no remote, hosting service, CI runner, or Android SDK has been provisioned by this planning work.
+Integrate each branch deliberately after review; do not ask agents to merge one another's unfinished branches. The public repository is now hosted at `JamesSabinaa/http-freekit-android`. Package A is establishing the local build toolchain; no CI runner or release signing has been provisioned.
 
 ## A Foundation and contracts
 

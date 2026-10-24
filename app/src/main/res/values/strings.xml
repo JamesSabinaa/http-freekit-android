@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">HTTP FreeKit</string>
+    <string name="foundation_title">HTTP FreeKit Android</string>
+    <string name="foundation_status">Developer foundation</string>
+    <string name="foundation_description">The Android project is ready for development. Pairing, VPN capture, and desktop connections are not available in this build.</string>
+    <string name="foundation_next">Next: verify the packet forwarding engine and authenticated desktop transport.</string>
+</resources>

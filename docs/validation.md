@@ -4,7 +4,7 @@
 
 Record exact Android and desktop commits, Android version and device model, SDK/ADB versions, network topology, commands, results, and relevant sanitized diagnostics. A mock-only test does not demonstrate capture. A VPN connected indicator does not demonstrate proxy delivery. Mark unavailable device tests as unrun and explain the environment requirement.
 
-Documentation-only changes require local Markdown link validation, consistency review, and git diff --check. There is no app build or test suite yet. Once Gradle exists, pin the wrapper, JDK/toolchain and Android build dependencies; record reproducible commands rather than assume local installations.
+Documentation-only changes require local Markdown link validation, consistency review, and git diff --check. The foundation now has a pinned Gradle build, parser tests, and a host transport test. Run the commands in [developer instructions](development.md); see [foundation evidence](decisions/0001-foundation.md) for actual results and outstanding gates. Host checks do not demonstrate device capture.
 
 ## Automated checks to add
 

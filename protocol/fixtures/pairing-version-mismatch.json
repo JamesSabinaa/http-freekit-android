@@ -1,0 +1,18 @@
+{
+  "kind": "http-freekit-pairing",
+  "protocolVersion": 2,
+  "invitationId": "fixture-invitation",
+  "invitationSecret": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE",
+  "expiresAt": "2026-10-24T12:05:00Z",
+  "desktopId": "fixture-desktop",
+  "displayName": "Development computer",
+  "serverName": "gateway-fixture.invalid",
+  "gatewaySpkiSha256": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+  "endpoints": [
+    {
+      "mode": "usb",
+      "host": "127.0.0.1",
+      "port": 8766
+    }
+  ]
+}

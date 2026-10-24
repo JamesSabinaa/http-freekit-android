@@ -1,0 +1,8 @@
+{
+  "name": "http-freekit-transport-spike",
+  "private": true,
+  "type": "module",
+  "description": "Loopback-only Node peer for the draft Kotlin transport interoperability test",
+  "engines": { "node": ">=22" },
+  "dependencies": { "ws": "8.21.1" }
+}

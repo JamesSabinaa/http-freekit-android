@@ -1,0 +1,7 @@
+# Draft pairing fixtures
+
+These fixtures test parsing at `2026-10-24T12:00:00Z`, rather than the wall clock. They are synthetic and contain no working gateway or enrollment secrets. The valid payload expires five minutes after the test time. The malformed, expired, and unsupported-version files must be rejected. JVM tests also exercise byte-size bounds, wrong field types, invalid credentials, names, hosts, ports, transport modes, and expiration boundaries.
+
+This is the first parsing subset of the [draft v1 contract](../../docs/protocol.md), not a protocol freeze. The parser currently requires exactly the documented invitation fields and exactly `mode`, `host`, and `port` per endpoint. It allows 1–8 distinct endpoints, bounded ASCII opaque IDs, canonical unpadded base64url encodings of 32 bytes for secrets and pins, UTC expiry, bounded display names without control characters, DNS logical server names, and DNS/IP dial hosts without URL components or IPv6 scope IDs. USB hints must dial loopback. Unknown fields and transport modes fail closed until compatibility rules are agreed. Parsing succeeds only for unexpired invitations, and never grants consent or starts a connection.
+
+Enrollment, rejection, duplicate claims, approval races, session messages, half-close behavior, and cancellation fixtures remain required before production integration. No desktop fixture copy has been published or integrated.
