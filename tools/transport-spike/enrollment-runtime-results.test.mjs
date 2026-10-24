@@ -23,6 +23,15 @@ test('every byte boundary is incremental and incomplete phase cannot authorize a
   for (const byte of Buffer.from(text.slice(trigger))) parser.push(Buffer.from([byte]));
   assert.deepEqual(observed, enrollmentPhases[method]); assert.equal(parser.finish(commandResult()).state, 'passed');
 });
+test('finish cannot authorize approval from an unterminated phase line after command closure', () => {
+  const observed = [], parser = createEnrollmentInvocationParser(method, { onPhase: value => { observed.push(value); } });
+  parser.push(Buffer.from(status(method, 1) + enrollmentPhases[method].slice(0, 4).map(phase).join('').slice(0, -1)));
+  assert.deepEqual(observed, enrollmentPhases[method].slice(0, 3));
+  const result = parser.finish(commandResult());
+  assert.deepEqual(observed, enrollmentPhases[method].slice(0, 3));
+  assert.deepEqual(result.phases, enrollmentPhases[method].slice(0, 3));
+  assert.ok(result.problems.includes('phase_after_command_close')); assert.equal(result.state, 'incomplete');
+});
 test('split UTF8 is accepted but malformed UTF8, BOM, NUL and truncated sequences fail closed', () => {
   const parser = createEnrollmentInvocationParser(method);
   for (const byte of Buffer.from('INSTRUMENTATION_RESULT: stream=\u{1f642}\n' + transcript(method))) parser.push(Buffer.from([byte]));

@@ -18,7 +18,7 @@ const commandReasons = new Set(['owned_child_timeout', 'owned_child_cleanup_fail
   'owned_child_input_failed', 'owned_child_observer_failed', 'instrumentation_output_limit', 'research_run_cancelled']);
 const parserCodes = new Set(['instrumentation_output_limit', 'instrumentation_line_limit', 'invalid_instrumentation_utf8',
   'invalid_status_bundle', 'status_field_limit', 'duplicate_status_field', 'status_after_terminal', 'unexpected_test_identity',
-  'unexpected_declared_test_count', 'duplicate_test_start', 'test_end_without_start', 'invalid_phase', 'phase_callback_failed',
+  'unexpected_declared_test_count', 'duplicate_test_start', 'test_end_without_start', 'invalid_phase', 'phase_callback_failed', 'phase_after_command_close',
   'unknown_test_result_code', 'test_skip_or_assumption', 'failure_with_success', 'instrumentation_failure',
   'unterminated_status_bundle', 'missing_terminal_result', 'incomplete_test_execution', 'incomplete_phase_execution',
   'instrumentation_command_failed']);
@@ -136,6 +136,9 @@ export function createEnrollmentInvocationParser(method, { onPhase } = {}) {
       const code = Number(match[1]);
       if (code < -2147483648 || code > 2147483647) stop('invalid_status_bundle');
       if (code === 2) {
+        // finish runs after child/stdio closure. A residual line is diagnostic input,
+        // never authority to start approval work after the observed command ended.
+        if (finished) { problem('phase_after_command_close'); pending = Object.create(null); lastKey = undefined; return; }
         const phase = pending.draftEnrollmentPhase;
         if (!active || Object.keys(pending).length !== 2 || pending.draftEnrollmentVersion !== '1' || phase !== enrollmentPhases[method][phases.length] || problems.length) stop('invalid_phase');
         phases.push(phase);
