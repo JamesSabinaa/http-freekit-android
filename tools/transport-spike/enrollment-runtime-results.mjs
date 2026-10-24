@@ -1,5 +1,7 @@
 // A22a adapter only. Never retain raw command output or provider messages.
 import { parseEnrollmentJson } from '../../scripts/enrollment-corpus.mjs';
+import { enrolledStreamingClass, expectedEnrolledStreamingMethods, enrolledStreamingPhases } from './enrollment-runtime-stream-descriptor.mjs';
+import { decodeEnrolledObservation, validateEnrolledObservation } from './enrollment-runtime-stream-observation.mjs';
 
 export const enrollmentRuntimeClass = 'com.httpfreekit.interop.DraftEnrollmentInteropTest';
 export const expectedEnrollmentMethods = Object.freeze(['prepareApprovedCredentialForRestart', 'reopenApprovedCredentialAfterRestart']);
@@ -21,7 +23,7 @@ const parserCodes = new Set(['instrumentation_output_limit', 'instrumentation_li
   'unexpected_declared_test_count', 'duplicate_test_start', 'test_end_without_start', 'invalid_phase', 'phase_callback_failed', 'phase_after_command_close',
   'unknown_test_result_code', 'test_skip_or_assumption', 'failure_with_success', 'instrumentation_failure',
   'unterminated_status_bundle', 'missing_terminal_result', 'incomplete_test_execution', 'incomplete_phase_execution',
-  'instrumentation_command_failed']);
+  'instrumentation_command_failed', 'invalid_observation', 'incomplete_observation', 'observation_after_command_close']);
 const driverCodes = new Set(['host_setup_failed', 'selected_device_unavailable', 'research_apk_build_failed', 'research_apk_install_failed',
   'unexpected_research_apk_metadata', 'research_runner_not_registered', 'source_not_clean', 'device_clock_probe_failed',
   'enrollment_clock_outside_bound', 'enrollment_input_failed', 'enrollment_fixture_failed', 'enrollment_approval_failed',
@@ -36,6 +38,21 @@ const frameFiles = new Map([
   ['DraftEnrollmentStateCodec.kt', new Set(['DraftEnrollmentStateCodec', 'DraftEnrollmentStateChecks', 'DraftEnrollmentStateException', 'DraftEnrollmentSeed', 'DraftEnrollmentRecovery'])],
   ['DraftEnrollmentResearchChecks.kt', new Set(['DraftEnrollmentResearchChecks', 'DraftEnrollmentProofSession'])],
 ]);
+const streamFrameFiles = new Map([...frameFiles,
+  ['DraftEnrolledStreamingInteropTest.kt', new Set(['DraftEnrolledStreamingInteropTest'])],
+  ['DraftEnrolledStreamingConnector.kt', new Set(['DraftEnrolledStreamingConnector'])],
+  ['DraftEnrolledStreamingObservation.kt', new Set(['DraftEnrolledStreamingObservation'])],
+  ['DraftEnrollmentStreamInputCodec.kt', new Set(['DraftEnrollmentStreamInputCodec', 'DraftEnrollmentStreamSeed'])],
+  ['DraftStreamingConnector.kt', new Set(['DraftStreamingConnectorKt', 'DraftStreamingSessionContext'])],
+  ['DraftStreamingOwner.kt', new Set(['DraftStreamingOwner'])],
+  ['DraftStreamingFixture.kt', new Set(['DraftStreamingTls', 'DraftStreamingWorkers', 'DraftStreamingClock', 'DraftStreamingFixtureKt', 'DraftStreamingFixture'])],
+  ['DraftStreamingProbe.kt', new Set(['DraftStreamingProbe'])],
+]);
+function suiteDescriptor(suite) {
+  if (suite === 'a22a') return { className: enrollmentRuntimeClass, methods: expectedEnrollmentMethods, phases: enrollmentPhases, prefix: 'draftEnrollment', cap: 16, frames: frameFiles };
+  if (suite === 'a22b') return { className: enrolledStreamingClass, methods: expectedEnrolledStreamingMethods, phases: enrolledStreamingPhases, prefix: 'draftEnrolled', cap: 40, frames: streamFrameFiles };
+  fail('invalid_parser_configuration');
+}
 export class EnrollmentRuntimeError extends Error { constructor(code = 'invalid_runtime_report') { super(code); this.name = 'EnrollmentRuntimeError'; this.code = code; } }
 const fail = code => { throw new EnrollmentRuntimeError(code); };
 export const enrollmentRuntimeProblem = code => driverCodes.has(code) ? code : 'host_setup_failed';
@@ -73,51 +90,63 @@ export function enrollmentCommandObservation(result) {
   validateCommand(command); return copyFreeze(command);
 }
 const commandPassed = value => value !== null && value.exitCode === 0 && value.signal === null && value.reason === null && value.closeObserved && value.processGroupClosed;
-function sanitizeFailure(raw) {
+function sanitizeFailure(raw, suite = 'a22a') {
+  const files = suiteDescriptor(suite).frames;
   let failureType = null; const frames = [];
   for (const line of raw.split('\n')) {
     const type = /^(?:java\.lang\.|java\.io\.|java\.net\.|javax\.net\.ssl\.|java\.security\.cert\.|org\.json\.|org\.junit\.)?([A-Za-z]+)(?::|$)/.exec(line);
     if (failureType === null && type) failureType = failures.has(type[1]) ? type[1] : 'other_exception';
-    const frame = /^\s*at (com\.httpfreekit\.interop\.(DraftEnrollment[A-Za-z0-9_$]{0,80}))\.([A-Za-z0-9_$<>]{1,80})\((DraftEnrollment[A-Za-z0-9_]{0,80}\.kt):([1-9][0-9]{0,5})\)$/.exec(line.replace(/\r$/, ''));
-    if (frame && frameFiles.get(frame[4])?.has(frame[2].split('$')[0]) && frames.length < 16) frames.push({ className: frame[1], method: frame[3], file: frame[4], line: Number(frame[5]) });
+    const frame = /^\s*at (com\.httpfreekit\.interop\.(Draft[A-Za-z0-9_$]{0,80}))\.([A-Za-z0-9_$<>]{1,80})\((Draft[A-Za-z0-9_]{0,80}\.kt):([1-9][0-9]{0,5})\)$/.exec(line.replace(/\r$/, ''));
+    if (frame && files.get(frame[4])?.has(frame[2].split('$')[0]) && frames.length < 16) frames.push({ className: frame[1], method: frame[3], file: frame[4], line: Number(frame[5]) });
   }
   return { failureType, frames };
 }
-function validateFrames(value) {
+function validateFrames(value, suite = 'a22a') {
+  const files = suiteDescriptor(suite).frames;
   if (!Array.isArray(value) || value.length > 16) fail('invalid_runtime_report');
   for (const frame of value) {
     exact(frame, ['className', 'method', 'file', 'line']);
-    if (typeof frame.className !== 'string' || !/^com\.httpfreekit\.interop\.DraftEnrollment[A-Za-z0-9_$]{0,80}$/.test(frame.className) ||
+    if (typeof frame.className !== 'string' || !/^com\.httpfreekit\.interop\.Draft[A-Za-z0-9_$]{0,80}$/.test(frame.className) || /[\r\n]/.test(frame.className) ||
         typeof frame.method !== 'string' || !/^[A-Za-z0-9_$<>]{1,80}$/.test(frame.method) || /[\r\n]/.test(frame.method) ||
-        !frameFiles.get(frame.file)?.has(frame.className.slice('com.httpfreekit.interop.'.length).split('$')[0])) fail('invalid_runtime_report');
+        !files.get(frame.file)?.has(frame.className.slice('com.httpfreekit.interop.'.length).split('$')[0])) fail('invalid_runtime_report');
     integer(frame.line, 1, 999999);
   }
 }
-function validateInvocation(value, method) {
-  exact(value, ['method', 'state', 'actualStarted', 'actualCompleted', 'terminalCount', 'terminalCode', 'phases', 'command', 'problems', 'failureType', 'frames']);
+function validateInvocation(value, method, suite = 'a22a') {
+  const descriptor = suiteDescriptor(suite), requiredPhases = descriptor.phases[method];
+  if (!requiredPhases) fail('invalid_runtime_report');
+  exact(value, ['method', 'state', 'actualStarted', 'actualCompleted', 'terminalCount', 'terminalCode', 'phases', 'command', 'problems', 'failureType', 'frames', ...(suite === 'a22b' ? ['observation'] : [])]);
   if (value.method !== method) fail('invalid_runtime_report');
   enumeration(value.state, ['passed', 'failed', 'incomplete', 'not_started']);
   for (const field of ['actualStarted', 'actualCompleted', 'terminalCount']) integer(value[field], 0, 16);
   if (value.terminalCode !== null) integer(value.terminalCode, -2147483648, 2147483647);
-  if (!Array.isArray(value.phases) || value.phases.length > enrollmentPhases[method].length ||
-      value.phases.some((phase, index) => phase !== enrollmentPhases[method][index])) fail('invalid_runtime_report');
+  if (!Array.isArray(value.phases) || value.phases.length > requiredPhases.length ||
+      value.phases.some((phase, index) => phase !== requiredPhases[index])) fail('invalid_runtime_report');
   if (value.command !== null) validateCommand(value.command);
   codeList(value.problems, parserCodes);
   if (value.failureType !== null && !failures.has(value.failureType)) fail('invalid_runtime_report');
-  validateFrames(value.frames);
+  validateFrames(value.frames, suite);
+  if (suite === 'a22b' && value.observation !== null) {
+    try { validateEnrolledObservation(value.observation, method); } catch { fail('invalid_runtime_report'); }
+    if (value.phases.length < 10) fail('invalid_runtime_report');
+  }
   if ((value.terminalCount === 0) !== (value.terminalCode === null)) fail('invalid_runtime_report');
   if (value.state === 'passed' && (value.actualStarted !== 1 || value.actualCompleted !== 1 || value.terminalCount !== 1 ||
-      value.terminalCode !== -1 || value.phases.length !== enrollmentPhases[method].length || !commandPassed(value.command) ||
+      value.terminalCode !== -1 || value.phases.length !== requiredPhases.length || !commandPassed(value.command) || (suite === 'a22b' && value.observation === null) ||
       value.problems.length || value.failureType !== null || value.frames.length)) fail('invalid_runtime_report');
   if (value.state === 'not_started' && (value.actualStarted || value.actualCompleted || value.phases.length)) fail('invalid_runtime_report');
 }
 
 /** Strict streaming UTF-8 parser. push may throw only a fixed category so an observer can stop the owned child. */
 export function createEnrollmentInvocationParser(method, { onPhase } = {}) {
-  if (!expectedEnrollmentMethods.includes(method) || (onPhase !== undefined && typeof onPhase !== 'function')) fail('invalid_parser_configuration');
+  return createEnrollmentSuiteInvocationParser(method, { onPhase, suite: 'a22a' });
+}
+export function createEnrollmentSuiteInvocationParser(method, { onPhase, suite = 'a22a' } = {}) {
+  const descriptor = suiteDescriptor(suite), requiredPhases = descriptor.phases[method];
+  if (!descriptor.methods.includes(method) || (onPhase !== undefined && typeof onPhase !== 'function')) fail('invalid_parser_configuration');
   const decoder = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
   let bytes = 0, line = '', pending = Object.create(null), lastKey, active = false, starts = 0, ends = 0;
-  let terminalCount = 0, terminalCode = null, completedState, failureType = null, frames = [], finished = false, broken = false;
+  let terminalCount = 0, terminalCode = null, completedState, failureType = null, frames = [], finished = false, broken = false, observation = null;
   const phases = [], problems = [];
   const problem = code => { if (!problems.includes(code) && problems.length < 16) problems.push(code); };
   const stop = code => { problem(code); broken = true; fail(code); };
@@ -128,7 +157,7 @@ export function createEnrollmentInvocationParser(method, { onPhase } = {}) {
       if (!match) { problem('invalid_status_bundle'); return; }
       const [, key, value] = match;
       if (Object.hasOwn(pending, key)) problem('duplicate_status_field');
-      if (Object.keys(pending).length >= 16 && !Object.hasOwn(pending, key)) { stop('status_field_limit'); }
+      if (Object.keys(pending).length >= descriptor.cap && !Object.hasOwn(pending, key)) { stop('status_field_limit'); }
       pending[key] = value; lastKey = key; return;
     }
     let match = /^INSTRUMENTATION_STATUS_CODE: (-?(?:0|[1-9][0-9]{0,9}))$/.exec(text);
@@ -140,8 +169,9 @@ export function createEnrollmentInvocationParser(method, { onPhase } = {}) {
         // finish runs after child/stdio closure. A residual line is diagnostic input,
         // never authority to start approval work after the observed command ended.
         if (finished) { problem('phase_after_command_close'); pending = Object.create(null); lastKey = undefined; return; }
-        const phase = pending.draftEnrollmentPhase;
-        if (!active || Object.keys(pending).length !== 2 || pending.draftEnrollmentVersion !== '1' || phase !== enrollmentPhases[method][phases.length] || problems.length) stop('invalid_phase');
+        const phase = pending[descriptor.prefix + 'Phase'];
+        if (!active || Object.keys(pending).length !== 2 || pending[descriptor.prefix + 'Version'] !== '1' || phase !== requiredPhases[phases.length] || problems.length ||
+            (suite === 'a22b' && phases.length === 10 && observation === null)) stop('invalid_phase');
         phases.push(phase);
         pending = Object.create(null); lastKey = undefined;
         if (onPhase) {
@@ -156,9 +186,15 @@ export function createEnrollmentInvocationParser(method, { onPhase } = {}) {
         }
         return;
       }
+      if (suite === 'a22b' && code === 3) {
+        if (finished) { problem('observation_after_command_close'); pending = Object.create(null); lastKey = undefined; return; }
+        if (!active || phases.length !== 10 || observation !== null || problems.length) stop('invalid_observation');
+        try { observation = decodeEnrolledObservation(pending, method); } catch { stop('invalid_observation'); }
+        pending = Object.create(null); lastKey = undefined; return;
+      }
       const allowed = new Set(['class', 'test', 'numtests', 'current', 'id', 'stream', 'stack']);
       if (Object.keys(pending).some(key => !allowed.has(key))) problem('invalid_status_bundle');
-      if (pending.class !== enrollmentRuntimeClass || pending.test !== method) {
+      if (pending.class !== descriptor.className || pending.test !== method) {
         problem('unexpected_test_identity'); pending = Object.create(null); lastKey = undefined; return;
       }
       if (pending.numtests !== '1' || (pending.current !== undefined && pending.current !== '1')) problem('unexpected_declared_test_count');
@@ -174,7 +210,7 @@ export function createEnrollmentInvocationParser(method, { onPhase } = {}) {
         if (![0, -1, -2, -3, -4].includes(code)) problem('unknown_test_result_code');
         if (code === -3 || code === -4) problem('test_skip_or_assumption');
         if (pending.stack) {
-          ({ failureType, frames } = sanitizeFailure(pending.stack));
+          ({ failureType, frames } = sanitizeFailure(pending.stack, suite));
           if (code === 0) problem('failure_with_success');
         }
       }
@@ -226,13 +262,15 @@ export function createEnrollmentInvocationParser(method, { onPhase } = {}) {
       if (Object.keys(pending).length) problem('unterminated_status_bundle');
       if (terminalCount !== 1 || terminalCode !== -1) problem('missing_terminal_result');
       if (starts !== 1 || ends !== 1 || active) problem('incomplete_test_execution');
-      if (phases.length !== enrollmentPhases[method].length) problem('incomplete_phase_execution');
+      if (phases.length !== requiredPhases.length) problem('incomplete_phase_execution');
+      if (suite === 'a22b' && observation === null) problem('incomplete_observation');
       const command = commandResult === null ? null : enrollmentCommandObservation(commandResult);
       if (!commandPassed(command)) problem('instrumentation_command_failed');
       const state = starts === 0 && ends === 0 ? 'not_started' : completedState === 'failed' ? 'failed'
         : completedState === 'passed' && problems.length === 0 ? 'passed' : 'incomplete';
       // Invalid unmatched events remain explicit errors; counters are actual observations, not repaired claims.
-      return copyFreeze({ method, state, actualStarted: starts, actualCompleted: ends, terminalCount, terminalCode, phases, command, problems, failureType, frames });
+      return copyFreeze({ method, state, actualStarted: starts, actualCompleted: ends, terminalCount, terminalCode, phases, command, problems, failureType, frames,
+        ...(suite === 'a22b' ? { observation } : {}) });
     },
   });
 }
@@ -331,18 +369,19 @@ export function verifyEnrollmentRuntime(report, { source, api }) {
       cleanup.reverseRemovalExitCodes.length !== 2 || cleanup.reverseRemovalExitCodes.some(code => code !== 0)) fail('runtime_cleanup_failed');
   return Object.freeze({ methods: 2, actualStarted: 2, actualCompleted: 2, api, source });
 }
-export function decodeEnrollmentHostCleanup(bytes) {
+export function decodeEnrollmentHostCleanup(bytes, { suite = 'a22a' } = {}) {
+  suiteDescriptor(suite);
   if (!(bytes instanceof Uint8Array) || bytes.byteLength > enrollmentRuntimeLimits.host) fail('host_report_limit');
   let value; try { value = parseEnrollmentJson(bytes); } catch { fail('invalid_host_report'); }
   exact(value, ['format', 'revision', 'sourceCommit', 'api', 'driverExitCode', 'emulatorStarted', 'stopAttempted', 'stopExitCode', 'terminationObserved', 'joinObserved', 'emulatorExitCode']);
-  if (value.format !== 'http-freekit-a22a-host-cleanup' || value.revision !== 1) fail('invalid_host_report');
+  if (value.format !== `http-freekit-${suite}-host-cleanup` || value.revision !== 1) fail('invalid_host_report');
   commit(value.sourceCommit); enumeration(value.api, [26, 37]);
   for (const key of ['driverExitCode', 'stopExitCode', 'emulatorExitCode']) if (value[key] !== null) integer(value[key], 0, 255);
   for (const key of ['emulatorStarted', 'stopAttempted', 'terminationObserved', 'joinObserved']) boolean(value[key]);
   return copyFreeze(value);
 }
-export function verifyEnrollmentHostCleanup(value, { source, api }) {
-  const report = decodeEnrollmentHostCleanup(Buffer.from(JSON.stringify(value)));
+export function verifyEnrollmentHostCleanup(value, { source, api, suite = 'a22a' }) {
+  const report = decodeEnrollmentHostCleanup(Buffer.from(JSON.stringify(value)), { suite });
   if (report.sourceCommit !== source || report.api !== api || report.driverExitCode !== 0 ||
       !report.emulatorStarted || !report.stopAttempted || !report.terminationObserved || !report.joinObserved || report.emulatorExitCode === null) fail('host_cleanup_failed');
   return Object.freeze({ emulatorJoined: true });
@@ -365,4 +404,5 @@ export function enrollmentRuntimeHtml(report) {
 
 // Shared strict primitives for the separate finite A22b adapter. No schema is widened by default.
 export const enrollmentRuntimeValidation = Object.freeze({ exact, integer, boolean, enumeration, hash, commit, codeList,
-  copyFreeze, validateCommand, commandPassed, validateFrames, validateWorker, workerPassed, validateClock, clockPassed });
+  copyFreeze, validateCommand, commandPassed, validateFrames, validateWorker, workerPassed, validateClock, clockPassed, validateInvocation,
+  validateProblems: value => codeList(value, driverCodes) });

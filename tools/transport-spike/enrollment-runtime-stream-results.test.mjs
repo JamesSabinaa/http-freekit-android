@@ -2,7 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { EnrollmentRuntimeError } from './enrollment-runtime-results.mjs';
 import { enrolledStreamingCases, enrolledObservationSuffixes, enrolledStreamingReportPaths,
-  projectEnrolledHostSnapshot, createEnrolledHostSnapshot } from './enrollment-runtime-stream-results.mjs';
+  projectEnrolledHostSnapshot, createEnrolledHostSnapshot, createEnrolledStreamingInvocationParser, parseEnrolledStreamingInvocation,
+  createEnrolledStreamingReport, verifyEnrolledStreamingReport, enrolledStreamingRuntimeXml, enrolledStreamingRuntimeHtml, decodeEnrolledStreamingReport } from './enrollment-runtime-stream-results.mjs';
+import { transcript, phase, status, bundle, observation, commandResult, runtime, source } from './enrollment-runtime-stream-test-fixtures.mjs';
 const now = 1792852701000;
 const window = { callStartedNanos: 1000000, callReceivedNanos: 2000000 };
 function inspection() {
@@ -91,4 +93,114 @@ test('bounds, completion order, terminal pair and notification consistency are e
   }
   for (const times of [{ callStartedNanos: 3, callReceivedNanos: 2 }, { callStartedNanos: -0, callReceivedNanos: 2 },
     { callStartedNanos: 0, callReceivedNanos: 3600000000001 }]) assert.throws(() => projectEnrolledHostSnapshot(inspection(), times), EnrollmentRuntimeError);
+});
+
+test('three real-method shapes require exact phases and a single canonical positive observation', () => {
+  for (const [index, item] of enrolledStreamingCases.entries()) {
+    const result = parseEnrolledStreamingInvocation(transcript(index), { method: item.method, ...commandResult() });
+    assert.equal(result.state, 'passed'); assert.deepEqual(result.observation, observation(index)); assert.deepEqual(result.phases, item.phases);
+  }
+  assert.equal(verifyEnrolledStreamingReport(runtime(), { source, api: 26 }).methods, 3);
+});
+
+test('byte-split phases remain live-only and finish never authorizes an unterminated revocation phase', () => {
+  const method = enrolledStreamingCases[0].method, calls = [], parser = createEnrolledStreamingInvocationParser(method, { onPhase: value => { calls.push(value); } });
+  const text = status(0, 1) + enrolledStreamingCases[0].phases.slice(0, 8).map(phase).join('').slice(0, -1);
+  for (const byte of Buffer.from(text)) parser.push(Buffer.from([byte]));
+  assert.equal(calls.length, 7); const result = parser.finish(commandResult());
+  assert.equal(calls.length, 7); assert.ok(result.problems.includes('phase_after_command_close')); assert.notEqual(result.state, 'passed');
+});
+
+test('missing, duplicate, early, late and foreign-scenario observation bundles cannot pass', () => {
+  const method = enrolledStreamingCases[0].method, valid = transcript(0), facts = bundle(observation());
+  for (const text of [valid.replace(facts, ''), valid.replace(facts, facts + facts), facts + valid,
+    valid.replace(facts, '').replace('INSTRUMENTATION_CODE: -1\n', facts + 'INSTRUMENTATION_CODE: -1\n'),
+    valid.replace(facts, bundle(observation(1))), valid.replace(facts, facts.replace('Version=1', 'Version=01')),
+    valid.replace(facts, facts.replace('SocketsClosed=true', 'SocketsClosed=1')),
+    valid.replace(facts, facts.replace('PrefixBytes=4096', 'PrefixBytes=4095'))]) {
+    const result = parseEnrolledStreamingInvocation(text, { method, ...commandResult() }); assert.notEqual(result.state, 'passed');
+  }
+});
+
+test('finish cannot retain an unterminated positive observation after actual command closure', () => {
+  const parser = createEnrolledStreamingInvocationParser(enrolledStreamingCases[0].method);
+  parser.push(Buffer.from(status(0, 1) + enrolledStreamingCases[0].phases.slice(0, 10).map(phase).join('') + bundle(observation()).slice(0, -1)));
+  const result = parser.finish(commandResult());
+  assert.equal(result.observation, null); assert.ok(result.problems.includes('observation_after_command_close')); assert.notEqual(result.state, 'passed');
+});
+
+test('observation metadata cap and exact key set reject private or oversized instrumentation fields', () => {
+  const method = enrolledStreamingCases[0].method;
+  for (const extras of [1, 6]) {
+    const text = transcript(0).replace('INSTRUMENTATION_STATUS_CODE: 3',
+      Array.from({ length: extras }, (_, index) => `INSTRUMENTATION_STATUS: private${index}=PRIVATE_CANARY\n`).join('') + 'INSTRUMENTATION_STATUS_CODE: 3');
+    const result = parseEnrolledStreamingInvocation(text, { method, ...commandResult() });
+    assert.notEqual(result.state, 'passed'); assert.ok(!JSON.stringify(result).includes('PRIVATE_CANARY'));
+  }
+});
+
+test('failed B methods retain only exact committed streaming helper roots and never private messages', () => {
+  const stack = 'java.lang.IllegalStateException: PRIVATE_CANARY\n' +
+    '\tat com.httpfreekit.interop.DraftStreamingTls.close(DraftStreamingFixture.kt:20)\n' +
+    '\tat com.httpfreekit.interop.DraftEnrolledStreamingObservation.values(DraftEnrolledStreamingObservation.kt:21)\n' +
+    '\tat com.httpfreekit.interop.DraftOther.canary(DraftStreamingFixture.kt:22)';
+  const text = transcript(0).replace(status(0, 0), status(0, -2, 'INSTRUMENTATION_STATUS: stack=' + stack + '\n'));
+  const result = parseEnrolledStreamingInvocation(text, { method: enrolledStreamingCases[0].method, ...commandResult() });
+  assert.equal(result.state, 'failed'); assert.equal(result.frames.length, 2); assert.ok(!JSON.stringify(result).includes('PRIVATE_CANARY'));
+});
+
+test('strict host gate rejects completion-gap pressure proof, new IDs and prematurely released resources', () => {
+  for (const mutate of [value => { value.scenarios[0].host.blockedLast.callStartedNanos = 249000000; value.scenarios[0].host.blockedLast.callReceivedNanos = 1000000000; },
+    value => { value.scenarios[0].host.blockedLast.proxyWriteEntries++; },
+    value => { value.scenarios[0].host.blockedFirst.chargedBytes = 0; },
+    value => { value.scenarios[0].host.terminal.ownerResourcesReleased = false; },
+    value => { value.scenarios[0].host.terminal.writesAfterInvalidation = 1; },
+    value => { value.scenarios[0].host.terminal.pendingCallbacks = 1; },
+    value => { value.scenarios[0].host.terminal.controlsAdmitted = 2; }]) {
+    const value = runtime(); mutate(value); assert.throws(() => verifyEnrolledStreamingReport(value, { source, api: 26 }), EnrollmentRuntimeError);
+  }
+});
+
+test('expiry gate requires an actual first-owner UTC or monotonic proof and accepts truthful races', () => {
+  const value = runtime(), expiry = value.scenarios[1]; expiry.invocation.observation.localCause = 'network_unreachable';
+  assert.equal(verifyEnrolledStreamingReport(value, { source, api: 26 }).methods, 3);
+  expiry.host.terminal.controlCause = 'network_unreachable';
+  assert.throws(() => verifyEnrolledStreamingReport(value, { source, api: 26 }), /runtime_stream_deadline_failed/);
+  expiry.host.terminal.controlCause = 'session_expired'; expiry.host.terminal.terminalUtcMillis--; expiry.host.terminal.terminalElapsedMillis--;
+  assert.throws(() => verifyEnrolledStreamingReport(value, { source, api: 26 }), /runtime_stream_deadline_failed/);
+});
+
+test('credential expiry and session policy evidence cannot substitute cached validity or a new enrollment', () => {
+  for (const mutate of [value => { value.scenarios[1].host.credentialStatusAfterMethod = false; },
+    value => { value.scenarios[1].host.credentialStatusObservedUtcMillis = now + 59999; },
+    value => { value.scenarios[2].host.terminal.controlsAdmitted = 1; },
+    value => { value.scenarios[2].host.terminal.grantValid = false; },
+    value => { value.scenarios[2].invocation.observation.sameCredential = false; },
+    value => { value.scenarios[2].invocation.observation.sessionExpiresUtcMillis += 1000; },
+    value => { value.scenarios[2].profile.anchorExpiresUtcMillis = now + 10000; }]) {
+    const value = runtime(); mutate(value); assert.throws(() => verifyEnrolledStreamingReport(value, { source, api: 26 }), EnrollmentRuntimeError);
+  }
+});
+
+test('source, clock, private input, actual deliveries and all owned cleanup remain required', () => {
+  for (const mutate of [value => { value.source.trackedDirty = true; }, value => { value.clock.lowerBoundMillis = 0; },
+    value => { value.scenarios[0].input.inputClosed = false; }, value => { value.scenarios[0].approval.actualApprovedResponseDrops = 1; },
+    value => { value.scenarios[0].cleanup.reverseRemovalExitCodes.pop(); }, value => { value.scenarios[0].cleanup.workerClosed.workers = 1; },
+    value => { value.scenarios[0].cleanup.workerCommand.processGroupClosed = false; }, value => { value.cleanup.uninstallConfirmed = false; }]) {
+    const value = runtime(); mutate(value); assert.throws(() => verifyEnrolledStreamingReport(value, { source, api: 26 }), EnrollmentRuntimeError);
+  }
+});
+
+test('exact report schema, strict JSON and truthful projections never retain unknown raw material', () => {
+  const input = runtime(), report = createEnrolledStreamingReport(input); input.scenarios[0].approval.completed = false;
+  assert.equal(report.scenarios[0].approval.completed, true);
+  const xml = enrolledStreamingRuntimeXml(report); assert.equal((xml.match(/<testcase /g) ?? []).length, 3); assert.match(xml, /errors="0"/);
+  assert.deepEqual(decodeEnrolledStreamingReport(Buffer.from(JSON.stringify(report))), report);
+  for (const bytes of [Buffer.from('{"format":1,"format":2}'), Buffer.from('\uFEFF' + JSON.stringify(report)), Buffer.alloc(65537)]) assert.throws(() => decodeEnrolledStreamingReport(bytes), EnrollmentRuntimeError);
+  const unknown = runtime(); unknown.scenarios[0].host.secret = 'PRIVATE_CANARY';
+  assert.throws(() => enrolledStreamingRuntimeHtml(unknown), /invalid_runtime_report/);
+  const failed = runtime(); failed.problems = ['enrollment_cleanup_failed'];
+  assert.match(enrolledStreamingRuntimeXml(failed), /errors="0"/); assert.throws(() => verifyEnrolledStreamingReport(failed, { source, api: 26 }));
+  failed.scenarios[0].invocation = parseEnrolledStreamingInvocation('', { method: enrolledStreamingCases[0].method, ...commandResult() });
+  assert.match(enrolledStreamingRuntimeXml(failed), /errors="1"/);
 });
