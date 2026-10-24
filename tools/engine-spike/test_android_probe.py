@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 import build_android_probe as build
 from android_bridge import HELLO, PACKET, STOP, STOPPED, PacketChannel, read_control, read_frame, write_frame
-from run_android import await_bridge, capture_command, instrumentation_phases, validate_instrumentation
+from run_android import await_bridge, capture_command, instrumentation_phases, reserve_reverse, validate_instrumentation
 from verify_probe_apk import verify_manifest
 from record_native_host import classify_log_tail
 
@@ -25,6 +25,58 @@ def elf(api=26, alignment=16384, machine=62):
 
 
 class AndroidProbeTest(unittest.TestCase):
+    def test_reverse_uses_two_distinct_nonzero_keys_and_norebind(self):
+        calls, owned = [], []
+        replies = iter(("", "38002"))
+        def command(*arguments):
+            calls.append(arguments)
+            return next(replies)
+        self.assertEqual(reserve_reverse(command, 38001, owned), 38001)
+        self.assertEqual(reserve_reverse(command, 38002, owned), 38002)
+        self.assertEqual(owned, [38001, 38002])
+        self.assertEqual(calls, [("reverse", "--no-rebind", "tcp:38001", "tcp:38001"),
+                                 ("reverse", "--no-rebind", "tcp:38002", "tcp:38002")])
+
+    def test_reverse_collision_does_not_claim_or_remove_the_unrelated_listener(self):
+        calls, owned = [], []
+        def command(*arguments):
+            calls.append(arguments)
+            if len(calls) == 2:
+                raise subprocess.CalledProcessError(1, ["adb", *arguments])
+            return "38001"
+        reserve_reverse(command, 38001, owned)
+        with self.assertRaises(subprocess.CalledProcessError):
+            reserve_reverse(command, 38002, owned)
+        self.assertEqual(owned, [38001])
+        self.assertEqual(len(calls), 2)
+        self.assertTrue(all(call[1] == "--no-rebind" for call in calls))
+
+    def test_unexpected_success_reply_keeps_requested_port_owned_for_cleanup(self):
+        owned = []
+        with self.assertRaisesRegex(AssertionError, "Unexpected explicit reverse"):
+            reserve_reverse(lambda *arguments: "39999", 38001, owned)
+        self.assertEqual(owned, [38001])
+
+    def test_invalid_reverse_ports_cannot_mutate_adb(self):
+        for port in (0, -1, 65536, True, "38001", None):
+            with self.subTest(port=port):
+                calls, owned = [], []
+                with self.assertRaisesRegex(AssertionError, "Invalid research reverse port"):
+                    reserve_reverse(lambda *arguments: calls.append(arguments), port, owned)
+                self.assertEqual(calls, [])
+                self.assertEqual(owned, [])
+
+    def test_reusing_an_owned_port_fails_before_another_adb_call(self):
+        calls, owned = [], []
+        def command(*arguments):
+            calls.append(arguments)
+            return ""
+        reserve_reverse(command, 38001, owned)
+        with self.assertRaisesRegex(AssertionError, "must be distinct"):
+            reserve_reverse(command, 38001, owned)
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(owned, [38001])
+
     def test_host_emulator_categories_never_retain_arbitrary_log_content(self):
         with tempfile.TemporaryDirectory(prefix="freekit-host-log-") as directory:
             path = Path(directory) / "emulator.log"

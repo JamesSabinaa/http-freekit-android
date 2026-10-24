@@ -103,6 +103,18 @@ def save_reports(directory, summary, error=None):
     ET.ElementTree(suite).write(directory / "junit.xml", encoding="utf-8", xml_declaration=True)
 
 
+def reserve_reverse(command, host_port, mappings):
+    """Use a distinct explicit remote key without replacing an existing listener."""
+    check(type(host_port) is int and 1 <= host_port <= 65535, "Invalid research reverse port")
+    check(host_port not in mappings, "Research reverse ports must be distinct")
+    endpoint = f"tcp:{host_port}"
+    reply = command("reverse", "--no-rebind", endpoint, endpoint)
+    # A successful explicit request owns this port even if its optional reply is malformed.
+    mappings.append(host_port)
+    check(reply in ("", str(host_port)), "Unexpected explicit reverse port response")
+    return host_port
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--adb", default="adb")
@@ -127,11 +139,10 @@ def main():
                "model": command("shell", "getprop", "ro.product.model"), "cases": [], "passed": False, "reverseMappings": []}
     mappings, process, error = [], None, None
     def reverse(host_port):
-        value = command("reverse", "tcp:0", f"tcp:{host_port}")
-        check(value.isdigit() and 0 < int(value) <= 65535, "ADB did not allocate an owned reverse port")
-        mappings.append(int(value))
-        summary["reverseMappings"].append({"devicePort": int(value), "hostPort": host_port})
-        return int(value)
+        try:
+            return reserve_reverse(command, host_port, mappings)
+        finally:
+            summary["reverseMappings"] = [{"devicePort": port, "hostPort": port} for port in mappings]
     try:
         arguments.reports.mkdir(parents=True, exist_ok=True)
         with listener() as bridge_server, listener() as socks, listener() as proxy, (arguments.reports / "instrumentation.txt").open("w+", encoding="utf-8") as output:
