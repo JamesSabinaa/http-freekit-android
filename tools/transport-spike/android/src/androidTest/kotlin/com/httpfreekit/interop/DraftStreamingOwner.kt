@@ -250,7 +250,7 @@ internal class DraftStreamingOwner(
         internal fun terminalLocked() = stream.snapshot().phase in TERMINAL
 
         internal fun start() {
-            val upgrade = fixture.upgrade(credential, "/companion/v1/streams", token())
+            val upgrade = fixture.upgrade(credential, "/companion/v1/streams", token(), rawSendBufferBytes = 65536)
             connection = upgrade.first
             check(upgrade.second == 101) { "Stream upgrade refused" }
             wsReader = ResearchWebSocketReader(upgrade.first.socket.inputStream, EndpointRole.CLIENT, FRAME)

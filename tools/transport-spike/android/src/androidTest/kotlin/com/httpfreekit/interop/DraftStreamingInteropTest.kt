@@ -5,6 +5,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.httpfreekit.protocol.DraftControlPhase
 import com.httpfreekit.protocol.DraftStreamPhase
+import com.httpfreekit.research.websocket.ResearchPendingWriteObservation
 import java.util.Base64
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -228,12 +229,16 @@ class DraftStreamingInteropTest {
 
     private class Context(val fixture: DraftStreamingFixture, val credential: DraftStreamingFixture.Credential,
         val owner: DraftStreamingOwner) {
+        private data class ProbeWindow(val startedNanos: Long, val receivedNanos: Long)
+        private var probeWindow: ProbeWindow? = null
         val token = owner.token()
         fun probe(): DraftStreamingProbe {
             val started = System.nanoTime()
             val probe = DraftStreamingProbe.read(fixture, credential, token)
             val received = System.nanoTime()
             owner.rememberPeerProbe(probe, received, (received - started) / 1_000_000)
+            // Publish the same fully validated call's exact window, never rounded diagnostic milliseconds.
+            probeWindow = ProbeWindow(started - owner.readyAtNanos, received - owner.readyAtNanos)
             return probe
         }
         fun command(command: String) = DraftStreamingProbe.command(fixture, credential, token, command)
@@ -243,9 +248,7 @@ class DraftStreamingInteropTest {
             return checkNotNull(last)
         }
         fun awaitProxyBackpressure(stream: DraftStreamingOwner.Stream): DraftStreamingProbe {
-            var candidate = 0L
-            var since = 0L
-            var longestCandidateMillis = 0L
+            val observation = ResearchPendingWriteObservation()
             var seenPredicateMask = 0
             val waitStartUtc = System.currentTimeMillis()
             val waitStartElapsed = (System.nanoTime() - owner.readyAtNanos) / 1_000_000
@@ -259,12 +262,11 @@ class DraftStreamingInteropTest {
                     if (entry > it.number("io", "proxyWriteCompletions")) seenPredicateMask = seenPredicateMask or 1
                     if (it.number("io", "pendingIngressBytes") in 1..4096) seenPredicateMask = seenPredicateMask or 2
                     if (it.number("control", "chargedBytes") in 1..16384) seenPredicateMask = seenPredicateMask or 4
-                    if (!observed || candidate != entry) { candidate = entry; since = System.nanoTime() }
-                    if (observed) longestCandidateMillis = maxOf(longestCandidateMillis, (System.nanoTime() - since) / 1_000_000)
-                    observed && System.nanoTime() - since >= 250_000_000
+                    val window = checkNotNull(probeWindow)
+                    observation.sample(entry, observed, window.startedNanos, window.receivedNanos)
                 }
             } catch (failure: Exception) {
-                stream.reportPressureFailure("proxy", waitStartUtc, waitStartElapsed, longestCandidateMillis, seenPredicateMask)
+                stream.reportPressureFailure("proxy", waitStartUtc, waitStartElapsed, observation.longestCandidateMillis, seenPredicateMask)
                 throw failure
             }
         }

@@ -74,12 +74,13 @@ internal class DraftStreamingFixture : AutoCloseable {
         override fun toString() = "ResearchCredential([NONEXPORTABLE])"
     }
 
-    fun connect(credential: Credential?, port: Int = streamPort): DraftStreamingTls {
+    fun connect(credential: Credential?, port: Int = streamPort, rawSendBufferBytes: Int = 1024): DraftStreamingTls {
+        require(rawSendBufferBytes == 1024 || rawSendBufferBytes == 65536) { "Invalid research send buffer" }
         val raw = AtomicReference<Socket?>()
         val rawFactory = object : SocketFactory() {
             override fun createSocket(): Socket = Socket().also {
-                // Small requested buffers make the finite non-reading fixture useful; kernels may round up.
-                it.sendBufferSize = 1024
+                // Compare only the accepted stream's send hint; effective kernel values remain observable.
+                it.sendBufferSize = rawSendBufferBytes
                 it.receiveBufferSize = 1024
                 it.tcpNoDelay = true
                 raw.set(it)
@@ -138,9 +139,9 @@ internal class DraftStreamingFixture : AutoCloseable {
     }
 
     fun upgrade(credential: Credential, route: String, session: String? = null, scenario: String? = null,
-        extraHeaders: List<Pair<String, String>> = emptyList()): Pair<DraftStreamingTls, Int> {
+        extraHeaders: List<Pair<String, String>> = emptyList(), rawSendBufferBytes: Int = 1024): Pair<DraftStreamingTls, Int> {
         check(route in setOf("/companion/v1/control", "/companion/v1/streams"))
-        val tls = connect(credential)
+        val tls = connect(credential, rawSendBufferBytes = rawSendBufferBytes)
         try {
             tls.socket.soTimeout = 5000
             val key = Base64.getEncoder().encodeToString(ByteArray(16).also { SecureRandom().nextBytes(it) })
