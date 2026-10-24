@@ -37,6 +37,10 @@ jobs:
           python3 -m unittest discover -s scripts/tests -p 'test_protocol_corpus.py'
           python3 -m unittest discover -s scripts/tests -p 'test_protocol_conformance.py'
           python3 scripts/check-protocol-corpus.py --corpus protocol/fixtures/a19-draft-0.3
+      - name: Validate independent enrollment corpus and evidence guards
+        run: |
+          node --test scripts/tests/enrollment-*.test.mjs
+          node scripts/check-enrollment-corpus.mjs
       - name: Check committed whitespace
         run: git diff --check --no-renames "$(git hash-object -t tree --stdin </dev/null)" HEAD
       - name: Validate workflow syntax
@@ -126,6 +130,14 @@ jobs:
             tools/transport-spike/companion-protocol-lifecycle.test.mjs \
             tools/transport-spike/companion-protocol-conformance.test.mjs
           node tools/transport-spike/companion-protocol-conformance.mjs
+      - name: Test enrollment codecs, authority, crypto and real process recovery
+        env:
+          FREEKIT_ENROLLMENT_CRASH_REPORT: build/reports/enrollment-store/crash.json
+        run: |
+          started="$(date +%s)"
+          node --test tools/transport-spike/companion-enrollment-*.test.mjs
+          node scripts/verify-enrollment-crash-report.mjs \
+            --source "$GITHUB_SHA" --platform linux --started "$started"
       - name: Compile, test, and lint
         run: >-
           ./gradlew --no-daemon --console=plain
@@ -142,6 +154,8 @@ jobs:
           --corpus protocol/fixtures/a19-draft-0.3
           --kotlin build/reports/draft-protocol/kotlin-conformance.json
           --node build/reports/draft-protocol/node-conformance.json
+      - name: Compare complete independent enrollment outcomes
+        run: node scripts/compare-enrollment-conformance.mjs
       - name: Record resolved dependency inventories
         run: |
           mkdir -p build/reports/dependencies
@@ -176,6 +190,8 @@ jobs:
             tools/transport-spike/framing/build/test-results/test/
             tools/installed-app-fixture/build/reports/lint-results-*
             build/reports/draft-protocol/*-conformance.json
+            build/reports/draft-enrollment/*-conformance.json
+            build/reports/enrollment-store/crash.json
             build/reports/draft-stream-pressure/pressure.json
             build/reports/dependencies/
 
