@@ -44,6 +44,7 @@ internal class DraftStreamingOwner(
     private val writer: ResearchWebSocketWriter
     private val workers = DraftStreamingWorkers { abort() }
     private val closed = AtomicBoolean(false)
+    private val joinedSuccessfully = AtomicBoolean(false)
     private val abortFailed = AtomicBoolean(false)
     private val pressureReported = AtomicBoolean(false)
     private val peerPressure = AtomicReference<PressurePeerSample?>()
@@ -54,6 +55,19 @@ internal class DraftStreamingOwner(
         private set
     val deadlineTicks = AtomicLong()
     val expiredDeadlineTicks = AtomicLong()
+    private var firstTerminal: TerminalObservation? = null
+
+    class TerminalObservation internal constructor(val cause: String, val utcMillis: Long, val elapsedMillis: Long) {
+        override fun toString() = "TerminalObservation([REDACTED])"
+    }
+    class BlockedWrite internal constructor(val entered: Long, val completed: Long, val inFlight: Long,
+        val pendingBytes: Long, val chargedBytes: Long, val chargedFrames: Int, val blockedMillis: Long, val applicationWritten: Long) {
+        override fun toString() = "BlockedWrite([REDACTED])"
+    }
+    class ClosedResources internal constructor(val socketsClosed: Boolean, val workersJoined: Boolean, val threadsAlive: Int,
+        val sessionLeases: Int, val streamLeases: Int, val chargedBytes: Long, val pendingCallbacks: Int, val timers: Int) {
+        override fun toString() = "ClosedResources([REDACTED])"
+    }
 
     init {
         check(scenario in setOf("gated", "backpressure", "cancel", "expiry", "binding", "malformed", "premature"))
@@ -79,7 +93,7 @@ internal class DraftStreamingOwner(
                 context.requireReady(ready.expiresAt.toEpochMilli(), readyClock.utcMillis)
                 expiresAtMillis = ready.expiresAt.toEpochMilli()
                 accepted(lock.withLock { model.text(DraftDirection.GATEWAY, bytes, readyClock) })
-                readyAtUtcMillis = System.currentTimeMillis()
+                readyAtUtcMillis = readyClock.utcMillis
                 readyAtNanos = System.nanoTime()
             } finally { event.release() }
             tls.socket.soTimeout = 0
@@ -103,6 +117,7 @@ internal class DraftStreamingOwner(
                         val result = model.tick(clock.now())
                         deadlineTicks.incrementAndGet()
                         if (result.code == "session_expired") expiredDeadlineTicks.incrementAndGet()
+                        observeTerminalLocked()
                         changed.signalAll()
                         model.snapshot().phase in setOf(DraftControlPhase.CLOSED, DraftControlPhase.FAILED)
                     }
@@ -124,6 +139,22 @@ internal class DraftStreamingOwner(
     fun token(): String = lock.withLock { checkNotNull(model.sessionHeader()) }
     fun snapshot() = lock.withLock { model.snapshot() }
     fun budget() = pool.snapshot()
+    fun terminalObservation(): TerminalObservation? = lock.withLock { firstTerminal }
+    private fun observeTerminalLocked() {
+        val state = model.snapshot()
+        if (firstTerminal == null && state.phase in setOf(DraftControlPhase.CLOSED, DraftControlPhase.FAILED) && readyAtNanos != 0L) {
+            firstTerminal = TerminalObservation(checkNotNull(state.cause), System.currentTimeMillis(), (System.nanoTime() - readyAtNanos) / 1_000_000)
+        }
+    }
+    fun closedResources(): ClosedResources {
+        check(joinedSuccessfully.get()) { "Research owner has not completed its joins" }
+        val owned = lock.withLock { streams.toList() }
+        val threads = workers.alive() + owned.sumOf { it.ownedThreadsAlive() }
+        val resources = budget()
+        return ClosedResources(tls.raw.isClosed && tls.socket.isClosed && owned.all { it.ownedSocketsClosed() },
+            true, threads, resources.sessionLeases, resources.streamLeases, resources.chargedBytes,
+            owned.count { it.writeInFlight.get() != 0L }, workers.alive("control-heartbeat") + workers.alive("deadline"))
+    }
 
     /** Keep selected immutable diagnostics from an already completed, validated request only. */
     fun rememberPeerProbe(probe: DraftStreamingProbe, receivedNanos: Long, probeElapsedMillis: Long) {
@@ -164,11 +195,11 @@ internal class DraftStreamingOwner(
                     }
                     is ResearchWebSocketEvent.Pong -> accepted(lock.withLock { model.pingPong(DraftDirection.GATEWAY, clock.now()) })
                     is ResearchWebSocketEvent.Text -> {
-                        lock.withLock { model.text(DraftDirection.GATEWAY, event.copyBytes(), clock.now()); changed.signalAll() }
+                        lock.withLock { model.text(DraftDirection.GATEWAY, event.copyBytes(), clock.now()); observeTerminalLocked(); changed.signalAll() }
                         if (snapshot().phase != DraftControlPhase.ACTIVE) { abort(); return }
                     }
                     is ResearchWebSocketEvent.Close -> {
-                        lock.withLock { model.webSocketClosed(event.code ?: 1005, clock.now()); changed.signalAll() }
+                        lock.withLock { model.webSocketClosed(event.code ?: 1005, clock.now()); observeTerminalLocked(); changed.signalAll() }
                         abort(); return
                     }
                     else -> error("Unexpected control binary event")
@@ -191,6 +222,7 @@ internal class DraftStreamingOwner(
 
     private fun abort() {
         workers.stopping.set(true)
+        lock.withLock { observeTerminalLocked() }
         try {
             lock.withLock { streams.toList() }.forEach {
                 try { it.interrupt() } catch (_: Exception) { abortFailed.set(true) } catch (_: AssertionError) { abortFailed.set(true) }
@@ -199,6 +231,7 @@ internal class DraftStreamingOwner(
             tls.interrupt()
             lock.withLock {
                 if (!model.snapshot().webSocketClosed) model.webSocketClosed(1006, clock.now())
+                observeTerminalLocked()
                 changed.signalAll()
             }
         }
@@ -223,6 +256,7 @@ internal class DraftStreamingOwner(
         check(resources.chargedBytes == 0L && resources.streamLeases == 0 && resources.sessionLeases == 0 && workers.alive() == 0) {
             "Control cleanup retained research resources"
         }
+        joinedSuccessfully.set(true)
     }
 
     inner class Stream internal constructor(private val stream: DraftStream, val id: String) : AutoCloseable {
@@ -255,6 +289,9 @@ internal class DraftStreamingOwner(
         private var responseHash: String? = null
 
         fun snapshot() = lock.withLock { stream.snapshot() }
+        internal fun ownedThreadsAlive() = owned.alive()
+        internal fun ownedSocketsClosed() = application.isClosed && bridge.isClosed &&
+            connection?.let { it.raw.isClosed && it.socket.isClosed } == true
         internal fun terminalLocked() = stream.snapshot().phase in TERMINAL
 
         internal fun start() {
@@ -441,13 +478,14 @@ internal class DraftStreamingOwner(
             }
         }
 
-        fun observedBlockedWriter(retainPressureFailure: Boolean = false) {
+        fun observedBlockedWriter(retainPressureFailure: Boolean = false): BlockedWrite {
             var candidate = 0L
             var since = 0L
             var longestCandidateMillis = 0L
             var seenPredicateMask = 0
             val waitStartUtc = System.currentTimeMillis()
             val waitStartElapsed = (System.nanoTime() - readyAtNanos) / 1_000_000
+            var retained: BlockedWrite? = null
             try {
                 draftAwait("observed TLS writer and retained ingress", 20000) {
                     val entry = writeInFlight.get()
@@ -461,13 +499,17 @@ internal class DraftStreamingOwner(
                     if (state.chargedBytes in 1..8192 && state.chargedFrames in 1..4) seenPredicateMask = seenPredicateMask or 4
                     if (!observed || candidate != entry) { candidate = entry; since = System.nanoTime() }
                     if (observed) longestCandidateMillis = maxOf(longestCandidateMillis, (System.nanoTime() - since) / 1_000_000)
-                    observed && System.nanoTime() - since >= 250_000_000
+                    val accepted = observed && System.nanoTime() - since >= 250_000_000
+                    if (accepted) retained = BlockedWrite(entry, completed, entry, pending, state.chargedBytes,
+                        state.chargedFrames, (System.nanoTime() - since) / 1_000_000, applicationWritten.get())
+                    accepted
                 }
             } catch (failure: IllegalStateException) {
                 if (retainPressureFailure) reportPressureFailure("android", waitStartUtc, waitStartElapsed,
                     longestCandidateMillis, seenPredicateMask)
                 throw failure
             }
+            return checkNotNull(retained)
         }
 
         fun reportPressureFailure(waitKind: String, waitStartUtc: Long, waitStartElapsed: Long,

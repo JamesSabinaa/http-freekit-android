@@ -211,4 +211,5 @@ internal class DraftStreamingWorkers(private val onFailure: () -> Unit) {
         check(owned.none { it.isAlive }) { "Research worker join failed" }
     }
     @Synchronized fun alive() = threads.count { it.isAlive }
+    @Synchronized fun alive(role: String) = threads.count { it.isAlive && it.name == "draft-$role" }
 }
