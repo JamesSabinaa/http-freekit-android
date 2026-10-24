@@ -7,6 +7,7 @@ import com.httpfreekit.research.websocket.EndpointRole
 import com.httpfreekit.research.websocket.ResearchWebSocketEvent
 import com.httpfreekit.research.websocket.ResearchWebSocketReader
 import com.httpfreekit.research.websocket.ResearchWebSocketWriter
+import java.io.BufferedOutputStream
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.ServerSocket
@@ -239,7 +240,7 @@ internal class DraftStreamingOwner(
             connection = upgrade.first
             check(upgrade.second == 101) { "Stream upgrade refused" }
             wsReader = ResearchWebSocketReader(upgrade.first.socket.inputStream, EndpointRole.CLIENT, FRAME)
-            wsWriter = ResearchWebSocketWriter(upgrade.first.socket.outputStream, EndpointRole.CLIENT, FRAME)
+            wsWriter = ResearchWebSocketWriter(BufferedOutputStream(upgrade.first.socket.outputStream, FRAME + 14), EndpointRole.CLIENT, FRAME)
             val open = text("open")
             accepted(lock.withLock { stream.text(DraftDirection.CLIENT, open, clock.now()) })
             wsWriter!!.text(open)
@@ -513,6 +514,8 @@ internal class DraftStreamingOwner(
             attempt { connection?.close() }
             attempt { owned.joinAll() }
             check(!cleanupFailed && !interruptFailed.get()) { "Stream resource cleanup failed" }
+            // Discard the bounded frame buffer after joins, without a teardown flush.
+            wsWriter = null
             // The only release call follows actual local sockets/TLS close and every owned join.
             pendingClientBytes.set(0); pendingGatewayBytes.set(0)
             lock.withLock { stream.confirmClosed(clock.now()); changed.signalAll() }
