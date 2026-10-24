@@ -8,6 +8,7 @@ import android.view.WindowManager
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasTestTag
@@ -184,8 +185,8 @@ class InstalledAppsActivityTest {
         safeUi("Known catalog control lookup failed", ::catalogDiagnostics) {
             compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasTestTag(tag))
         }
-        safeUi("Known catalog control was not displayed", ::catalogDiagnostics) {
-            compose.onNodeWithTag(tag).performScrollTo().assertIsDisplayed()
+        safeUi("Known catalog control was not displayed and enabled", ::catalogDiagnostics) {
+            compose.onNodeWithTag(tag).performScrollTo().assertIsDisplayed().assertIsEnabled()
         }
         safeUi("Known catalog control touch failed", ::catalogDiagnostics) {
             compose.onNodeWithTag(tag).performClick()
