@@ -71,6 +71,15 @@ jobs:
           fi
       - name: Install locked transport fixture dependencies
         run: npm --prefix tools/transport-spike ci --ignore-scripts --no-fund
+      - name: Prepare private ADB server log
+        run: |
+          # Configure this before any adb invocation; the server inherits it on startup.
+          # Its raw command-line blame records must never enter console or artifacts.
+          umask 077
+          adb_log_dir="$(mktemp -d "$RUNNER_TEMP/transport-adb-log.XXXXXX")"
+          export ANDROID_ADB_LOG_PATH="$adb_log_dir/server.log"
+          : > "$ANDROID_ADB_LOG_PATH"
+          printf 'ANDROID_ADB_LOG_PATH=%s\n' "$ANDROID_ADB_LOG_PATH" >> "$GITHUB_ENV"
       - name: Bootstrap verified Android command-line tools
         env:
           ANDROID_TOOLS_ARCHIVE: commandlinetools-linux-15859902_latest.zip
@@ -244,7 +253,8 @@ jobs:
               raise SystemExit("A transport testcase failed or was skipped")
           print(json.dumps({"api": os.environ["API_LEVEL"], **totals}, sort_keys=True))
           PY
-      # Retain sanitized reports only: no APKs, peer keys/logs, keystores, AVDs, or userdata.
+      # Retain sanitized reports only: no raw ADB/emulator logs, APKs, peer keys/logs,
+      # keystores, AVDs, or userdata. The private ANDROID_ADB_LOG_PATH is excluded.
       - name: Retain instrumentation reports
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

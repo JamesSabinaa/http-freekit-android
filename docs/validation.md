@@ -96,6 +96,8 @@ The separate [preview runtime workflow and evidence](android-preview-runtime.md)
 
 The separate manual [Android-to-Node transport workflow](android-transport-runtime.md) runs A5's isolated Keystore/TLS/Node experiment. Its first attempt failed on both APIs with only one empty failed testcase reported and three required methods absent. Android-to-Node success remains unverified. The loopback fixture and ADB reverse mappings do not establish physical USB capture or a production gateway.
 
+The transport workflow prepares a private `ANDROID_ADB_LOG_PATH` under `RUNNER_TEMP` before its first ADB command. This raw server log can include kill-request command-line arguments and is excluded from console output and all artifact uploads. Only the driver's bounded, sanitized marker/source categories may enter test reports; see the [source-backed diagnostic limits](android-transport-runtime.md). No ADB version change or runtime success is implied by this diagnostic setup.
+
 ## Dependency and licence evidence
 
 The workflow records the resolved Gradle debug/release runtime graphs, the core JVM and security test runtime graphs, and the Node peer dependency graph under `build/reports/dependencies/`. To inspect the same inputs locally:
