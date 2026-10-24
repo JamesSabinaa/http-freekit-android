@@ -126,6 +126,8 @@ jobs:
           :core-security:testDebugUnitTest :core-security:assembleDebugAndroidTest :core-security:lintDebug
           :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug
           :transport-interop:assembleDebugAndroidTest :transport-interop:lintDebug
+          :installed-app-fixture:assembleDebug :installed-app-fixture:assembleRelease
+          :installed-app-fixture:lintDebug :installed-app-fixture:lintRelease
       - name: Compare complete independent protocol outcomes
         run: >-
           python3 scripts/compare-protocol-conformance.py
@@ -164,6 +166,7 @@ jobs:
             tools/transport-spike/android/build/reports/lint-results-debug.*
             tools/transport-spike/framing/build/reports/tests/
             tools/transport-spike/framing/build/test-results/test/
+            tools/installed-app-fixture/build/reports/lint-results-*
             build/reports/draft-protocol/*-conformance.json
             build/reports/dependencies/
 

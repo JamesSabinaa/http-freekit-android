@@ -36,7 +36,9 @@ node --test tools/transport-spike/research-websocket*.test.mjs
   :transport-framing:test \
   :core-security:testDebugUnitTest :core-security:assembleDebugAndroidTest :core-security:lintDebug \
   :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug \
-  :transport-interop:assembleDebugAndroidTest :transport-interop:lintDebug
+  :transport-interop:assembleDebugAndroidTest :transport-interop:lintDebug \
+  :installed-app-fixture:assembleDebug :installed-app-fixture:assembleRelease \
+  :installed-app-fixture:lintDebug :installed-app-fixture:lintRelease
 ```
 
 Assembling the app and security module's Android instrumentation APKs checks compilation only; no UI, Keystore, or device result is inferred from it.
@@ -153,6 +155,10 @@ Independent artifact audit confirmed each full class/method identity once, three
 ## Preview runtime evidence
 
 The separate [preview runtime workflow and evidence](android-preview-runtime.md) cover the actual sample-only `MainActivity` UI, simulated consent, Stop, and rotation. Run 40095827316 at `89e5914` passed all four named tests on each API; both original sample PNGs were visually inspected and show readable dark system-bar icons on the light background without header/card overlap. It supersedes the earlier API 37 status-bar contrast finding. These results do not establish real Android permissions, VPN service behavior, or capture.
+
+The manual preview workflow now also prepares four installed-catalog cases on each API 26/37 emulator. It builds and installs the unrelated, headless `com.httpfreekit.fixture.installedapps` debug APK, verifies its fixed label/package, no-code/no-permission/no-component profile, and checks the merged app APK for `QUERY_ALL_PACKAGES`. The fixture's release variant is nondebuggable; host CI assembles both variants and runs strict lint for each, retaining only lint reports.
+
+The new cases exercise real fixture discovery through the public installed-app mode, label/package search, the Development filter, toggle selection, refresh and rotation retention, successful refresh after disabling only that fixture, pruning without reselection, separate sample/installed selections, and the no-capture banner. The runtime gate requires exactly the original four sample cases and four installed-catalog cases with consistent counters and zero failures, errors, or skips. Cleanup enables and uninstalls only the owned fixture, records actual command statuses, and fails an otherwise successful run if fixture cleanup fails. Test diagnostics contain fixed fixture-only messages; installed inventories and installed-mode screenshots are excluded. The original screenshot remains sample-only. These new cases are prepared and locally compile-checked; runtime success must be recorded from the actual hosted run.
 
 ## Manual Android-to-Node transport workflow
 

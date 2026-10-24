@@ -82,6 +82,37 @@ jobs:
           emulator -accel-check
           adb version
           sdkmanager --sdk_root="$ANDROID_HOME" --list_installed
+      - name: Build the unrelated headless catalog fixture
+        run: |
+          ./gradlew --no-daemon --console=plain :app:assembleDebug \
+            :installed-app-fixture:assembleDebug :installed-app-fixture:lintDebug
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          import subprocess
+
+          aapt = str(Path(os.environ["ANDROID_HOME"]) / "build-tools/36.0.0/aapt2")
+          fixture = "tools/installed-app-fixture/build/outputs/apk/debug/installed-app-fixture-debug.apk"
+          badging = subprocess.check_output([aapt, "dump", "badging", fixture], text=True)
+          tree = subprocess.check_output([aapt, "dump", "xmltree", "--file", "AndroidManifest.xml", fixture], text=True)
+          required = (
+              "package: name='com.httpfreekit.fixture.installedapps' ",
+              "application-label:'FreeKit Catalog Fixture'",
+              "minSdkVersion:'26'", "targetSdkVersion:'37'", "application-debuggable",
+          )
+          if not all(value in badging for value in required):
+              raise SystemExit("The synthetic fixture identity or debug profile is incorrect")
+          if "uses-permission:" in badging or "launchable-activity:" in badging:
+              raise SystemExit("The headless fixture must not request permissions or expose a launcher")
+          if any(f"E: {component} " in tree for component in ("activity", "activity-alias", "service", "receiver", "provider")):
+              raise SystemExit("The headless fixture must not contain application components")
+          if "hasCode(0x0101000c)=false" not in tree:
+              raise SystemExit("The headless fixture must contain no application code")
+          permissions = subprocess.check_output([aapt, "dump", "permissions", "app/build/outputs/apk/debug/app-debug.apk"], text=True)
+          if "uses-permission: name='android.permission.QUERY_ALL_PACKAGES'" not in permissions.splitlines():
+              raise SystemExit("The merged app APK lacks full installed-package visibility")
+          print("Headless fixture contract and merged package-visibility permission verified")
+          PY
       - name: Run preview instrumentation on a fresh AVD
         env:
           API_LEVEL: ${{ matrix.api }}
@@ -95,15 +126,34 @@ jobs:
             -no-window -no-audio -no-boot-anim -no-snapshot -camera-front none -camera-back none \
             -cores 2 -memory 3072 > "$emulator_log" 2>&1 &
           emulator_pid=$!
+          fixture_package=com.httpfreekit.fixture.installedapps
+          fixture_install_attempted=false
           cleanup() {
-            status=$?
+            local status="$1" cleanup_status=0 command_status
             trap - EXIT
+            if [[ "$fixture_install_attempted" == true ]]; then
+              if timeout 15s adb -s emulator-5554 shell pm enable --user 0 "$fixture_package" >/dev/null 2>&1; then
+                echo 'Fixture enable cleanup: exit=0'
+              else
+                command_status=$?
+                printf '::error::Fixture enable cleanup failed: exit=%s\n' "$command_status"
+                cleanup_status=1
+              fi
+              if timeout 15s adb -s emulator-5554 uninstall "$fixture_package" >/dev/null 2>&1; then
+                echo 'Fixture uninstall cleanup: exit=0'
+              else
+                command_status=$?
+                printf '::error::Fixture uninstall cleanup failed: exit=%s\n' "$command_status"
+                cleanup_status=1
+              fi
+            fi
             adb -s emulator-5554 emu kill >/dev/null 2>&1 || true
             kill "$emulator_pid" >/dev/null 2>&1 || true
             wait "$emulator_pid" >/dev/null 2>&1 || true
-            exit "$status"
+            if (( status == 0 && cleanup_status != 0 )); then status=1; fi
+            return "$status"
           }
-          trap cleanup EXIT
+          trap 'status=$?; if cleanup "$status"; then exit 0; else exit $?; fi' EXIT
           deadline=$((SECONDS + 600))
           while true; do
             if ! kill -0 "$emulator_pid" 2>/dev/null; then
@@ -128,6 +178,8 @@ jobs:
           fi
           export ANDROID_SERIAL=emulator-5554
           printf 'Booted emulator API=%s Android=%s\n' "$actual_api" "$(adb -s emulator-5554 shell getprop ro.build.version.release | tr -d '\r')"
+          fixture_install_attempted=true
+          adb -s emulator-5554 install --no-streaming tools/installed-app-fixture/build/outputs/apk/debug/installed-app-fixture-debug.apk
           ./gradlew --no-daemon --console=plain :app:connectedDebugAndroidTest \
             -Pandroid.injected.androidTest.leaveApksInstalledAfterRun=true
           python3 - <<'PY'
@@ -140,26 +192,47 @@ jobs:
           if not reports:
               raise SystemExit("No instrumentation XML reports were produced")
           expected = {
-              "noCaptureWarningAppearsOnEveryPreviewPage",
-              "sampleComputerAndAppSelectionsSurviveRotation",
-              "simulatedConsentReachesReadyAndStopWithoutClaimingCapture",
-              "deniedNotificationAndCancelledVpnConsentStayInPreview",
+              ("com.httpfreekit.android.preview.PreviewActivityTest", name) for name in (
+                  "noCaptureWarningAppearsOnEveryPreviewPage",
+                  "sampleComputerAndAppSelectionsSurviveRotation",
+                  "simulatedConsentReachesReadyAndStopWithoutClaimingCapture",
+                  "deniedNotificationAndCancelledVpnConsentStayInPreview",
+              )
+          } | {
+              ("com.httpfreekit.android.preview.InstalledAppsActivityTest", name) for name in (
+                  "headlessFixtureSupportsSearchDevelopmentFilterAndToggle",
+                  "installedSelectionSurvivesRefreshAndRotationWithoutCapture",
+                  "successfulRefreshPrunesDisabledFixtureAndDoesNotReselectIt",
+                  "sampleAndInstalledSelectionsRemainSeparate",
+              )
           }
           cases = []
           totals = {field: 0 for field in ("tests", "failures", "errors", "skipped")}
           for report in reports:
               root = ET.parse(report).getroot()
-              suites = [root] if root.tag == "testsuite" else root.findall(".//testsuite")
+              if root.tag not in ("testsuite", "testsuites"):
+                  raise SystemExit("Unexpected preview report root")
+              suites = [root] if root.tag == "testsuite" else root.findall("testsuite")
+              if len(root.findall(".//testcase")) != sum(len(suite.findall("testcase")) for suite in suites):
+                  raise SystemExit("Unexpected testcase nesting in an instrumentation report")
+              report_totals = {field: 0 for field in totals}
               for suite in suites:
+                  suite_cases = suite.findall("testcase")
+                  if not suite_cases or suite.findall("testsuite"):
+                      raise SystemExit("An instrumentation suite is empty or nested")
+                  if int(suite.get("tests", "-1")) != len(suite_cases):
+                      raise SystemExit("Instrumentation suite counters disagree with actual cases")
                   for field in totals:
-                      totals[field] += int(suite.get(field, "0") or "0")
-                  cases.extend(suite.findall("testcase"))
+                      report_totals[field] += int(suite.get(field, "0") or "0")
+                  cases.extend(suite_cases)
+              if root.tag == "testsuites" and any(int(root.get(field, "-1")) != report_totals[field] for field in totals):
+                  raise SystemExit("Instrumentation aggregate counters disagree with suites")
+              for field in totals:
+                  totals[field] += report_totals[field]
           if totals["tests"] != len(expected) or any(totals[field] for field in ("failures", "errors", "skipped")):
               raise SystemExit(f"Preview instrumentation did not execute a fully passing suite: {totals}")
-          if len(cases) != len(expected) or {case.get("name") for case in cases} != expected:
-              raise SystemExit("The expected four named preview tests did not execute exactly once")
-          if any(case.get("classname") != "com.httpfreekit.android.preview.PreviewActivityTest" for case in cases):
-              raise SystemExit("Unexpected preview test class")
+          if len(cases) != len(expected) or {(case.get("classname"), case.get("name")) for case in cases} != expected:
+              raise SystemExit("The expected eight named preview/catalog tests did not execute exactly once")
           if any(case.find(result) is not None for case in cases for result in ("failure", "error", "skipped")):
               raise SystemExit("A preview testcase failed or was skipped")
           print(json.dumps({"api": os.environ["API_LEVEL"], **totals}, sort_keys=True))
@@ -182,6 +255,7 @@ jobs:
               raise SystemExit(f"The rendered sample screenshot is unexpectedly small: {width}x{height}")
           print(f"Sample preview screenshot: {path} {width}x{height} sha256={hashlib.sha256(data).hexdigest()}")
           PY
+          cleanup 0
       # Retain test reports and the explicitly sample-only preview PNG: no APKs, emulator logs, keys, AVDs, or userdata.
       - name: Retain instrumentation reports
         if: always()
