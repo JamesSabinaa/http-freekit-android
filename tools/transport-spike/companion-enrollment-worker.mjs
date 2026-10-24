@@ -4,6 +4,7 @@ import { startEnrollmentHttpsFixture } from './companion-enrollment-https.mjs';
 const codes = new Set(['invalid_message', 'message_too_large', 'unsupported_version', 'unsupported_capability', 'authentication_failed', 'invitation_expired', 'invitation_used', 'pairing_limit', 'pairing_unavailable']);
 const schema = {
   start: ['directory', 'mode', 'openssl', 'setupPort', 'credentialPort'], metadata: [], createInvitation: [],
+  startAdversarial: ['directory', 'mode', 'openssl', 'setupPort', 'credentialPort'],
   startStreaming: ['directory', 'mode', 'openssl', 'setupPort', 'credentialPort', 'streamPort', 'credentialLifetimeSeconds', 'sessionLifetimeMillis'],
   waitForRegistered: ['invitationId', 'timeoutMillis'], approve: ['enrollmentId'], reject: ['enrollmentId'], revoke: ['enrollmentId'],
   readResult: ['enrollmentId'], inspectEnrollment: ['enrollmentId'], dropNextApprovedStatus: [], snapshot: [], close: [],
@@ -16,12 +17,13 @@ function valid(message) {
   if (!exact(message, ['revision', 'id', 'op', 'args']) || message.revision !== 1 || !Number.isSafeInteger(message.id) || message.id < 1 ||
       !Object.hasOwn(schema, message.op) || !exact(message.args, schema[message.op])) return false;
   const args = message.args;
-  if (message.op === 'start' || message.op === 'startStreaming') {
+  if (['start', 'startStreaming', 'startAdversarial'].includes(message.op)) {
     const streaming = message.op === 'startStreaming';
     const ports = [args.setupPort, args.credentialPort, ...(streaming ? [args.streamPort] : [])];
     if (!text(args.directory) || !text(args.openssl) || !['create', 'open'].includes(args.mode) ||
         !ports.every(port => Number.isInteger(port) && port >= (args.mode === 'create' ? 0 : 1) && port <= 65535) ||
         new Set(ports.filter(port => port !== 0)).size !== ports.filter(port => port !== 0).length) return false;
+    if (message.op === 'startAdversarial') return args.mode === 'create';
     return !streaming || (args.mode === 'create' && Number.isInteger(args.credentialLifetimeSeconds) &&
       args.credentialLifetimeSeconds >= 60 && args.credentialLifetimeSeconds <= 7776000 &&
       Number.isInteger(args.sessionLifetimeMillis) && args.sessionLifetimeMillis >= 1000 && args.sessionLifetimeMillis <= 1800000);
@@ -54,11 +56,15 @@ function stopWithoutReply() {
   shutdown.catch(() => {}); return shutdown;
 }
 async function invoke(op, args) {
-  if (op === 'start' || op === 'startStreaming') {
+  if (['start', 'startStreaming', 'startAdversarial'].includes(op)) {
     startAccepted = true;
     starting = op === 'start' ? startEnrollmentHttpsFixture(args) : (async () => {
-      const { startEnrollmentStreamFixture } = await import('./companion-enrollment-stream.mjs');
-      return startEnrollmentStreamFixture(args);
+      if (op === 'startStreaming') {
+        const { startEnrollmentStreamFixture } = await import('./companion-enrollment-stream.mjs');
+        return startEnrollmentStreamFixture(args);
+      }
+      const { startEnrollmentAdversarialFixture } = await import('./companion-enrollment-adversarial.mjs');
+      return startEnrollmentAdversarialFixture(args);
     })();
     fixture = await starting;
     return fixture.metadata().material();
@@ -85,7 +91,7 @@ function receive(message) {
   if (size > 16384) { refuse('message_too_large'); return; }
   if (!valid(message)) { refuse('invalid_message'); return; }
   if (pending.has(safeId)) { refuse('invalid_message'); return; }
-  const starts = message.op === 'start' || message.op === 'startStreaming';
+  const starts = ['start', 'startStreaming', 'startAdversarial'].includes(message.op);
   if (closing || (starts ? startAccepted : message.op !== 'close' && !startAccepted)) { refuse('pairing_unavailable'); return; }
   if (message.op !== 'close' && pending.size >= 3) { refuse('pairing_limit'); return; }
   if (message.op === 'close') closing = true;

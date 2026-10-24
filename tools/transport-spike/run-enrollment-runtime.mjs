@@ -36,11 +36,15 @@ export function enrollmentRuntimeOptions(args, env = process.env) {
     seen.add(name); options[name.slice(2)] = value;
   }
   if (!/^[A-Za-z0-9_.:-]{1,128}$/.test(options.serial ?? '')) throw Error('explicit_enrollment_serial_required');
-  if (!['a22a', 'a22b'].includes(options.suite)) throw Error('invalid_enrollment_arguments');
+  if (!['a22a', 'a22b', 'a22c'].includes(options.suite)) throw Error('invalid_enrollment_arguments');
   return Object.freeze(options);
 }
 
 export async function runEnrollmentRuntime(options) {
+  if (options.suite === 'a22c') {
+    const { runEnrollmentAdversarialRuntime } = await import('./run-enrollment-adversarial-runtime.mjs');
+    return runEnrollmentAdversarialRuntime(options);
+  }
   if (options.suite === 'a22b') {
     const { runEnrolledStreamRuntime } = await import('./run-enrolled-stream-runtime.mjs');
     return runEnrolledStreamRuntime(options);

@@ -1,4 +1,4 @@
-// Shared owned device/process operations for the two finite enrollment research suites.
+// Shared owned device/process operations for the finite enrollment research suites.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -16,8 +16,10 @@ export const enrollmentClosedProjection = snapshot => snapshot === null ? null :
 const requirePass = (value, stage) => { if (!enrollmentPassed(value)) throw Error(stage); return value; };
 
 export async function registerEnrollmentReverses(adb, metadata, owned) {
+  if (Object.hasOwn(metadata, 'webSocketPort') && Object.hasOwn(metadata, 'adversarialPeerPort')) throw Error('enrollment_fixture_failed');
   const ports = [metadata.setupPort, metadata.credentialPort,
-    ...(Object.hasOwn(metadata, 'webSocketPort') ? [metadata.webSocketPort] : [])];
+    ...(Object.hasOwn(metadata, 'webSocketPort') ? [metadata.webSocketPort] : []),
+    ...(Object.hasOwn(metadata, 'adversarialPeerPort') ? [metadata.adversarialPeerPort] : [])];
   if (ports.some(port => !Number.isInteger(port) || port < 1 || port > 65535) || new Set(ports).size !== ports.length) throw Error('enrollment_fixture_failed');
   for (const port of ports) {
     const result = await adb(['reverse', '--no-rebind', 'tcp:' + port, 'tcp:' + port]);
