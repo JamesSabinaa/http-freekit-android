@@ -1,0 +1,141 @@
+name: Android native engine runtime
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-engine-runtime-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  native-runtime:
+    name: Synthetic JNI packet engine API ${{ matrix.api }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - api: '26'
+            image: system-images;android-26;default;x86_64
+          - api: '37'
+            image: system-images;android-37.0;default;x86_64
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Require Linux KVM
+        run: |
+          if [[ ! -c /dev/kvm ]]; then
+            echo '::error::The runner has no /dev/kvm; Android native runtime validation cannot run.'
+            exit 1
+          fi
+          sudo chown "$(id -u):$(id -g)" /dev/kvm
+          sudo chmod u+rw /dev/kvm
+          if [[ ! -r /dev/kvm || ! -w /dev/kvm ]]; then
+            echo '::error::KVM is inaccessible; no software fallback or successful skip is allowed.'
+            exit 1
+          fi
+      - name: Install Linux emulator runtime dependency
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends libpulse0
+      - name: Set up JDK 17
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Check packet, bridge, source and build gates
+        run: python3 -m unittest discover -s tools/engine-spike -p 'test_*.py'
+      - name: Bootstrap verified Android command-line tools
+        env:
+          ANDROID_TOOLS_ARCHIVE: commandlinetools-linux-15859902_latest.zip
+          ANDROID_TOOLS_SHA256: 4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583
+        run: |
+          sdk_root="$RUNNER_TEMP/native-android-sdk"
+          archive="$RUNNER_TEMP/native-android-command-line-tools.zip"
+          curl --fail --location --retry 3 "https://dl.google.com/android/repository/$ANDROID_TOOLS_ARCHIVE" --output "$archive"
+          printf '%s  %s\n' "$ANDROID_TOOLS_SHA256" "$archive" | sha256sum --check
+          mkdir -p "$sdk_root/cmdline-tools"
+          unzip -q "$archive" -d "$sdk_root/cmdline-tools"
+          mv "$sdk_root/cmdline-tools/cmdline-tools" "$sdk_root/cmdline-tools/latest"
+          {
+            printf 'ANDROID_HOME=%s\n' "$sdk_root"
+            printf 'ANDROID_SDK_ROOT=%s\n' "$sdk_root"
+            printf 'ANDROID_AVD_HOME=%s\n' "$RUNNER_TEMP/native-engine-avd"
+          } >> "$GITHUB_ENV"
+          printf '%s\n' "$sdk_root/cmdline-tools/latest/bin" "$sdk_root/platform-tools" "$sdk_root/emulator" >> "$GITHUB_PATH"
+      - name: Accept SDK licences and install the pinned NDK and matrix image
+        env:
+          SYSTEM_IMAGE: ${{ matrix.image }}
+        run: |
+          answers="$RUNNER_TEMP/native-sdk-license-answers.txt"
+          printf 'y\n%.0s' {1..100} > "$answers"
+          sdkmanager --sdk_root="$ANDROID_HOME" --licenses < "$answers" > "$RUNNER_TEMP/native-sdk-licenses.log"
+          sdkmanager --sdk_root="$ANDROID_HOME" 'platforms;android-37.0' 'build-tools;36.0.0' 'ndk;28.2.13676358' 'platform-tools' 'emulator' "$SYSTEM_IMAGE"
+          emulator -version
+          emulator -accel-check
+          adb version
+          sdkmanager --sdk_root="$ANDROID_HOME" --list_installed
+      - name: Build the isolated research APK from verified native source
+        run: |
+          ./gradlew --no-daemon --console=plain -p tools/engine-spike/android assembleDebugAndroidTest lintDebug
+          python3 tools/engine-spike/verify_probe_apk.py \
+            --apk tools/engine-spike/android/build/outputs/apk/androidTest/debug/FreeKitNativeResearch-debug-androidTest.apk \
+            --output tools/engine-spike/android/build/reports/native-runtime/apk-build.json
+      - name: Run JNI and synthetic packet fixtures on a fresh AVD
+        env:
+          API_LEVEL: ${{ matrix.api }}
+          SYSTEM_IMAGE: ${{ matrix.image }}
+        run: |
+          mkdir -p "$ANDROID_AVD_HOME"
+          printf 'no\n' > "$RUNNER_TEMP/native-avd-answers.txt"
+          avdmanager create avd --force --name freekit-native --package "$SYSTEM_IMAGE" --device pixel < "$RUNNER_TEMP/native-avd-answers.txt"
+          emulator_log="$RUNNER_TEMP/native-emulator.log"
+          emulator -avd freekit-native -port 5554 -accel on -gpu swiftshader \
+            -no-window -no-audio -no-boot-anim -no-snapshot -camera-front none -camera-back none \
+            -cores 2 -memory 3072 > "$emulator_log" 2>&1 &
+          emulator_pid=$!
+          cleanup() {
+            status=$?
+            trap - EXIT
+            adb -s emulator-5554 emu kill >/dev/null 2>&1 || true
+            kill "$emulator_pid" >/dev/null 2>&1 || true
+            wait "$emulator_pid" >/dev/null 2>&1 || true
+            exit "$status"
+          }
+          trap cleanup EXIT
+          deadline=$((SECONDS + 600))
+          while true; do
+            if ! kill -0 "$emulator_pid" 2>/dev/null; then
+              tail -n 100 "$emulator_log"
+              echo '::error::The emulator exited before Android finished booting.'
+              exit 1
+            fi
+            if booted="$(timeout 5s adb -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null)"; then
+              if [[ "${booted//$'\r'/}" == 1 ]]; then break; fi
+            fi
+            if (( SECONDS >= deadline )); then
+              tail -n 100 "$emulator_log"
+              echo '::error::Android did not finish booting within 600 seconds.'
+              exit 1
+            fi
+            sleep 5
+          done
+          timeout 240s python3 tools/engine-spike/run_android.py --serial emulator-5554 --api "$API_LEVEL" \
+            --test-apk tools/engine-spike/android/build/outputs/apk/androidTest/debug/FreeKitNativeResearch-debug-androidTest.apk
+      # Research reports only: no APKs, emulator logs, source caches, keys or AVD data.
+      - name: Retain native research evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: native-engine-api-${{ matrix.api }}-results
+          retention-days: 7
+          if-no-files-found: warn
+          path: |
+            tools/engine-spike/android/build/reports/native-runtime/
+            tools/engine-spike/android/build/reports/lint-results-debug.*

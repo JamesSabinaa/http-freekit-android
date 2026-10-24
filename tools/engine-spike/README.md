@@ -14,3 +14,7 @@ python3 tools/engine-spike/run_linux.py --engine-root .gradle/engine-spike/hev-s
 ```
 
 Successful cases print JSON records with IP version, mode, byte counts, and a synthetic response checksum. The harness fails on wrong revisions, malformed flow results, timeouts, byte changes, missing EOF, or failure to stop the engine. Windows syntax compilation is insufficient evidence that the native spike passes; inspect the Linux execution result separately.
+
+## Standalone Android JNI probe
+
+The [Android research project](android/README.md) adds an isolated test APK and host packet bridge using the same pinned source and unchanged Python packet/SOCKS/proxy peers. It is not included in root Gradle settings and does not add a VPN or production network permissions. The [A4 record](../../docs/decisions/0005-android-native-packet-probe.md) separates local NDK/packaging/helper checks from pending API 26/37 hosted JNI execution. Its manual workflow retains reports only, without APKs, keys or emulator state.
