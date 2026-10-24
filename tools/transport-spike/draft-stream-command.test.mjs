@@ -38,3 +38,19 @@ test('spawn failures are static and configuration errors do not launch commands'
   await assert.rejects(run(process.execPath, [], { timeoutMillis: 0 }), /^Error: invalid_command_configuration$/);
   await assert.rejects(run(process.execPath, [], { maxOutputBytes: 999999 }), /^Error: invalid_command_configuration$/);
 });
+
+test('a leader closing on TERM cannot abandon its TERM-ignoring descendant', { timeout: 20000 }, async () => {
+  const script = `
+    const {spawn}=require('node:child_process');
+    const child=spawn(process.execPath,['-e','process.on("SIGTERM",()=>{});setInterval(()=>{},100);process.send("ready")'],
+      {windowsHide:true,stdio:['ignore','ignore','ignore','ipc']});
+    child.on('message',()=>{process.stdout.write(String(child.pid));child.disconnect();child.unref()});
+    process.on('SIGTERM',()=>process.exit(0));setInterval(()=>{},100);
+  `;
+  const result = await run(process.execPath, ['-e', script], { timeoutMillis: 2000 });
+  assert.equal(result.reason, 'owned_child_timeout'); assert.equal(result.closeObserved, true);
+  assert.equal(result.processGroupClosed, true);
+  assert.match(result.output, /^[1-9][0-9]+$/);
+  const descendant = Number(result.output);
+  assert.throws(() => process.kill(descendant, 0), { code: 'ESRCH' });
+});

@@ -38,6 +38,10 @@ Record writer entry/completion separately and observe a genuinely unfinished wri
 
 Framing failures close transport before forwarding bytes and can produce an abnormal model transport-close outcome; malformed application JSON is processed by the actual codec/model. Never fabricate JSON to translate a framing error. Normal completion requires both actual directional EOF effects, empty queues, close1000 and confirmed joined resource closure. Every scenario finishes with zero owned leases/bytes/workers or explicitly fails cleanup.
 
+Either real clock owner may reach the expiry deadline first within the measured two-second skew profile. Require at least one actual deadline-driven `session_expired` cause, both owners inactive and streams failed rather than complete, and a genuinely outstanding charged write before expiry. The other owner may first observe `network_unreachable` from the peer's real close. Its deadline worker must run and join, but need not win this race. If its model has already expired, do not inject a post-terminal typed disconnect or predate an operation. The cancellation case separately proves the Android owner's raw-socket interruption.
+
+The read-only probe includes a fixed `timing` object with `readyUtcMillis`, `expiresUtcMillis`, nullable `terminalUtcMillis` and nullable `terminalElapsedMillis`. Capture terminal timing once at the first actual terminal transition; elapsed time starts at accepted readiness. A local expiry cause requires terminal UTC at or after expiry, or actual monotonic elapsed at least the accepted lifetime. Android records the corresponding public readiness/expiry, observed UTC/elapsed and remaining lifetime. An expiry observed through the peer may precede Android's own UTC deadline only within 2100 ms (the measured bound plus 100 ms observation margin). No clock is changed or rebased, and reading the diagnostic snapshot cannot advance the model.
+
 ## Required Android cases
 
 The new class is `com.httpfreekit.interop.DraftStreamingInteropTest`. Its exact methods are:

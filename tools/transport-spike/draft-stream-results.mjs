@@ -27,7 +27,7 @@ const setupCodes = new Set([
   'selected_device_unavailable', 'research_apk_build_failed', 'research_apk_install_failed',
   'unexpected_research_apk_metadata', 'research_runner_not_registered', 'device_clock_probe_failed',
   'draft_clock_outside_bound', 'draft_clock_probe_invalid', 'invalid_public_fixture_input',
-  'owned_child_timeout', 'owned_child_cleanup_failed', 'instrumentation_output_limit',
+  'owned_child_timeout', 'owned_child_cleanup_failed', 'owned_child_spawn_failed', 'instrumentation_output_limit',
   'host_setup_failed', 'research_run_cancelled',
 ]);
 export function draftSetupCode(value) { return setupCodes.has(value) ? value : 'host_setup_failed'; }
