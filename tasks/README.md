@@ -24,6 +24,8 @@ A22c is verified at public source 074fbfa00a610d4743cacd1f3d811d180ad5971b in [r
 
 The matching [074fbfa host run 40143804977](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40143804977) passes 208 JVM/372 Node cases, five clean lint reports, 100 enrollment guards, full hosted workflow lint, both actual conformance comparisons, eight fresh Linux process-crash cases and the native 38 checks/four flows. The checked Android source changes no production wire contracts. A22 research acceptance is closed; capture policy and the remaining foundation/production gates are open.
 
+C1 capture policy is assigned from 0a93012 against the [real TUN profile](../docs/capture-policy-runtime.md). Root owns module/native build and shared CaptureVpnService on plan/a-foundation. UI owns other new core-capture sources/tests on feat/c1-capture-owner in its runtime worktree. F owns tools/capture-spike/ host/traffic fixture/instrumentation/workflow on test/f-c1-capture in its worktree. D owns the internal raw-HTTP proxy attachment on feat/d-c1-trusted-http in its separate desktop worktree from aade5cb, with its own commit/tests. D may add Android handoff documentation only after its desktop commit; root integrates it. Status: implementation assigned, actual TUN/policy unverified. This is the next foundation implementation; production C integration remains gated by policy/transport proof and freeze. No new protocol/issuer framework or local emulator retry is assigned.
+
 | Package | Owner | Branch | Status | Dependencies |
 | --- | --- | --- | --- | --- |
 | A Foundation and contracts | Codex | plan/a-foundation | Credential/streaming/native/enrollment foundations verified; capture policy and v1 freeze open | None |
