@@ -50,15 +50,23 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.httpfreekit.android.R
+import com.httpfreekit.android.apps.AppCatalogMode
+import com.httpfreekit.android.apps.AppFilter
+import com.httpfreekit.android.apps.AppSelectionAction
+import com.httpfreekit.android.apps.AppSelectionState
+import com.httpfreekit.android.apps.InstalledAppEntry
 import com.httpfreekit.protocol.PairingInvitationParser
 import java.time.Instant
 import java.util.Locale
@@ -81,7 +89,8 @@ private val DarkColors = darkColorScheme(
 )
 
 @Composable
-fun PreviewApp(state: PreviewState, onAction: (PreviewAction) -> Unit, onInvitation: (String) -> Unit) {
+fun PreviewApp(state: PreviewState, apps: AppSelectionState, onAction: (PreviewAction) -> Unit,
+    onAppsAction: (AppSelectionAction) -> Unit, onInvitation: (String) -> Unit) {
     var page by rememberSaveable { mutableStateOf(PreviewPage.HOME.name) }
     var addingComputer by remember { mutableStateOf(false) }
     var forgettingComputer by remember { mutableStateOf<PreviewComputer?>(null) }
@@ -149,9 +158,21 @@ fun PreviewApp(state: PreviewState, onAction: (PreviewAction) -> Unit, onInvitat
                             SectionIntro(R.string.apps_title, R.string.apps_description)
                             if (state.canStop) Text(stringResource(R.string.apps_locked), color = MaterialTheme.colorScheme.error)
                         }
-                        items(PreviewApps) { app ->
-                            AppChoice(app, app.id in state.selectedAppIds, !state.canStop) {
-                                onAction(PreviewAction.SelectApp(app.id, it))
+                        item { AppCatalogControls(apps, state.canStop, onAppsAction) }
+                        if (apps.mode == AppCatalogMode.SAMPLE) {
+                            items(PreviewApps, key = { "sample:${it.id}" }) { app ->
+                                AppChoice(app, app.id in apps.selectedIds, !state.canStop) {
+                                    onAction(PreviewAction.SelectApp(app.id, it))
+                                }
+                            }
+                        } else {
+                            items(apps.visibleInstalled, key = { "installed:${it.packageName}" }) { app ->
+                                InstalledAppChoice(app, app.packageName in apps.selectedIds, !state.canStop) {
+                                    onAction(PreviewAction.SelectApp(app.packageName, it))
+                                }
+                            }
+                            if (apps.loaded && !apps.loading && apps.visibleInstalled.isEmpty()) {
+                                item { Text(stringResource(if (apps.installed.isEmpty()) R.string.apps_empty else R.string.apps_no_matches)) }
                             }
                         }
                         item {
@@ -375,6 +396,61 @@ private val PreviewApps = listOf(
     PreviewAppChoice("example.debugclient", R.string.sample_debug, R.string.sample_debug_body),
     PreviewAppChoice("example.chat", R.string.sample_chat, R.string.sample_chat_body),
 )
+
+@Composable
+private fun AppCatalogControls(apps: AppSelectionState, locked: Boolean, onAction: (AppSelectionAction) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(selected = apps.mode == AppCatalogMode.SAMPLE, enabled = !locked,
+                onClick = { onAction(AppSelectionAction.Mode(AppCatalogMode.SAMPLE)) },
+                label = { Text(stringResource(R.string.apps_mode_sample)) }, modifier = Modifier.testTag("apps-mode-sample"))
+            FilterChip(selected = apps.mode == AppCatalogMode.INSTALLED, enabled = !locked,
+                onClick = { onAction(AppSelectionAction.Mode(AppCatalogMode.INSTALLED)) },
+                label = { Text(stringResource(R.string.apps_mode_installed)) }, modifier = Modifier.testTag("apps-mode-installed"))
+        }
+        if (apps.mode == AppCatalogMode.SAMPLE) {
+            Text(stringResource(R.string.apps_sample_body), style = MaterialTheme.typography.bodyMedium)
+        } else {
+            Text(stringResource(R.string.apps_installed_body), style = MaterialTheme.typography.bodyMedium)
+            OutlinedTextField(value = apps.search, onValueChange = { onAction(AppSelectionAction.Search(it)) },
+                label = { Text(stringResource(R.string.apps_search)) }, singleLine = true,
+                modifier = Modifier.fillMaxWidth().testTag("apps-search"))
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(selected = apps.filter == AppFilter.ALL, onClick = { onAction(AppSelectionAction.Filter(AppFilter.ALL)) },
+                    label = { Text(stringResource(R.string.apps_filter_all)) }, modifier = Modifier.testTag("apps-filter-all"))
+                FilterChip(selected = apps.filter == AppFilter.DEVELOPMENT, onClick = { onAction(AppSelectionAction.Filter(AppFilter.DEVELOPMENT)) },
+                    label = { Text(stringResource(R.string.apps_filter_development)) }, modifier = Modifier.testTag("apps-filter-development"))
+                TextButton(onClick = { onAction(AppSelectionAction.Refresh) }, enabled = !locked && !apps.loading,
+                    modifier = Modifier.testTag("apps-refresh")) { Text(stringResource(R.string.apps_refresh)) }
+            }
+            if (apps.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+            val status = when { apps.loading -> "loading"; apps.failed -> "error"; apps.loaded -> "ready"; else -> "idle" }
+            Text(when {
+                apps.loading -> stringResource(R.string.apps_loading)
+                apps.failed -> stringResource(R.string.apps_refresh_failed)
+                apps.loaded -> stringResource(R.string.apps_loaded, apps.installed.size)
+                else -> stringResource(R.string.apps_not_loaded)
+            }, modifier = Modifier.testTag("apps-catalog-status").semantics { stateDescription = status },
+                style = MaterialTheme.typography.bodySmall,
+                color = if (apps.failed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun InstalledAppChoice(app: InstalledAppEntry, selected: Boolean, enabled: Boolean, onSelected: (Boolean) -> Unit) {
+    OutlinedCard(Modifier.fillMaxWidth().testTag("installed-app:${app.packageName}")
+        .toggleable(value = selected, enabled = enabled, role = Role.Checkbox, onValueChange = onSelected)) {
+        Row(Modifier.padding(16.dp)) {
+            Checkbox(checked = selected, onCheckedChange = null, enabled = enabled)
+            Column(Modifier.padding(start = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(app.label, style = MaterialTheme.typography.titleMedium)
+                Text(app.packageName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (app.development) Text(stringResource(R.string.apps_development_badge), style = MaterialTheme.typography.labelSmall)
+            }
+        }
+    }
+}
 
 @Composable
 private fun AppChoice(app: PreviewAppChoice, selected: Boolean, enabled: Boolean, onSelected: (Boolean) -> Unit) {
