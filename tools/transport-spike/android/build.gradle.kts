@@ -20,6 +20,7 @@ android {
 }
 kotlin { jvmToolchain(17) }
 dependencies {
+    testImplementation(libs.junit)
     androidTestImplementation(project(":core-security"))
     androidTestImplementation(project(":core-protocol"))
     androidTestImplementation(project(":transport-framing"))
