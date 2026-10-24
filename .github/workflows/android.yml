@@ -101,6 +101,8 @@ jobs:
           fi
       - name: Test the loopback enrollment and WebSocket fixture
         run: node --test tools/transport-spike/android-peer.test.mjs
+      - name: Test strict instrumentation result parsing
+        run: node --test tools/transport-spike/instrumentation-results.test.mjs
       - name: Compile, test, and lint
         run: >-
           ./gradlew --no-daemon --console=plain
