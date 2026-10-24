@@ -101,14 +101,14 @@ jobs:
             -cores 2 -memory 3072 > "$emulator_log" 2>&1 &
           emulator_pid=$!
           cleanup() {
-            status=$?
+            local status="$1"
             trap - EXIT
             adb -s emulator-5554 emu kill >/dev/null 2>&1 || true
             kill "$emulator_pid" >/dev/null 2>&1 || true
             wait "$emulator_pid" >/dev/null 2>&1 || true
-            exit "$status"
+            return "$status"
           }
-          trap cleanup EXIT
+          trap 'cleanup "$?"' EXIT
           deadline=$((SECONDS + 600))
           while true; do
             if ! kill -0 "$emulator_pid" 2>/dev/null; then
@@ -148,8 +148,9 @@ jobs:
             --output tools/engine-spike/android/build/reports/native-runtime/host-emulator.json
           if [[ "$native_status" == 0 && "$emulator_alive" != true ]]; then
             echo '::error::The emulator exited before workflow teardown despite a passing native command.'
-            exit 1
+            native_status=1
           fi
+          cleanup "$native_status"
           exit "$native_status"
       # Research reports only: no APKs, emulator logs, source caches, keys or AVD data.
       - name: Retain native research evidence
