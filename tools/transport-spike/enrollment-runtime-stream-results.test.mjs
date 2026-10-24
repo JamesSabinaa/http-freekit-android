@@ -182,6 +182,20 @@ test('credential expiry and session policy evidence cannot substitute cached val
   }
 });
 
+test('expiry scenarios require the exact isolated limiter, destructive closure and settled terminal writes', () => {
+  for (const mutate of [value => { value.scenarios[1].host.terminal.streamPhase = 'complete'; },
+    value => { value.scenarios[1].host.terminal.terminalNotification = { attempted: true, completed: false, aborted: false }; },
+    ...[1, 2].map(index => value => {
+      const item = value.scenarios[index], early = now + (index === 1 ? 50000 : 5000);
+      for (const snapshot of [item.host.blockedFirst, item.host.blockedLast, item.host.terminal]) snapshot.expiresUtcMillis = early;
+      Object.assign(item.host.terminal, { terminalUtcMillis: early, terminalElapsedMillis: early - now });
+      Object.assign(item.invocation.observation, { sessionExpiresUtcMillis: early, terminalObservedUtcMillis: early, terminalObservedElapsedMillis: early - now });
+      if (index === 2) item.invocation.observation.newControlObservedUtcMillis = early + 1000;
+    })]) {
+    const value = runtime(); mutate(value); assert.throws(() => verifyEnrolledStreamingReport(value, { source, api: 26 }), EnrollmentRuntimeError);
+  }
+});
+
 test('source, clock, private input, actual deliveries and all owned cleanup remain required', () => {
   for (const mutate of [value => { value.source.trackedDirty = true; }, value => { value.clock.lowerBoundMillis = 0; },
     value => { value.scenarios[0].input.inputClosed = false; }, value => { value.scenarios[0].approval.actualApprovedResponseDrops = 1; },

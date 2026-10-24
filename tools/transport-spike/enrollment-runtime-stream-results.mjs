@@ -187,9 +187,10 @@ const blocked = value => value !== null && value.available && value.grantValid &
   value.controlsAdmitted === 1 && value.sessionLease && value.streamLeases === 1 && value.chargedBytes > 0 && value.chargedFrames > 0 &&
   value.proxyReadPaused && value.pendingIngressBytes === 4096 && value.proxyWritePending && value.proxyWriteEntries > value.proxyWriteCompletions &&
   value.writesAfterInvalidation === 0 && value.terminalUtcMillis === null && !value.ownerResourcesReleased;
-const released = value => value !== null && value.available && ['closed', 'failed'].includes(value.controlPhase) && ['complete', 'cancelled', 'failed'].includes(value.streamPhase) &&
+const released = value => value !== null && value.available && ['closed', 'failed'].includes(value.controlPhase) && ['cancelled', 'failed'].includes(value.streamPhase) &&
   !value.sessionLease && value.ownerResourcesReleased && value.cleanupComplete && value.writesAfterInvalidation === 0 &&
   !value.proxyWritePending &&
+  (!value.terminalNotification.attempted || value.terminalNotification.completed || value.terminalNotification.aborted) &&
   ['streamLeases', 'chargedBytes', 'chargedFrames', 'workers', 'timers', 'pendingCallbacks', 'pendingIngressBytes'].every(key => value[key] === 0);
 function verifyScenario(item, descriptor) {
   const { input, approval, profile, host, cleanup } = item, observation = item.invocation.observation;
@@ -215,6 +216,7 @@ function verifyScenario(item, descriptor) {
     if (!host.revokeAcknowledged || terminal.invalidationCause !== 'device_revoked' || terminal.controlCause !== 'device_revoked' || !['device_revoked', 'network_unreachable'].includes(terminal.streamCause) || terminal.grantValid ||
         terminal.controlsAdmitted !== 1 || !['device_revoked', 'network_unreachable'].includes(observation.localCause) || host.credentialStatusAfterMethod) fail('runtime_stream_policy_failed');
   } else {
+    if (expiry !== bound) fail('runtime_stream_profile_failed');
     if (host.revokeAcknowledged || !['session_expired', 'network_unreachable'].includes(terminal.controlCause) || !['session_expired', 'network_unreachable'].includes(terminal.streamCause) || !['session_expired', 'network_unreachable'].includes(observation.localCause)) fail('runtime_stream_policy_failed');
     const hostExpired = terminal.controlCause === 'session_expired', localExpired = observation.localCause === 'session_expired';
     if ((!hostExpired && !localExpired) || (hostExpired && (terminal.terminalUtcMillis === null ||
