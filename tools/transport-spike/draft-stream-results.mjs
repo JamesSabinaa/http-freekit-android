@@ -57,6 +57,38 @@ const setupCodes = new Set([
 ]);
 export function draftSetupCode(value) { return setupCodes.has(value) ? value : 'host_setup_failed'; }
 
+const expiryNames = ['Version', 'ReadyUtcMillis', 'ExpiresUtcMillis', 'ObservedUtcMillis', 'ElapsedMillis',
+  'RemainingAtReadyMillis', 'InitialDeviceRemainingMillis', 'LocalTicks', 'LocalExpiryTicks', 'LocalExpired', 'PeerExpired',
+  'PeerReadyUtcMillis', 'PeerTerminalUtcMillis', 'PeerTerminalElapsedMillis'].map(name => `draftExpiry${name}`);
+function validExpiryObservation(bundle) {
+  if (Object.keys(bundle).length !== expiryNames.length || expiryNames.some(name => !Object.hasOwn(bundle, name)) || bundle.draftExpiryVersion !== '1') return false;
+  const values = {};
+  for (const suffix of expiryNames.map(name => name.slice('draftExpiry'.length)).filter(name => name !== 'Version')) {
+    const raw = bundle[`draftExpiry${suffix}`];
+    if (['LocalExpired', 'PeerExpired'].includes(suffix)) {
+      if (!['true', 'false'].includes(raw)) return false;
+      values[suffix] = raw === 'true';
+    } else if (['PeerTerminalUtcMillis', 'PeerTerminalElapsedMillis'].includes(suffix) && raw === 'null') values[suffix] = null;
+    else {
+      if (!/^(?:0|[1-9][0-9]{0,15})$/.test(raw) || !Number.isSafeInteger(Number(raw))) return false;
+      values[suffix] = Number(raw);
+      const utc = suffix.endsWith('UtcMillis');
+      if (utc ? values[suffix] < 946684800000 || values[suffix] > 4102444800000 : values[suffix] > 120000) return false;
+    }
+  }
+  const v = values, lifetime = v.ExpiresUtcMillis - v.PeerReadyUtcMillis;
+  if ((v.PeerTerminalUtcMillis === null) !== (v.PeerTerminalElapsedMillis === null) ||
+      v.RemainingAtReadyMillis !== v.ExpiresUtcMillis - v.ReadyUtcMillis || v.RemainingAtReadyMillis <= 0 ||
+      v.InitialDeviceRemainingMillis <= 0 || v.InitialDeviceRemainingMillis > 35000 ||
+      lifetime < 30000 || lifetime > 31000 || v.LocalTicks <= 0 || v.LocalExpiryTicks > v.LocalTicks ||
+      v.ObservedUtcMillis < v.ExpiresUtcMillis - 2100 || v.ElapsedMillis < v.RemainingAtReadyMillis - 2100 ||
+      (!v.LocalExpired && !v.PeerExpired)) return false;
+  if (v.LocalExpired && v.ObservedUtcMillis < v.ExpiresUtcMillis && v.ElapsedMillis < v.RemainingAtReadyMillis) return false;
+  if (v.PeerExpired && (v.PeerTerminalUtcMillis === null ||
+      (v.PeerTerminalUtcMillis < v.ExpiresUtcMillis && v.PeerTerminalElapsedMillis < lifetime))) return false;
+  return true;
+}
+
 export function parseDraftStreamingInstrumentation(output, { exitCode = 0, signal = null, transportError = null } = {}) {
   const cases = expectedDraftStreamingTests.map(name => ({ name, state: 'not_started', detail: 'Case was not executed.' }));
   const problems = [];
@@ -67,7 +99,7 @@ export function parseDraftStreamingInstrumentation(output, { exitCode = 0, signa
   if (exitCode !== 0 || signal !== null) problem('adb_instrumentation_process_failed');
   if (transportError !== null) problem(draftSetupCode(transportError));
   let pending = Object.create(null), lastKey, active, terminalCount = 0, terminal;
-  let started = 0, completed = 0;
+  let started = 0, completed = 0, expiryCount = 0, observations = {};
   for (const line of output.split(/\r?\n/)) {
     let match;
     if ((match = /^INSTRUMENTATION_STATUS: ([A-Za-z0-9_]+)=(.*)$/.exec(line))) {
@@ -81,6 +113,11 @@ export function parseDraftStreamingInstrumentation(output, { exitCode = 0, signa
     } else if ((match = /^INSTRUMENTATION_STATUS_CODE: (-?[0-9]+)$/.exec(line))) {
       if (terminalCount) problem('status_after_terminal_result');
       const status = Number(match[1]);
+      if (status === 2 && Object.hasOwn(pending, 'draftExpiryVersion')) {
+        if (active?.index !== 3 || !validExpiryObservation(pending)) problem('invalid_expiry_observation');
+        else { expiryCount++; observations = { ...pending }; }
+        pending = Object.create(null); lastKey = undefined; continue;
+      }
       const index = cases.findIndex(value => value.name === pending.test);
       if (pending.Error !== undefined || pending.error !== undefined) problem('instrumentation_status_error');
       if (pending.class !== draftStreamingClass || index < 0) problem('unexpected_test_identity');
@@ -121,7 +158,8 @@ export function parseDraftStreamingInstrumentation(output, { exitCode = 0, signa
   if (Object.keys(pending).length) problem('unterminated_status_bundle');
   if (terminalCount !== 1 || terminal !== -1) problem('missing_or_failed_terminal_result');
   if (started !== cases.length || completed !== cases.length) problem('incomplete_test_execution');
-  return { cases, problems, started, completed,
+  if (expiryCount !== 1) problem('missing_or_duplicate_expiry_observation');
+  return { cases, problems, started, completed, observations,
     ok: problems.length === 0 && cases.every(value => value.state === 'passed') };
 }
 
@@ -142,7 +180,7 @@ export function draftStreamingXml(result) {
     else if (attach) { errors++; attach = false; diagnostic = `<error message="Run failed after test completion">${escape(runFailure)}</error>`; }
     return `  <testcase name="${value.name}" classname="${draftStreamingClass}" time="0">${diagnostic}</testcase>`;
   });
-  const properties = Object.entries(result.diagnostics ?? {}).map(([key, value]) =>
+  const properties = Object.entries({ ...result.diagnostics, ...result.observations }).map(([key, value]) =>
     `    <property name="${escape(key)}" value="${escape(value)}"/>`).join('\n');
   return `<?xml version="1.0" encoding="UTF-8"?>\n<testsuite name="${draftStreamingClass}" tests="7" failures="${failures}" errors="${errors}" skipped="0">\n` +
     `  <properties><property name="actualStarted" value="${result.started}"/><property name="actualCompleted" value="${result.completed}"/>\n${properties}\n  </properties>\n` +
@@ -153,6 +191,6 @@ export function draftStreamingHtml(result) {
   return '<!doctype html><html lang="en"><meta charset="utf-8"><title>Draft streaming research</title><body>' +
     `<h1>Authenticated draft streaming: ${result.ok ? 'passed' : 'failed'}</h1>` +
     `<p>Actual starts: ${result.started}; completions: ${result.completed}.</p><p>${escape(result.problems.join(', '))}</p>` +
-    `<pre>${escape(JSON.stringify(result.diagnostics ?? {}, null, 2))}</pre><ul>` +
+    `<pre>${escape(JSON.stringify({ ...result.diagnostics, ...result.observations }, null, 2))}</pre><ul>` +
     result.cases.map(value => `<li>${value.name}: ${value.state}<pre>${escape(value.detail)}</pre></li>`).join('') + '</ul></body></html>';
 }

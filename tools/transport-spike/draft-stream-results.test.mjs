@@ -7,7 +7,15 @@ import { draftSetupCode, draftStreamingClass as clazz, expectedDraftStreamingTes
 
 const bundle = (name, status, extra = '', ordinal = names.indexOf(name) + 1) =>
   `INSTRUMENTATION_STATUS: class=${clazz}\nINSTRUMENTATION_STATUS: test=${name}\nINSTRUMENTATION_STATUS: numtests=7\nINSTRUMENTATION_STATUS: current=${ordinal}\n${extra}INSTRUMENTATION_STATUS_CODE: ${status}\n`;
-const pair = (name, index) => bundle(name, 1, '', index + 1) + bundle(name, 0, '', index + 1);
+const expiry = {
+  draftExpiryVersion: '1', draftExpiryReadyUtcMillis: '1800000000000', draftExpiryExpiresUtcMillis: '1800000030000',
+  draftExpiryObservedUtcMillis: '1800000030010', draftExpiryElapsedMillis: '30010', draftExpiryRemainingAtReadyMillis: '30000',
+  draftExpiryInitialDeviceRemainingMillis: '29990', draftExpiryLocalTicks: '1200', draftExpiryLocalExpiryTicks: '1',
+  draftExpiryLocalExpired: 'true', draftExpiryPeerExpired: 'true', draftExpiryPeerReadyUtcMillis: '1800000000000',
+  draftExpiryPeerTerminalUtcMillis: '1800000030000', draftExpiryPeerTerminalElapsedMillis: '30000',
+};
+const progress = (values = expiry) => Object.entries(values).map(([name, value]) => `INSTRUMENTATION_STATUS: ${name}=${value}\n`).join('') + 'INSTRUMENTATION_STATUS_CODE: 2\n';
+const pair = (name, index) => bundle(name, 1, '', index + 1) + (name === names[3] ? progress() : '') + bundle(name, 0, '', index + 1);
 const terminal = 'INSTRUMENTATION_RESULT: stream=\nOK (7 tests)\nINSTRUMENTATION_CODE: -1\n';
 const success = names.map(pair).join('') + terminal;
 
@@ -21,6 +29,36 @@ test('a summary alone cannot fabricate any start or completion', () => {
   const result = parse(terminal);
   assert.equal(result.ok, false); assert.equal(result.started, 0); assert.equal(result.completed, 0);
   assert.match(xml(result), /errors="7"/);
+});
+test('expiry success requires one canonical typed observation within its actual running case', () => {
+  assert.match(xml(parse(success)), /name="draftExpiryElapsedMillis" value="30010"/);
+  for (const output of [success.replace(progress(), ''), success.replace(progress(), progress() + progress()),
+    progress() + success, success.replace(progress(), '') + progress(),
+    success.replace(progress(), progress({ ...expiry, PRIVATE_VALUE: 'SECRET' }))]) {
+    const result = parse(output); assert.equal(result.ok, false); assert.doesNotMatch(xml(result), /PRIVATE_VALUE|SECRET/);
+  }
+});
+test('expiry observations reject invented timing, malformed types and a deadline that never occurred', () => {
+  for (const replacement of [{ draftExpiryVersion: '2' }, { draftExpiryElapsedMillis: '30010.0' },
+    { draftExpiryElapsedMillis: '030010' }, { draftExpiryLocalExpired: 'yes' }, { draftExpiryReadyUtcMillis: 'SECRET' },
+    { draftExpiryLocalTicks: '0' }, { draftExpiryLocalExpiryTicks: '1201' }, { draftExpiryLocalExpired: 'false', draftExpiryPeerExpired: 'false' },
+    { draftExpiryObservedUtcMillis: '1800000027000' }, { draftExpiryElapsedMillis: '27000' },
+    { draftExpiryRemainingAtReadyMillis: '31000' }, { draftExpiryPeerReadyUtcMillis: '1800000005000' },
+    { draftExpiryPeerTerminalUtcMillis: 'null' }, { draftExpiryPeerTerminalUtcMillis: 'null', draftExpiryPeerTerminalElapsedMillis: 'null' },
+    { draftExpiryObservedUtcMillis: '1800000029900', draftExpiryElapsedMillis: '29900' },
+    { draftExpiryPeerTerminalUtcMillis: '1800000029900', draftExpiryPeerTerminalElapsedMillis: '29900' }]) {
+    const result = parse(success.replace(progress(), progress({ ...expiry, ...replacement })));
+    assert.equal(result.ok, false); assert.doesNotMatch(xml(result), /SECRET/);
+  }
+});
+test('either actual deadline owner can win with bounded skew and retained public evidence', () => {
+  for (const replacement of [
+    { draftExpiryLocalExpired: 'false', draftExpiryLocalExpiryTicks: '0', draftExpiryObservedUtcMillis: '1800000028000', draftExpiryElapsedMillis: '28000' },
+    { draftExpiryPeerExpired: 'false', draftExpiryPeerTerminalUtcMillis: 'null', draftExpiryPeerTerminalElapsedMillis: 'null' },
+    { draftExpiryObservedUtcMillis: '1800000029000', draftExpiryPeerTerminalUtcMillis: '1800000029000' },
+  ]) {
+    assert.equal(parse(success.replace(progress(), progress({ ...expiry, ...replacement }))).ok, true);
+  }
 });
 test('all seven can execute in another JUnit order without changing the report contract', () => {
   const result = parse([...names].reverse().map(pair).join('') + terminal);
