@@ -48,16 +48,37 @@ class EnrollmentHttpsFixture {
   #assets; #issuer; #store; #authority; #servers = new Map(); #listening = new Set();
   #connections = new Map(); #declined = new Map(); #tlsSockets = new Map(); #tasks = new Set(); #writes = new Set(); #jobs = new Map();
   #requestSockets = new WeakMap(); #cancelledWrites = 0;
+  #service = null;
   #invitations = new Map(); #registrations = new Map(); #waiters = new Set();
   #closing = false; #closed = false; #unavailable = false; #closeTask; #bodyReaders = 0; #drop = false;
   #dropped = 0; #delivered = 0; #deliveredAfterDrop = 0; #dispatches = 0; #timerCount = 0; #storeClosed = false; #authorityClosed = false;
   constructor(assets, issuer, store) { this.#assets = assets; this.#issuer = issuer; this.#store = store; this.#authority = createEnrollmentAuthority({ store }); }
+  async startAuthenticatedService(factory) {
+    if (factory === undefined) return;
+    if (typeof factory !== 'function' || this.#service) fail();
+    const metadata = this.#assets.metadata().material();
+    this.#service = await factory({
+      tls: { ...this.#assets.tlsOptions(), requestCert: true, rejectUnauthorized: true,
+        ca: new X509Certificate(Buffer.from(metadata.enrollmentAuthorityDer, 'base64url')).toString(), secureOptions: cryptoConstants.SSL_OP_NO_TICKET },
+      metadata: structuredClone(metadata),
+      authorizeCertificate: candidate => {
+        this.#healthy();
+        try { return this.#store.authorizeCertificate(candidate); }
+        catch { this.#unavailable = true; fail(); }
+      },
+    });
+    if (!this.#service || !Number.isInteger(this.#service.port) ||
+        ['invalidateEnrollment', 'inspectEnrollment', 'snapshot', 'close'].some(name => typeof this.#service[name] !== 'function')) fail();
+  }
   #timer(action, millis) {
     this.#timerCount++; let pending = true;
     const timer = setTimeout(() => { if (pending) { pending = false; this.#timerCount--; action(); } }, millis);
     return () => { if (pending) { pending = false; this.#timerCount--; clearTimeout(timer); } };
   }
-  #healthy() { if (this.#closing || this.#closed || this.#unavailable) fail(); }
+  #healthy() {
+    if (this.#service?.snapshot().unavailable) this.#unavailable = true;
+    if (this.#closing || this.#closed || this.#unavailable) fail();
+  }
   #limits() {
     for (const [role, server] of this.#servers) {
       const other = [...this.#connections.values()].filter(record => record.role !== role).length;
@@ -159,6 +180,7 @@ class EnrollmentHttpsFixture {
     record.served = true;
     const metadata = this.#assets.metadata().material();
     if (!policy(request, role, metadata.logicalName)) return this.#error(reply, 'invalid_message');
+    if (this.#service?.snapshot().unavailable) this.#unavailable = true;
     if (this.#unavailable) return this.#error(reply, 'pairing_unavailable');
     if (role === 'credential') {
       const cert = request.socket.getPeerX509Certificate(); let authorized;
@@ -218,17 +240,25 @@ class EnrollmentHttpsFixture {
     return entry.task;
   }
   reject(enrollmentId) { this.#healthy(); return this.#store.reject(enrollmentId); }
-  revoke(enrollmentId) { this.#healthy(); return this.#store.revoke(enrollmentId); }
+  revoke(enrollmentId) {
+    this.#healthy(); const result = this.#store.revoke(enrollmentId);
+    // Expiry or an earlier terminal decision can win inside the Store transaction.
+    // Announce only a revocation that the durable result actually records.
+    if (result.material().type === 'pair_ended' && result.material().code === 'device_revoked') this.#service?.invalidateEnrollment(enrollmentId, 'device_revoked');
+    return result;
+  }
+  authenticatedService() { return this.#service; } // Explicit trusted composition only; never serialized.
   readResult(enrollmentId) { this.#healthy(); return this.#store.readResult(enrollmentId); }
   dropNextApprovedStatus() { this.#healthy(); if (this.#drop) fail('pairing_limit'); this.#drop = true; }
-  snapshot() { const issuer = this.#issuer.snapshot(); return Object.freeze({ acceptedSockets: this.#connections.size, tlsSockets: this.#tlsSockets.size, bodyReaders: this.#bodyReaders,
+  snapshot() { const issuer = this.#issuer.snapshot(), service = this.#service?.snapshot(); return Object.freeze({ acceptedSockets: this.#connections.size, tlsSockets: this.#tlsSockets.size, bodyReaders: this.#bodyReaders,
     requestTasks: this.#tasks.size, pendingWriteCallbacks: this.#writes.size, timers: this.#timerCount, registrationWaiters: this.#waiters.size,
     issuerJobs: this.#jobs.size, listeners: this.#listening.size, dispatches: this.#dispatches, droppedApprovedResponses: this.#dropped,
     approvedResponsesDelivered: this.#delivered, approvedResponsesDeliveredAfterDrop: this.#deliveredAfterDrop,
     writeOwnersCancelledByClose: this.#cancelledWrites,
-    admissionClosed: this.#closing, listenersClosed: this.#listening.size === 0, issuerChildrenJoined: issuer.closed && issuer.unjoinedChildren === 0 && issuer.commandsStarted === issuer.commandsClosed && issuer.commandsStarted === issuer.processGroupsClosed,
-    activeSockets: this.#connections.size + this.#tlsSockets.size + this.#declined.size, pendingCallbacks: this.#writes.size, pendingTimers: this.#timerCount,
-    signerGroups: issuer.commandsStarted - issuer.processGroupsClosed, workers: this.#tasks.size + this.#jobs.size + this.#waiters.size,
+    admissionClosed: this.#closing, listenersClosed: this.#listening.size === 0 && (!service || service.listeners === 0), issuerChildrenJoined: issuer.closed && issuer.unjoinedChildren === 0 && issuer.commandsStarted === issuer.commandsClosed && issuer.commandsStarted === issuer.processGroupsClosed,
+    activeSockets: this.#connections.size + this.#tlsSockets.size + this.#declined.size + (service?.authenticatedSockets ?? 0) + (service?.proxySockets ?? 0),
+    pendingCallbacks: this.#writes.size + (service?.pendingCallbacks ?? 0), pendingTimers: this.#timerCount + (service?.timers ?? 0),
+    signerGroups: issuer.commandsStarted - issuer.processGroupsClosed, workers: this.#tasks.size + this.#jobs.size + this.#waiters.size + (service?.workers ?? 0),
     authorityClosed: this.#authorityClosed, storeClosed: this.#storeClosed, closing: this.#closing, closed: this.#closed, issuer }); }
   close() {
     if (this.#closed) return Promise.resolve(this.snapshot()); if (this.#closeTask) return this.#closeTask; this.#closing = true;
@@ -240,9 +270,11 @@ class EnrollmentHttpsFixture {
         for (const [socket, closed] of this.#declined) { socket.destroy(); sockets.push(closed); }
         for (const [socket, closed] of this.#tlsSockets) { socket.destroy(); sockets.push(closed); }
         const listeners = [...this.#servers.values()].map(server => new Promise((resolve, reject) => server.close(error => error && error.code !== 'ERR_SERVER_NOT_RUNNING' ? reject(new EnrollmentFixtureError()) : resolve())));
-        const results = await Promise.allSettled([this.#issuer.close(), ...sockets, ...listeners, ...this.#tasks, ...[...this.#jobs.values()].map(entry => entry.task)]);
+        const results = await Promise.allSettled([this.#issuer.close(), ...sockets, ...listeners, ...this.#tasks, ...[...this.#jobs.values()].map(entry => entry.task),
+          ...(this.#service ? [this.#service.close()] : [])]);
         // Failed approvals may be expected cancellations; only their retained ownership can block release.
         if (timedOut || results[0].status !== 'fulfilled' || results.slice(1 + sockets.length, 1 + sockets.length + listeners.length).some(result => result.status !== 'fulfilled') ||
+          (this.#service && results.at(-1).status !== 'fulfilled') ||
           this.#jobs.size || this.#connections.size || this.#declined.size || this.#tlsSockets.size || this.#tasks.size || this.#writes.size || this.#bodyReaders || this.#timerCount || this.#listening.size) fail('pairing_unavailable', false);
         this.#authority.close(); this.#authorityClosed = true; this.#store.close(); this.#storeClosed = true; this.#closed = true; return this.snapshot();
       })();
@@ -255,7 +287,8 @@ class EnrollmentHttpsFixture {
   toJSON() { return this.snapshot(); }
   [inspect.custom]() { return this.toString(); }
 }
-export async function startEnrollmentHttpsFixture({ directory, mode, openssl = process.env.OPENSSL_BIN ?? 'openssl', setupPort = 0, credentialPort = 0 } = {}) {
+export async function startEnrollmentHttpsFixture({ directory, mode, openssl = process.env.OPENSSL_BIN ?? 'openssl', setupPort = 0, credentialPort = 0,
+  authenticatedServiceFactory, credentialLifetimeSeconds = 3600 } = {}) {
   if (retainedFailures.size) fail(false);
   let issuer, store, fixture;
   try {
@@ -263,8 +296,9 @@ export async function startEnrollmentHttpsFixture({ directory, mode, openssl = p
     issuer = await startEnrollmentIssuer({ directory, openssl, enrollmentAuthorityDer: metadata.enrollmentAuthorityDer });
     store = (mode === 'create' ? createEnrollmentStore : openEnrollmentStore)({ directory, metadata: { desktopId: metadata.desktopId,
       gatewaySpkiSha256: metadata.gatewaySpkiSha256, enrollmentAuthorityDer: metadata.enrollmentAuthorityDer,
-      interceptionCaCertificateSha256: metadata.interceptionCaCertificateSha256, supportedCapabilities: ['tcp-http', 'tcp-https-connect'], credentialLifetimeSeconds: 3600 } });
-    fixture = new EnrollmentHttpsFixture(assets, issuer, store); return await fixture.start(setupPort, credentialPort);
+      interceptionCaCertificateSha256: metadata.interceptionCaCertificateSha256, supportedCapabilities: ['tcp-http', 'tcp-https-connect'], credentialLifetimeSeconds } });
+    fixture = new EnrollmentHttpsFixture(assets, issuer, store); await fixture.start(setupPort, credentialPort);
+    await fixture.startAuthenticatedService(authenticatedServiceFactory); return fixture;
   } catch (failure) {
     let joined = failure?.joined !== false;
     try { if (fixture) await fixture.close(); else { await issuer?.close(); store?.close(); } } catch { joined = false; if (fixture) retainedFailures.add(fixture); else retainedFailures.add({ issuer, store }); }

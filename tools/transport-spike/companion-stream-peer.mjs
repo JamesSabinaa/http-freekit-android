@@ -4,7 +4,7 @@ import https from 'node:https';
 import net from 'node:net';
 import { performance } from 'node:perf_hooks';
 import { inspect } from 'node:util';
-import { startPeer, logicalName } from './android-peer.mjs';
+import { startPeer, logicalName as defaultLogicalName } from './android-peer.mjs';
 import { CompanionBudgetPool, CompanionControl } from './companion-protocol-lifecycle.mjs';
 import { decodeControl, decodeStream, encodeControl, encodeStream } from './companion-protocol-codec.mjs';
 import { ResearchWebSocket } from './research-websocket.mjs';
@@ -22,7 +22,7 @@ const digest = () => createHash('sha256');
 const sameToken = (owner, token) => Buffer.isBuffer(owner.token) && canonicalToken(token) && timingSafeEqual(owner.token, Buffer.from(token, 'base64url'));
 const deviceId = socket => 'dev_' + createHash('sha256').update(socket.getPeerX509Certificate().publicKey.export({ format: 'der', type: 'spki' })).digest('base64url');
 
-function requestPolicy(request) {
+function requestPolicy(request, logicalName, exactHost = false) {
   const seen = new Set();
   if (request.httpVersion !== '1.1' || request.rawHeaders.length > 64) return false;
   for (let index = 0; index < request.rawHeaders.length; index += 2) {
@@ -32,10 +32,10 @@ function requestPolicy(request) {
   }
   if (['origin', 'cookie', 'authorization', 'transfer-encoding'].some(name => Object.hasOwn(request.headers, name))) return false;
   const host = request.headers.host;
-  return host === logicalName || host === `${logicalName}:${request.socket.localPort}`;
+  return (!exactHost && host === logicalName) || host === `${logicalName}:${request.socket.localPort}`;
 }
-function upgradePolicy(request) {
-  if (!requestPolicy(request) || request.method !== 'GET' || request.headers.upgrade?.toLowerCase() !== 'websocket' ||
+function upgradePolicy(request, logicalName, exactHost) {
+  if (!requestPolicy(request, logicalName, exactHost) || request.method !== 'GET' || request.headers.upgrade?.toLowerCase() !== 'websocket' ||
       request.headers.connection?.toLowerCase() !== 'upgrade' || request.headers['sec-websocket-version'] !== '13' ||
       request.headers['sec-websocket-extensions'] !== undefined || request.headers['sec-websocket-protocol'] !== undefined ||
       (request.headers['content-length'] !== undefined && request.headers['content-length'] !== '0')) return false;
@@ -52,13 +52,25 @@ function response(response, status, value) {
   response.writeHead(status, { 'content-type': 'application/json', 'content-length': body.length, connection: 'close' }).end(body);
 }
 
-export async function createCompanionStreamServer({ tls, authorize }) {
+export async function createCompanionStreamServer({ tls, authorize, credentialAuthority,
+  desktopId = DESKTOP_ID, logicalName = defaultLogicalName, sessionLifetimeMillis = 120000, port = 0 }) {
+  const enrolled = credentialAuthority !== undefined;
+  const gatewayExpires = enrolled ? Date.parse(credentialAuthority?.gatewayExpiresAt) : 0;
+  if (typeof authorize !== 'function' || !Number.isInteger(port) || port < 0 || port > 65535 ||
+      !Number.isInteger(sessionLifetimeMillis) || sessionLifetimeMillis < 1000 || sessionLifetimeMillis > 1800000 ||
+      typeof desktopId !== 'string' || /^[A-Za-z0-9_-]{1,128}$/.exec(desktopId)?.[0] !== desktopId ||
+      typeof logicalName !== 'string' || logicalName.length > 253 || /^[a-z0-9.-]+$/.exec(logicalName)?.[0] !== logicalName ||
+      (enrolled && (typeof credentialAuthority?.authorizeCertificate !== 'function' || !Number.isSafeInteger(gatewayExpires) || gatewayExpires <= Date.now()))) fail('stream_fixture_configuration');
+  const grantFields = ['desktopId', 'deviceId', 'enrollmentId', 'clientCertificateSha256', 'deviceSpkiSha256', 'credentialExpiresAt'];
+  const grantEqual = (left, right) => left && right && grantFields.every(name => left[name] === right[name]);
   const pool = new CompanionBudgetPool({ maxSessions: 4, maxStreams: 8, maxBytes: 65536 });
   const owners = new Map(); // One bounded latest record per issued SPKI; never exported.
+  const enrollmentRecords = new Map(); // Original owner retained for private evidence after a later session.
   const sockets = new Set();
   const proxySockets = new Set();
+  const ingressTasks = new Set(); // Includes upgrades awaiting a previous owner's real join.
   const accepted = new Map(), awaiting = new Map();
-  let closing = false, closeTask;
+  let closing = false, closeTask, unavailable = false;
   let proxyListenerClosed = false, httpsListenerClosed = false;
   const proxy = net.createServer({ allowHalfOpen: true, pauseOnConnect: true });
   proxy.once('close', () => { proxyListenerClosed = true; });
@@ -90,7 +102,10 @@ export async function createCompanionStreamServer({ tls, authorize }) {
   let server;
   try {
     server = https.createServer({ ...tls, maxHeaderSize: 8192, requestTimeout: 5000, headersTimeout: 5000 },
-      (request, reply) => { httpRequest(request, reply).catch(() => { request.socket.destroy(); }); });
+      (request, reply) => {
+        if (closing) { request.socket.destroy(); return; }
+        ownIngress(httpRequest(request, reply), request.socket);
+      });
   } catch {
     closing = true;
     for (const entry of accepted.values()) clearTimeout(entry.timer);
@@ -110,11 +125,25 @@ export async function createCompanionStreamServer({ tls, authorize }) {
     if (closing) socket.destroy();
   });
   server.on('tlsClientError', () => {});
+  if (enrolled) {
+    server.on('newSession', (_id, _data, done) => done());
+    server.on('resumeSession', (_id, done) => done(null, null));
+    server.on('secureConnection', socket => {
+      if (socket.servername !== logicalName || socket.isSessionReused() ||
+          (socket.alpnProtocol && socket.alpnProtocol !== 'http/1.1')) socket.destroy();
+    });
+  }
   server.on('clientError', (_error, socket) => socket.destroy());
   server.on('dropRequest', (_request, socket) => socket.destroy());
   server.on('upgrade', (request, socket, head) => {
-    upgrade(request, socket, head).catch(() => socket.destroy());
+    if (closing) { socket.destroy(); return; }
+    ownIngress(upgrade(request, socket, head), socket);
   });
+
+  function ownIngress(promise, socket) {
+    const work = promise.catch(() => socket.destroy()).finally(() => ingressTasks.delete(work));
+    ingressTasks.add(work);
+  }
 
   function markTerminal(owner) {
     if (owner.timing.terminalUtcMillis === null && controlInactive(owner.model)) {
@@ -134,8 +163,70 @@ export async function createCompanionStreamServer({ tls, authorize }) {
     return promise;
   }
   function check(result) { if (result.code !== 'ok') fail('model_operation_failed'); return result; }
+  function invalidate(owner, cause, notify = false) {
+    if (owner.grant && cause !== 'session_expired') owner.grantValid = false;
+    owner.invalidationCause ??= cause;
+    if (!controlInactive(owner.model)) {
+      const state = owner.model.snapshot();
+      if (state.phase === 'active') owner.model.text('gateway', encodeControl({ protocolVersion: 1,
+        type: cause === 'network_unreachable' ? 'error' : 'disconnect', code: cause }), clock());
+      else owner.model.wsClosed(1006, clock());
+    }
+    markTerminal(owner);
+    stopControl(owner, notify ? cause : null);
+  }
+  function unavailableAuthority() {
+    unavailable = true;
+    for (const owner of owners.values()) invalidate(owner, 'network_unreachable');
+  }
+  function grantFor(socket) {
+    if (unavailable || closing || !socket.authorized || !authorize(socket)) return null;
+    if (!enrolled) return { deviceId: deviceId(socket) };
+    try {
+      const leaf = socket.getPeerX509Certificate()?.raw;
+      if (!leaf || leaf.length > 4096) return null;
+      const value = credentialAuthority.authorizeCertificate(Buffer.from(leaf))?.material();
+      if (!value) return null;
+      if (Object.keys(value).length !== grantFields.length || !grantFields.every(name => typeof value[name] === 'string') ||
+          value.desktopId !== desktopId || value.clientCertificateSha256 !== createHash('sha256').update(leaf).digest('base64url') ||
+          value.deviceSpkiSha256 !== createHash('sha256').update(socket.getPeerX509Certificate().publicKey.export({ type: 'spki', format: 'der' })).digest('base64url') ||
+          !Number.isSafeInteger(Date.parse(value.credentialExpiresAt))) throw safeError('invalid_grant');
+      return { ...value, leaf: Buffer.from(leaf) };
+    } catch { unavailableAuthority(); return null; }
+  }
+  function validateOwner(owner) {
+    if (!enrolled) return !owner.stopping;
+    if (owner.stopping || !owner.grantValid || unavailable || closing) return false;
+    owner.revalidations++;
+    const now = clock();
+    if (now.utcMillis >= owner.credentialExpires || now.utcMillis >= gatewayExpires ||
+        now.monotonicMillis - owner.grantedAt.monotonicMillis >= owner.credentialLifetime) {
+      owner.grantValid = false; invalidate(owner, 'session_expired'); return false;
+    }
+    // An operational boundary must enforce the negotiated deadline itself; a busy
+    // event loop must not defer admission decisions until the 50ms watcher runs.
+    owner.model.tick(now); markTerminal(owner);
+    if (controlInactive(owner.model)) { stopControl(owner); return false; }
+    try {
+      const fresh = credentialAuthority.authorizeCertificate(Buffer.from(owner.grant.leaf))?.material();
+      if (!grantEqual(owner.grant, fresh)) { owner.grantValid = false; invalidate(owner, 'network_unreachable'); return false; }
+      return true;
+    } catch { unavailableAuthority(); return false; }
+  }
   function live(record) {
-    if (record.stopping || record.owner.stopping || controlInactive(record.owner.model) || streamInactive(record.model)) fail('stream_inactive');
+    if (!validateOwner(record.owner) || record.stopping || record.owner.stopping || controlInactive(record.owner.model) || streamInactive(record.model)) fail('stream_inactive');
+  }
+  function guardApplicationSocket(record, socket) {
+    if (!enrolled) return;
+    const original = socket.write;
+    socket.write = function (...args) {
+      live(record);
+      // There is no asynchronous boundary between the final guard and actual write.
+      // Callback completion after invalidation is allowed and never counted as a new admission.
+      if (record.owner.invalidationCause !== null) record.owner.writesAfterInvalidation++;
+      record.owner.applicationWriteAdmissions++;
+      return original.apply(this, args);
+    };
   }
   function retained(record) {
     if (record.retained) return;
@@ -170,15 +261,25 @@ export async function createCompanionStreamServer({ tls, authorize }) {
     record.cleanupTask.catch(() => { record.cleanupFailed = true; });
     return record.cleanupTask;
   }
-  function stopControl(owner) {
+  function stopControl(owner, notification = null) {
     if (owner.cleanupTask) return owner.cleanupTask;
     markTerminal(owner);
     owner.stopping = true;
     for (const handle of owner.timers) clearInterval(handle);
     owner.timers.clear(); owner.changed.notify();
-    owner.socket.destroy();
+    if (!notification || !owner.ws) owner.socket.destroy();
     const streamStops = [...owner.records].map(record => stopStream(record));
     owner.cleanupTask = bounded((async () => {
+      if (notification && owner.ws && !owner.socket.destroyed) {
+        owner.terminalNotification.attempted = true;
+        const handle = setTimeout(() => owner.socket.destroy(), 1000);
+        owner.notificationTimer = true;
+        try {
+          await owner.ws.send('text', encodeControl({ protocolVersion: 1, type: 'disconnect', code: notification }));
+          owner.terminalNotification.completed = true;
+        } catch { owner.terminalNotification.aborted = true; }
+        finally { clearTimeout(handle); owner.notificationTimer = false; owner.socket.destroy(); }
+      }
       if (owner.ws) await owner.ws.cancel(); else await owner.socketClosed;
       await Promise.all(streamStops);
       await Promise.allSettled([...owner.workers]);
@@ -191,17 +292,20 @@ export async function createCompanionStreamServer({ tls, authorize }) {
   }
 
   function authorizeOwner(request, active = false) {
-    if (!request.socket.authorized || !authorize(request.socket)) return null;
-    const owner = owners.get(deviceId(request.socket));
+    const grant = grantFor(request.socket);
+    if (!grant) return null;
+    const owner = owners.get(grant.deviceId);
     if (!owner || !sameToken(owner, request.headers[SESSION_HEADER])) return null;
+    if (enrolled && (!grantEqual(owner.grant, grant) || !owner.grant.leaf.equals(grant.leaf))) return null;
     if (active) {
+      if (!validateOwner(owner)) return null;
       owner.model.tick(clock()); markTerminal(owner);
       if (controlInactive(owner.model) || owner.stopping) { stopControl(owner); return null; }
     }
     return owner;
   }
   async function httpRequest(request, reply) {
-    if (closing || !requestPolicy(request) || !authorize(request.socket)) return response(reply, 400, { error: 'rejected' });
+    if (closing || unavailable || !requestPolicy(request, logicalName, enrolled) || !authorize(request.socket)) return response(reply, 400, { error: 'rejected' });
     if (request.url === '/research/probe' && request.method === 'GET') {
       if (request.headers['content-length'] !== undefined && request.headers['content-length'] !== '0') return response(reply, 400, { error: 'rejected' });
       const owner = authorizeOwner(request);
@@ -233,29 +337,54 @@ export async function createCompanionStreamServer({ tls, authorize }) {
   }
 
   async function upgrade(request, socket, head) {
-    if (closing || !upgradePolicy(request) || !authorize(socket) || head.length > 65550) return rejectUpgrade(socket, 400);
+    if (closing || unavailable || !upgradePolicy(request, logicalName, enrolled) || !authorize(socket) || head.length > 65550) return rejectUpgrade(socket, 400);
+    const grant = grantFor(socket);
+    if (!grant) return rejectUpgrade(socket, 403);
     if (request.url === '/companion/v1/control') {
-      const scenario = request.headers[SCENARIO_HEADER], id = deviceId(socket);
+      const scenario = request.headers[SCENARIO_HEADER], id = grant.deviceId;
       if (!SCENARIOS.includes(scenario) || request.headers[SESSION_HEADER] !== undefined) return rejectUpgrade(socket, 400);
-      const previous = owners.get(id);
+      let previous = owners.get(id);
+      if (enrolled && previous && !previous.closed && controlInactive(previous.model) && previous.cleanupTask) {
+        // No new model lease exists during this wait. Join the existing bounded
+        // cleanup rather than racing local client closure against server release.
+        try { await previous.cleanupTask; } catch { return rejectUpgrade(socket, 503); }
+        if (closing || unavailable || socket.destroyed) { socket.destroy(); return; }
+        const fresh = grantFor(socket);
+        if (!fresh || !grantEqual(grant, fresh) || !grant.leaf.equals(fresh.leaf)) return rejectUpgrade(socket, 403);
+        previous = owners.get(id); // A concurrent waiting control may have won admission.
+      }
       if ((previous && !previous.closed) || (!previous && owners.size >= 8)) return rejectUpgrade(socket, 429);
-      const owner = { model: new CompanionControl({ pool, deviceId: id, desktopId: DESKTOP_ID, clock: clock() }),
+      const history = enrolled ? enrollmentRecords.get(grant.enrollmentId) : null;
+      if (enrolled && ((!history && enrollmentRecords.size >= 8) || (history && history.controlsAdmitted >= Number.MAX_SAFE_INTEGER))) return rejectUpgrade(socket, 429);
+      const grantedAt = clock();
+      const owner = { model: new CompanionControl({ pool, deviceId: id, desktopId, clock: grantedAt }),
+        grant: enrolled ? grant : null, grantValid: enrolled, grantedAt, revalidations: 0, invalidationCause: null,
+        credentialExpires: enrolled ? Date.parse(grant.credentialExpiresAt) : 0,
+        credentialLifetime: enrolled ? Date.parse(grant.credentialExpiresAt) - grantedAt.utcMillis : 0,
+        terminalNotification: { attempted: false, completed: false, aborted: false }, notificationTimer: false,
+        applicationWriteAdmissions: 0, writesAfterInvalidation: 0,
         id, scenario, socket, socketClosed: observeClose(socket), ws: null, token: null,
         workers: new Set(), timers: new Set(), changed: new Changed(), records: new Set(), latest: null,
         ordinal: 0, stopping: false, closed: false, cleanupTask: null, cleanupFailed: false, activated: null,
         upgradeWriter: writerState(), timing: { readyUtcMillis: 0, expiresUtcMillis: 0, terminalUtcMillis: null, terminalElapsedMillis: null } };
       owners.set(id, owner);
+      if (enrolled) {
+        if (history) history.controlsAdmitted++;
+        else enrollmentRecords.set(grant.enrollmentId, { original: owner, controlsAdmitted: 1 });
+      }
       socket.setTimeout(0);
       socket.once('close', () => {
         owner.model.wsClosed(1006, clock()); markTerminal(owner);
         if (!owner.stopping) stopControl(owner);
       });
       timer(owner, () => {
+        if (!validateOwner(owner)) return;
         owner.model.tick(clock()); markTerminal(owner);
         if (controlInactive(owner.model)) stopControl(owner);
         for (const record of owner.records) if (streamInactive(record.model) && !record.closed) stopStream(record);
       }, 50);
       task(owner, async () => {
+        if (!validateOwner(owner)) fail('stream_inactive');
         await write(socket, upgradeBytes(request.headers['sec-websocket-key']), owner.upgradeWriter);
         owner.ws = new ResearchWebSocket(socket, { role: 'server', initialBytes: head, maxBinaryBytes: 4096 });
         await controlReader(owner);
@@ -265,7 +394,7 @@ export async function createCompanionStreamServer({ tls, authorize }) {
       const owner = authorizeOwner(request, true);
       if (!owner) return rejectUpgrade(socket, 403);
       if (owner.ordinal >= 64) return rejectUpgrade(socket, 429);
-      const allocation = owner.model.allocateStream(deviceId(socket), request.headers[SESSION_HEADER], clock());
+      const allocation = owner.model.allocateStream(grant.deviceId, request.headers[SESSION_HEADER], clock());
       markTerminal(owner);
       if (allocation.code !== 'ok') return rejectUpgrade(socket, allocation.code === 'stream_limit' ? 429 : 403);
       const record = newRecord(owner, allocation.stream, socket);
@@ -277,6 +406,7 @@ export async function createCompanionStreamServer({ tls, authorize }) {
         if (!record.stopping) stopStream(record);
       });
       task(record, async () => {
+        live(record);
         await write(socket, upgradeBytes(request.headers['sec-websocket-key']), record.upgradeWriter);
         record.ws = new ResearchWebSocket(socket, { role: 'server', initialBytes: head, maxBinaryBytes: 4096 });
         await streamReader(record);
@@ -292,6 +422,7 @@ export async function createCompanionStreamServer({ tls, authorize }) {
     while (!owner.stopping) {
       const event = await owner.ws.next();
       try {
+        if (!validateOwner(owner)) return;
         if (event.kind === 'ping' || event.kind === 'pong') {
           check(owner.model.activity('client', clock()));
           if (event.kind === 'ping') { await owner.ws.send('pong', event.copyBytes()); check(owner.model.activity('gateway', clock())); }
@@ -304,14 +435,16 @@ export async function createCompanionStreamServer({ tls, authorize }) {
             if (capabilities.length === 0) fail('unsupported_capability');
             owner.token = randomBytes(32);
             const readyClock = clock();
-            const expiresUtcMillis = Math.ceil(readyClock.utcMillis / 1000) * 1000 + (owner.scenario === 'expiry' ? 30000 : 120000);
-            const ready = encodeControl({ protocolVersion: 1, type: 'session_ready', capabilities, desktopId: DESKTOP_ID,
+            const expiresUtcMillis = enrolled ? Math.floor(Math.min(readyClock.utcMillis + sessionLifetimeMillis, owner.credentialExpires, gatewayExpires) / 1000) * 1000 :
+              Math.ceil(readyClock.utcMillis / 1000) * 1000 + (owner.scenario === 'expiry' ? 30000 : 120000);
+            const ready = encodeControl({ protocolVersion: 1, type: 'session_ready', capabilities, desktopId,
               expiresAt: new Date(expiresUtcMillis).toISOString().replace('.000Z', 'Z'), sessionId: owner.token.toString('base64url'), limits: LIMITS });
             check(owner.model.text('gateway', ready, readyClock));
             owner.timing.readyUtcMillis = readyClock.utcMillis; owner.timing.expiresUtcMillis = expiresUtcMillis; owner.activated = readyClock.monotonicMillis;
+            if (!validateOwner(owner)) return;
             await owner.ws.send('text', ready);
             timer(owner, () => {
-              if (owner.stopping || controlInactive(owner.model)) return;
+              if (!validateOwner(owner) || owner.stopping || controlInactive(owner.model)) return;
               owner.ws.send('ping', Buffer.alloc(0)).then(() => { if (!owner.stopping) check(owner.model.activity('gateway', clock())); })
                 .catch(() => stopControl(owner));
             }, 10000);
@@ -323,7 +456,7 @@ export async function createCompanionStreamServer({ tls, authorize }) {
   }
 
   function newRecord(owner, model, socket) {
-    return { owner, model, socket, socketClosed: observeClose(socket), observedCloseCode: 1006,
+    const record = { owner, model, socket, socketClosed: observeClose(socket), observedCloseCode: 1006,
       ws: null, proxy: null, fixtureSocket: null, proxyClosedPromise: null, fixtureClosedPromise: null,
       workers: new Set(), changed: new Changed(), upgradeWriter: writerState(), proxyWriter: writerState(), fixtureWriter: writerState(),
       stopping: false, closed: false, cleanupFailed: false, cleanupTask: null, retained: false, id: null,
@@ -333,17 +466,21 @@ export async function createCompanionStreamServer({ tls, authorize }) {
         responsePrefixWritten: false, responseTailReleased: owner.scenario !== 'gated', responseEof: false, responseSha256: null },
       io: { wsWriteEntries: 0, wsWriteCompletions: 0, backpressureCount: 0, resumedPendingCount: 0,
         retainedBytesAtAbort: 0, retainedFramesAtAbort: 0, retainedStreamLeasesAtAbort: 0 } };
+    guardApplicationSocket(record, socket);
+    return record;
   }
   async function connectProxy(record) {
     live(record);
     const socket = new net.Socket({ allowHalfOpen: true, readableHighWaterMark: 4096, writableHighWaterMark: 4096 });
     socket.on('error', () => {});
     record.proxy = socket; record.proxyClosedPromise = observeClose(socket);
+    guardApplicationSocket(record, socket);
     const pairing = new Promise((done, reject) => {
       const takeFixture = fixture => {
         // Transfer ownership and install close observation synchronously at admission.
         record.fixtureSocket = fixture;
         record.fixtureClosedPromise = observeClose(fixture);
+        guardApplicationSocket(record, fixture);
         if (record.stopping || record.owner.stopping) fixture.destroy();
         done(fixture);
       };
@@ -381,7 +518,7 @@ export async function createCompanionStreamServer({ tls, authorize }) {
     for (const effect of result.effects) {
       if (record.stopping) return;
       if (effect.direction === 'client' && record.clientEof === null) {
-        record.clientEof = task(record, () => endWrite(record.proxy, record.proxyWriter), () => stopStream(record));
+        record.clientEof = task(record, () => { live(record); return endWrite(record.proxy, record.proxyWriter); }, () => stopStream(record));
       } else if (effect.direction === 'gateway' && record.gatewayEof === null) {
         record.gatewayEof = task(record, () => wsWrite(record, 'text', encodeStream({ protocolVersion: 1, type: 'end_write', streamId: record.id })),
           () => stopStream(record));
@@ -446,6 +583,7 @@ export async function createCompanionStreamServer({ tls, authorize }) {
     while (!record.stopping) {
       const event = await record.ws.next();
       try {
+        live(record);
         if (event.kind === 'ping') { await wsWrite(record, 'pong', event.copyBytes()); continue; }
         if (event.kind === 'pong') continue;
         if (event.kind === 'close') {
@@ -528,7 +666,7 @@ export async function createCompanionStreamServer({ tls, authorize }) {
     const cleanup = { controlClosed: closedObserved(owner.socket), streamClosed: !r || closedObserved(r.socket),
       proxyClosed: !r?.proxy || closedObserved(r.proxy), fixtureClosed: !r?.fixtureSocket || closedObserved(r.fixtureSocket),
       workers: owner.workers.size + [...owner.records].reduce((sum, record) => sum + record.workers.size, 0),
-      timers: owner.timers.size, pendingCallbacks: callbacks, complete: false };
+      timers: owner.timers.size + (owner.notificationTimer ? 1 : 0), pendingCallbacks: callbacks, complete: false };
     cleanup.complete = owner.closed && [...owner.records].every(record => record.closed) &&
       cleanup.controlClosed && cleanup.streamClosed && cleanup.proxyClosed && cleanup.fixtureClosed &&
       cleanup.workers === 0 && cleanup.timers === 0 && callbacks === 0 && !control.sessionLease && control.chargedBytes === 0 && control.streamLeases === 0;
@@ -551,7 +689,7 @@ export async function createCompanionStreamServer({ tls, authorize }) {
   }
 
   try {
-    await bounded(new Promise((done, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', done); }), 5000, 'stream_fixture_startup_failed');
+    await bounded(new Promise((done, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', done); }), 5000, 'stream_fixture_startup_failed');
   } catch {
     closing = true;
     for (const entry of accepted.values()) clearTimeout(entry.timer);
@@ -563,8 +701,29 @@ export async function createCompanionStreamServer({ tls, authorize }) {
   }
   return {
     port: server.address().port,
+    invalidateEnrollment(enrollmentId, cause = 'device_revoked') {
+      if (!enrolled || cause !== 'device_revoked') fail('invalid_invalidation');
+      for (const owner of owners.values()) if (owner.grant.enrollmentId === enrollmentId) invalidate(owner, cause, true);
+    },
+    inspectEnrollment(enrollmentId) {
+      const history = enrollmentRecords.get(enrollmentId), owner = history?.original;
+      return structuredClone({ revision: 1, found: Boolean(owner), available: !unavailable && !closing,
+        credentialExpiresUtcMillis: owner?.credentialExpires ?? null, gatewayExpiresUtcMillis: gatewayExpires,
+        sessionPolicyMillis: sessionLifetimeMillis, grantValid: owner?.grantValid ?? false,
+        invalidationCause: owner?.invalidationCause ?? null, revalidations: owner?.revalidations ?? 0,
+        controlsAdmitted: history?.controlsAdmitted ?? 0, applicationWriteAdmissions: owner?.applicationWriteAdmissions ?? 0,
+        writesAfterInvalidation: owner?.writesAfterInvalidation ?? 0,
+        terminalNotification: owner ? { ...owner.terminalNotification } : { attempted: false, completed: false, aborted: false },
+        probe: owner ? probe(owner) : null });
+    },
     snapshot: () => ({ ...pool.snapshot(), ownerRecords: owners.size, authenticatedSockets: sockets.size, proxySockets: proxySockets.size,
-      listeners: (httpsListenerClosed ? 0 : 1) + (proxyListenerClosed ? 0 : 1) }),
+      listeners: (httpsListenerClosed ? 0 : 1) + (proxyListenerClosed ? 0 : 1),
+      ...(enrolled ? {
+        workers: ingressTasks.size + [...owners.values()].reduce((sum, owner) => sum + owner.workers.size + [...owner.records].reduce((n, record) => n + record.workers.size, 0), 0),
+        timers: [...owners.values()].reduce((sum, owner) => sum + owner.timers.size + (owner.notificationTimer ? 1 : 0), 0) + accepted.size,
+        pendingCallbacks: [...owners.values()].reduce((sum, owner) => sum + probe(owner).cleanup.pendingCallbacks, 0),
+        unavailable,
+      } : {}) }),
     close() {
       if (closeTask) return closeTask;
       closing = true;
@@ -581,8 +740,9 @@ export async function createCompanionStreamServer({ tls, authorize }) {
         const listenerCloses = [server, proxy].map(listener => new Promise((done, reject) => {
           listener.close(failure => failure ? reject(safeError('listener_cleanup_failed')) : done());
         }));
-        const results = await Promise.allSettled([...ownerStops, ...socketCloses, ...listenerCloses]);
-        if (results.some(result => result.status === 'rejected') || sockets.size || proxySockets.size ||
+        const results = await Promise.allSettled([...ownerStops, ...socketCloses, ...listenerCloses, ...ingressTasks]);
+        await Promise.allSettled([...ingressTasks]);
+        if (results.some(result => result.status === 'rejected') || ingressTasks.size || sockets.size || proxySockets.size ||
             Object.values(pool.snapshot()).some(value => value !== 0)) fail('cleanup_incomplete');
         owners.clear();
       })(), 7000);
