@@ -128,6 +128,22 @@ test('only exact fixed research phases for the actual scenario survive wrapped f
   const unknownType = reports('Draft streaming gated failed at gated-upload-prefix (PRIVATEException)');
   assert.match(unknownType, /other_exception/); assert.doesNotMatch(unknownType, /PRIVATE/);
 });
+test('pressure failures retain distinct proxy and Android stages plus bounded original project call sites', () => {
+  for (const [name, scenario] of [[names[2], 'cancel'], [names[3], 'expiry']]) {
+    for (const side of ['proxy', 'android']) {
+      const stack = `INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: Draft streaming ${scenario} failed at ${scenario}-${side}-actual-write (IllegalStateException)\n` +
+        '\tat com.httpfreekit.interop.DraftStreamingFixtureKt.draftAwait(DraftStreamingFixture.kt:231)\n' +
+        '\tat com.httpfreekit.interop.DraftStreamingOwner$Stream.observedBlockedWriter(DraftStreamingOwner.kt:411)\n' +
+        'Caused by: java.lang.IllegalStateException: PRIVATE_VALUE /private/path\n';
+      const output = names.map((testName, index) => testName === name
+        ? bundle(name, 1) + bundle(name, -2, stack) : pair(testName, index)).join('') + terminal;
+      const report = xml(parse(output)) + html(parse(output));
+      assert.match(report, new RegExp(`Research phase: ${scenario}/${scenario}-${side}-actual-write`));
+      assert.match(report, /DraftStreamingFixture.kt:231/); assert.match(report, /DraftStreamingOwner.kt:411/);
+      assert.doesNotMatch(report, /PRIVATE_VALUE|private\/path/);
+    }
+  }
+});
 test('success with a failure stack and excessive status metadata fails closed', () => {
   assert.equal(parse(success.replace('current=1\n', 'current=1\nINSTRUMENTATION_STATUS: stack=SECRET\n')).ok, false);
   const fields = Array.from({ length: 35 }, (_, index) => `INSTRUMENTATION_STATUS: field${index}=SECRET\n`).join('');
