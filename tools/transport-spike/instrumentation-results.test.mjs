@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { expectedTests } from './android-peer.mjs';
-import { MAX_ADB_DIAGNOSTIC_BYTES, MAX_INSTRUMENTATION_BYTES, adbPublicVersion, adbStderrCategories, commandDiagnostic, parseInstrumentation, researchClass, resultHtml, resultXml, safeStack } from './instrumentation-results.mjs';
+import { MAX_ADB_DIAGNOSTIC_BYTES, MAX_ADB_SERVER_LOG_BYTES, MAX_INSTRUMENTATION_BYTES, adbPublicVersion, adbStderrCategories, commandDiagnostic, parseInstrumentation, readAdbServerLog, researchClass, resultHtml, resultXml, safeStack, snapshotAdbServerLog } from './instrumentation-results.mjs';
 
 const bundle = (name, code, extra = '') => `INSTRUMENTATION_STATUS: class=${researchClass}\nINSTRUMENTATION_STATUS: test=${name}\nINSTRUMENTATION_STATUS: numtests=4\n${extra}INSTRUMENTATION_STATUS_CODE: ${code}\n`;
 const pair = name => bundle(name, 1) + bundle(name, 0);
@@ -136,4 +139,109 @@ test('safe command diagnostics survive XML and HTML rendering without raw stderr
   assert.match(xml, /adb_channel_closed/);
   assert.doesNotMatch(xml + resultHtml(result), /DO_NOT_RETAIN|error: closed/);
   assert.equal(result.ok, false);
+});
+
+function withPrivateLog(initial, action) {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'freekit-server-log-test-'));
+  const file = path.join(directory, 'server.log');
+  fs.writeFileSync(file, initial, { mode: 0o600 });
+  try { return action(file, directory); }
+  finally {
+    assert.equal(path.dirname(fs.realpathSync(directory)), fs.realpathSync(os.tmpdir()));
+    assert.ok(path.basename(directory).startsWith('freekit-server-log-test-'));
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+}
+test('server-log baseline excludes stale markers and returns no paths or content', () => {
+  withPrivateLog('adb.cpp:123 adb server killed by remote request DO_NOT_RETAIN\n', file => {
+    const baseline = snapshotAdbServerLog(file);
+    assert.deepEqual(baseline, { status: 'ready' });
+    fs.appendFileSync(file, 'main.cpp:45 ordinary current entry DO_NOT_RETAIN\n');
+    const result = readAdbServerLog(baseline);
+    assert.equal(result.status, 'read');
+    assert.equal(result.markers, 'none_observed');
+    assert.equal(result.sourceLocations, 'main.cpp:45');
+    assert.doesNotMatch(JSON.stringify({ baseline, result }), /DO_NOT_RETAIN|server\.log|freekit-server-log-test/);
+    const report = parseInstrumentation(success);
+    report.diagnostics = result;
+    assert.doesNotMatch(resultXml(report) + resultHtml(report), /DO_NOT_RETAIN|server\.log|freekit-server-log-test/);
+  });
+});
+test('verified callchain failure is distinct from positive callchain and remote-request markers', () => {
+  withPrivateLog('', file => {
+    const failed = snapshotAdbServerLog(file);
+    fs.appendFileSync(file, 'adb.cpp:500 failed to get kill-server process callchain DO_NOT_RETAIN\n');
+    assert.equal(readAdbServerLog(failed).markers, 'adb_callchain_capture_failed_marker');
+    const positive = snapshotAdbServerLog(file);
+    fs.appendFileSync(file, 'adb.cpp:501 kill-server process callchain DO_NOT_RETAIN --private-argument\n' +
+      'adb.cpp:502 adb server killed by remote request DO_NOT_RETAIN\n');
+    const result = readAdbServerLog(positive);
+    assert.equal(result.markers, 'adb_callchain_positive_marker, adb_remote_kill_request_marker');
+    assert.doesNotMatch(JSON.stringify(result), /DO_NOT_RETAIN|private-argument/);
+  });
+});
+test('server-log rotation and truncation fail closed without classifying replacement bytes', () => {
+  withPrivateLog('baseline original content long enough\n', file => {
+    const truncated = snapshotAdbServerLog(file);
+    fs.truncateSync(file, 0);
+    assert.equal(readAdbServerLog(truncated).status, 'truncated');
+    fs.appendFileSync(file, 'original\n');
+    const rotated = snapshotAdbServerLog(file);
+    fs.renameSync(file, file + '.old');
+    fs.writeFileSync(file, 'kill-server process callchain\n', { mode: 0o600 });
+    const result = readAdbServerLog(rotated);
+    assert.equal(result.status, 'rotated_or_replaced');
+    assert.equal(result.markers, 'none_observed');
+    assert.equal(result.bytesRead, 0);
+  });
+});
+test('server-log reads cap newly appended bytes and exclude markers beyond the cap', () => {
+  withPrivateLog('', file => {
+    const baseline = snapshotAdbServerLog(file);
+    fs.appendFileSync(file, 'x'.repeat(MAX_ADB_SERVER_LOG_BYTES) + '\nkill-server process callchain DO_NOT_RETAIN\n');
+    const result = readAdbServerLog(baseline);
+    assert.equal(result.bytesRead, MAX_ADB_SERVER_LOG_BYTES);
+    assert.equal(result.byteLimit, 'reached');
+    assert.equal(result.partialLine, 'omitted');
+    assert.equal(result.markers, 'none_observed');
+  });
+});
+test('partial baseline and final lines cannot create a positive marker from a split failure', () => {
+  withPrivateLog('failed to get ', file => {
+    const baseline = snapshotAdbServerLog(file);
+    fs.appendFileSync(file, 'kill-server process callchain DO_NOT_RETAIN\nmain.cpp:42 ordinary entry\nkill-server process callchain');
+    const result = readAdbServerLog(baseline);
+    assert.equal(result.markers, 'none_observed');
+    assert.equal(result.partialLine, 'omitted');
+    assert.equal(result.sourceLocations, 'main.cpp:42');
+  });
+});
+test('only allowlisted public source locations survive server-log classification', () => {
+  withPrivateLog('', file => {
+    const baseline = snapshotAdbServerLog(file);
+    fs.appendFileSync(file, '/private/DO_NOT_RETAIN/unknown.cpp:123 private.cpp:8 caller /private/DO_NOT_RETAIN/sockets.cpp:77\n');
+    const result = readAdbServerLog(baseline);
+    assert.equal(result.sourceLocations, 'sockets.cpp:77');
+    assert.doesNotMatch(JSON.stringify(result), /DO_NOT_RETAIN|unknown\.cpp|private\.cpp|caller/);
+  });
+});
+test('server-log diagnostics have no shared-default fallback and baselines are single-use', () => {
+  assert.equal(snapshotAdbServerLog().status, 'not_configured');
+  assert.equal(snapshotAdbServerLog('relative/server.log').status, 'invalid_explicit_path');
+  assert.equal(readAdbServerLog({ status: 'DO_NOT_RETAIN' }).status, 'invalid_baseline');
+  withPrivateLog('', (file, directory) => {
+    assert.equal(snapshotAdbServerLog(directory).status, 'not_regular_file');
+    assert.equal(snapshotAdbServerLog(path.join(directory, 'absent.log')).status, 'unavailable');
+    const baseline = snapshotAdbServerLog(file);
+    assert.equal(readAdbServerLog(baseline).status, 'no_new_bytes');
+    fs.appendFileSync(file, 'kill-server process callchain\n');
+    assert.equal(readAdbServerLog(baseline).status, 'invalid_or_consumed_baseline');
+    if (process.platform !== 'win32') {
+      fs.chmodSync(file, 0o644);
+      assert.equal(snapshotAdbServerLog(file).status, 'not_private_file');
+      fs.chmodSync(file, 0o600);
+      fs.symlinkSync(file, file + '.link');
+      assert.equal(snapshotAdbServerLog(file + '.link').status, 'not_regular_file');
+    }
+  });
 });

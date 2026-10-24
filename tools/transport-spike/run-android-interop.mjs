@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { startPeer } from './android-peer.mjs';
-import { MAX_ADB_DIAGNOSTIC_BYTES, MAX_INSTRUMENTATION_BYTES, adbPublicVersion, commandDiagnostic, parseInstrumentation, researchClass, resultHtml, resultXml } from './instrumentation-results.mjs';
+import { MAX_ADB_DIAGNOSTIC_BYTES, MAX_INSTRUMENTATION_BYTES, adbPublicVersion, commandDiagnostic, parseInstrumentation, readAdbServerLog, researchClass, resultHtml, resultXml, snapshotAdbServerLog } from './instrumentation-results.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const moduleBuild = path.join(root, 'tools/transport-spike/android/build');
@@ -163,7 +163,10 @@ try {
   }
   args.push(component);
   console.log('Running explicit research instrumentation; waiting for four exact start/end pairs.');
+  const serverLogBaseline = snapshotAdbServerLog(process.env.ANDROID_ADB_LOG_PATH);
   const instrument = await run(options.adb, args, 180000, true);
+  // Read the private log before a recovery probe can start another daemon or append new messages.
+  recordDiagnostic('serverLog', readAdbServerLog(serverLogBaseline));
   recordDiagnostic('instrumentation', commandDiagnostic(instrument));
   result = parseInstrumentation(instrument.output, { exitCode: instrument.code, signal: instrument.signal, transportError: instrument.reason });
   const selectedState = probe(['get-state']);

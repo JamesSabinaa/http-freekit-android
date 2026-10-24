@@ -1,9 +1,95 @@
 import { expectedTests } from './android-peer.mjs';
+import fs from 'node:fs';
+import path from 'node:path';
 
 export const researchClass = 'com.httpfreekit.interop.AndroidNodeInteropTest';
 export const MAX_INSTRUMENTATION_BYTES = 256 * 1024;
 export const MAX_ADB_DIAGNOSTIC_BYTES = 16 * 1024;
+export const MAX_ADB_SERVER_LOG_BYTES = 64 * 1024;
+const logBaselines = new WeakMap();
+const sourceNames = new Set(['adb.cpp', 'main.cpp', 'adb_client.cpp', 'adb_listeners.cpp', 'adb_utils.cpp', 'sockets.cpp',
+  'services.cpp', 'transport.cpp', 'transport_local.cpp', 'socket_spec.cpp', 'sysdeps_unix.cpp', 'fdevent.cpp', 'fdevent_epoll.cpp']);
+const baselineStatuses = new Set(['not_configured', 'invalid_explicit_path', 'not_regular_file', 'not_private_file', 'not_owned_file',
+  'file_size_unsupported', 'identity_changed', 'unavailable']);
 const signalNames = new Set(['SIGHUP', 'SIGINT', 'SIGQUIT', 'SIGILL', 'SIGTRAP', 'SIGABRT', 'SIGBUS', 'SIGFPE', 'SIGKILL', 'SIGSEGV', 'SIGPIPE', 'SIGALRM', 'SIGTERM']);
+
+function logFileStatus(stat) {
+  if (!stat.isFile()) return 'not_regular_file';
+  if (process.platform !== 'win32' && (stat.mode & 0o077n) !== 0n) return 'not_private_file';
+  if (typeof process.getuid === 'function' && stat.uid !== BigInt(process.getuid())) return 'not_owned_file';
+  if (stat.size > BigInt(Number.MAX_SAFE_INTEGER)) return 'file_size_unsupported';
+  return 'ready';
+}
+const sameFile = (first, second) => first.dev === second.dev && first.ino === second.ino;
+const openLog = file => fs.openSync(file, fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW ?? 0));
+
+/** Opaque baseline: paths, file identities and old content are never included in reports. */
+export function snapshotAdbServerLog(explicitPath) {
+  let descriptor;
+  try {
+    if (!explicitPath) return Object.freeze({ status: 'not_configured' });
+    if (typeof explicitPath !== 'string' || !path.isAbsolute(explicitPath) || explicitPath.length > 4096) return Object.freeze({ status: 'invalid_explicit_path' });
+    const before = fs.lstatSync(explicitPath, { bigint: true });
+    let status = logFileStatus(before);
+    if (status !== 'ready') return Object.freeze({ status });
+    descriptor = openLog(explicitPath);
+    const stat = fs.fstatSync(descriptor, { bigint: true });
+    if (!sameFile(before, stat)) return Object.freeze({ status: 'identity_changed' });
+    status = logFileStatus(stat);
+    if (status !== 'ready') return Object.freeze({ status });
+    const offset = Number(stat.size);
+    const last = Buffer.alloc(1);
+    const boundary = offset === 0 || (fs.readSync(descriptor, last, 0, 1, offset - 1) === 1 && last[0] === 10);
+    const baseline = Object.freeze({ status: 'ready' });
+    logBaselines.set(baseline, { file: explicitPath, stat, offset, boundary });
+    return baseline;
+  } catch { return Object.freeze({ status: 'unavailable' }); }
+  finally { if (descriptor !== undefined) fs.closeSync(descriptor); }
+}
+
+export function readAdbServerLog(baseline) {
+  const empty = status => ({ status, markers: 'none_observed', sourceLocations: 'none_observed', bytesRead: 0, byteLimit: 'within', partialLine: 'none' });
+  const saved = logBaselines.get(baseline);
+  if (!saved) return empty(baseline?.status === 'ready' ? 'invalid_or_consumed_baseline' : baselineStatuses.has(baseline?.status) ? baseline.status : 'invalid_baseline');
+  // A baseline is single-use, including on failure, so later recovery commands cannot contaminate it.
+  logBaselines.delete(baseline);
+  let descriptor;
+  try {
+    const before = fs.lstatSync(saved.file, { bigint: true });
+    if (!sameFile(saved.stat, before)) return empty('rotated_or_replaced');
+    let status = logFileStatus(before);
+    if (status !== 'ready') return empty(status);
+    descriptor = openLog(saved.file);
+    const current = fs.fstatSync(descriptor, { bigint: true });
+    if (!sameFile(saved.stat, current)) return empty('rotated_or_replaced');
+    status = logFileStatus(current);
+    if (status !== 'ready') return empty(status);
+    if (current.size < BigInt(saved.offset)) return empty('truncated');
+    const appended = Number(current.size) - saved.offset;
+    if (appended === 0) return empty('no_new_bytes');
+    const bytes = Buffer.alloc(Math.min(appended, MAX_ADB_SERVER_LOG_BYTES));
+    const count = fs.readSync(descriptor, bytes, 0, bytes.length, saved.offset);
+    if (count !== bytes.length) return empty('changed_during_read');
+    if (!sameFile(saved.stat, fs.lstatSync(saved.file, { bigint: true })) || fs.fstatSync(descriptor, { bigint: true }).size < current.size) return empty('changed_during_read');
+    let text = bytes.toString('utf8');
+    let partial = false;
+    if (!saved.boundary) { text = text.includes('\n') ? text.slice(text.indexOf('\n') + 1) : ''; partial = true; }
+    if (!text.endsWith('\n')) { text = text.slice(0, text.lastIndexOf('\n') + 1); partial = true; }
+    const markers = new Set();
+    const sources = new Set();
+    for (const line of text.split('\n')) {
+      if (line.includes('failed to get kill-server process callchain')) markers.add('adb_callchain_capture_failed_marker');
+      else if (line.includes('kill-server process callchain')) markers.add('adb_callchain_positive_marker');
+      if (line.includes('adb server killed by remote request')) markers.add('adb_remote_kill_request_marker');
+      for (const match of line.matchAll(/(?:^|[\s/\\])([A-Za-z0-9_]+\.cpp):([1-9][0-9]{0,6})(?=$|[\s:])/g)) {
+        if (sourceNames.has(match[1]) && sources.size < 16) sources.add(`${match[1]}:${match[2]}`);
+      }
+    }
+    return { status: 'read', markers: [...markers].join(', ') || 'none_observed', sourceLocations: [...sources].join(', ') || 'none_observed',
+      bytesRead: count, byteLimit: appended > MAX_ADB_SERVER_LOG_BYTES ? 'reached' : 'within', partialLine: partial ? 'omitted' : 'none' };
+  } catch { return empty('unavailable'); }
+  finally { if (descriptor !== undefined) fs.closeSync(descriptor); }
+}
 
 export function adbStderrCategories(value) {
   const text = Buffer.isBuffer(value) ? null : String(value ?? '');
