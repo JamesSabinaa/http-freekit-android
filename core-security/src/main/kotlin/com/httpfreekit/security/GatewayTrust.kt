@@ -11,11 +11,23 @@ import javax.net.ssl.X509TrustManager
 
 /**
  * Creates a scoped platform trust manager from the public certificate in an
- * approved pairing payload. Rebuild on reconnect to recheck expiry; retain
- * normal TLS hostname verification. Never install this in the global context.
+ * approved pairing payload. The public connection factory owns its lifetime;
+ * raw platform managers must not escape as a reusable public trust boundary.
  */
-object GatewayTrust {
+internal object GatewayTrust {
     fun forCertificate(certificate: X509Certificate, expectedSpkiSha256: String, now: Date = Date()): X509TrustManager {
+        verifyPinnedCertificate(certificate, expectedSpkiSha256, now)
+        val anchor = KeyStore.getInstance(KeyStore.getDefaultType()).apply {
+            load(null)
+            setCertificateEntry("gateway", certificate)
+        }
+        return TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm()).run {
+            init(anchor)
+            trustManagers.filterIsInstance<X509TrustManager>().single()
+        }
+    }
+
+    fun verifyPinnedCertificate(certificate: X509Certificate, expectedSpkiSha256: String, now: Date) {
         require(Regex("[A-Za-z0-9_-]{43}").matches(expectedSpkiSha256)) { "Invalid desktop pin" }
         val expected = Base64.getUrlDecoder().decode(expectedSpkiSha256)
         require(expected.size == 32 && Base64.getUrlEncoder().withoutPadding().encodeToString(expected) == expectedSpkiSha256) {
@@ -32,13 +44,5 @@ object GatewayTrust {
         if (purposes != null && "1.3.6.1.5.5.7.3.1" !in purposes) throw CertificateException("Invalid gateway certificate purpose")
         val usage = certificate.keyUsage
         if (usage != null && (usage.isEmpty() || !usage[0])) throw CertificateException("Invalid gateway signing usage")
-        val anchor = KeyStore.getInstance(KeyStore.getDefaultType()).apply {
-            load(null)
-            setCertificateEntry("gateway", certificate)
-        }
-        return TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm()).run {
-            init(anchor)
-            trustManagers.filterIsInstance<X509TrustManager>().single()
-        }
     }
 }
