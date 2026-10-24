@@ -34,6 +34,7 @@ const frameFiles = new Map([
   ['DraftEnrollmentHttpsClient.kt', new Set(['DraftEnrollmentHttpsClient', 'DraftEnrollmentResponseLost', 'DraftEnrollmentTransportFailure'])],
   ['DraftEnrollmentResearchFiles.kt', new Set(['DraftEnrollmentResearchFiles'])],
   ['DraftEnrollmentStateCodec.kt', new Set(['DraftEnrollmentStateCodec', 'DraftEnrollmentStateChecks', 'DraftEnrollmentStateException', 'DraftEnrollmentSeed', 'DraftEnrollmentRecovery'])],
+  ['DraftEnrollmentResearchChecks.kt', new Set(['DraftEnrollmentResearchChecks', 'DraftEnrollmentProofSession'])],
 ]);
 export class EnrollmentRuntimeError extends Error { constructor(code = 'invalid_runtime_report') { super(code); this.name = 'EnrollmentRuntimeError'; this.code = code; } }
 const fail = code => { throw new EnrollmentRuntimeError(code); };
@@ -361,3 +362,7 @@ export function enrollmentRuntimeHtml(report) {
   validateRuntime(report);
   return rendered('<!doctype html><html lang="en"><meta charset="utf-8"><title>Enrollment research results</title><body><h1>A22a method and host observations</h1><pre>' + escape(JSON.stringify(report, null, 2)) + '</pre></body></html>\n');
 }
+
+// Shared strict primitives for the separate finite A22b adapter. No schema is widened by default.
+export const enrollmentRuntimeValidation = Object.freeze({ exact, integer, boolean, enumeration, hash, commit, codeList,
+  copyFreeze, validateCommand, commandPassed, validateFrames, validateWorker, workerPassed, validateClock, clockPassed });

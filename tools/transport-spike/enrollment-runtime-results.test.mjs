@@ -111,6 +111,16 @@ test('successful status with failure stack and unknown status cannot become gree
   for (const text of [valid.replace(status(method, 0), status(method, 0, 'INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: SECRET\n')),
     valid.replace(status(method, 0), status(method, 12)), valid.replace('INSTRUMENTATION_STATUS_CODE: 1', 'INSTRUMENTATION_STATUS_CODE: 01')]) assert.notEqual(parse(text).state, 'passed');
 });
+
+test('shared enrollment check frames retain only the exact committed basename and root classes', () => {
+  const stack = 'java.lang.IllegalStateException: PRIVATE_CANARY\n' +
+    '\tat com.httpfreekit.interop.DraftEnrollmentProofSession.check(DraftEnrollmentResearchChecks.kt:20)\n' +
+    '\tat com.httpfreekit.interop.DraftEnrollmentResearchChecks.check(DraftEnrollmentResearchChecks.kt:21)\n' +
+    '\tat com.httpfreekit.interop.DraftEnrollmentOther.check(DraftEnrollmentResearchChecks.kt:22)';
+  const result = parse(transcript(method).replace(status(method, 0), status(method, -2, 'INSTRUMENTATION_STATUS: stack=' + stack + '\n')));
+  assert.equal(result.frames.length, 2); assert.ok(!JSON.stringify(result).includes('PRIVATE_CANARY'));
+  assert.ok(!JSON.stringify(result).includes('DraftEnrollmentOther'));
+});
 test('finished or broken parser is single use and report copies do not expose mutable observations', () => {
   const parser = createEnrollmentInvocationParser(method); parser.push(Buffer.from(transcript(method))); parser.finish(commandResult());
   assert.throws(() => parser.finish(commandResult()), /parser_closed/); assert.throws(() => parser.push(Buffer.from('x')), /parser_closed/);
