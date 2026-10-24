@@ -2,12 +2,21 @@ name: Android enrollment HTTPS runtime
 
 on:
   workflow_dispatch:
+    inputs:
+      suite:
+        description: Controlled enrollment research suite
+        type: choice
+        required: true
+        default: a22a
+        options:
+          - a22a
+          - a22b
 
 permissions:
   contents: read
 
 concurrency:
-  group: enrollment-runtime-${{ github.ref }}
+  group: enrollment-runtime-${{ github.ref }}-${{ inputs.suite }}
   cancel-in-progress: false
 
 jobs:
@@ -15,6 +24,8 @@ jobs:
     name: Enrollment API ${{ matrix.api }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+    env:
+      A22_SUITE: ${{ inputs.suite }}
     strategy:
       fail-fast: false
       matrix:
@@ -29,12 +40,33 @@ jobs:
         with:
           persist-credentials: false
       - name: Require integrated enrollment producers and verifier
+        id: suite
         run: |
+          case "$A22_SUITE" in
+            a22a)
+              report_root=enrollment-runtime
+              report_xml=TEST-enrollment-research.xml
+              test -f tools/transport-spike/android/src/androidTest/kotlin/com/httpfreekit/interop/DraftEnrollmentInteropTest.kt
+              ;;
+            a22b)
+              report_root=enrollment-streaming
+              report_xml=TEST-enrolled-stream-research.xml
+              test -f tools/transport-spike/enrollment-runtime-stream-results.mjs
+              test -f tools/transport-spike/run-enrolled-stream-runtime.mjs
+              test -f tools/transport-spike/android/src/androidTest/kotlin/com/httpfreekit/interop/DraftEnrolledStreamingInteropTest.kt
+              ;;
+            *) echo '::error::Unknown enrollment research suite.'; exit 1 ;;
+          esac
+          {
+            printf 'runtime=tools/transport-spike/android/build/outputs/androidTest-results/%s/debug/runtime.json\n' "$report_root"
+            printf 'xml=tools/transport-spike/android/build/outputs/androidTest-results/%s/debug/%s\n' "$report_root" "$report_xml"
+            printf 'html=tools/transport-spike/android/build/reports/androidTests/%s/debug/index.html\n' "$report_root"
+            printf 'host=build/reports/%s/host-cleanup.json\n' "$report_root"
+          } >> "$GITHUB_OUTPUT"
           test -f tools/transport-spike/run-enrollment-runtime.mjs
           test -f tools/transport-spike/companion-enrollment-worker.mjs
           test -f tools/transport-spike/enrollment-runtime-results.mjs
           test -f scripts/verify-enrollment-runtime.mjs
-          test -f tools/transport-spike/android/src/androidTest/kotlin/com/httpfreekit/interop/DraftEnrollmentInteropTest.kt
       - name: Require Linux KVM
         run: |
           if [[ ! -c /dev/kvm ]]; then
@@ -111,7 +143,7 @@ jobs:
           emulator -accel-check
           adb version
           sdkmanager --sdk_root="$ANDROID_HOME" --list_installed
-      - name: Run prepare, selective stop and reopen on a fresh AVD
+      - name: Run selected enrollment suite on a fresh AVD
         env:
           API_LEVEL: ${{ matrix.api }}
           SYSTEM_IMAGE: ${{ matrix.image }}
@@ -159,16 +191,19 @@ jobs:
             export A22_TERMINATED="$terminated" A22_JOINED="$joined" A22_EMULATOR_STATUS="$wait_status"
             if ! node --input-type=module <<'JS'
           import fs from 'node:fs';
+          const suite = process.env.A22_SUITE;
+          if (!['a22a', 'a22b'].includes(suite)) throw Error('invalid_runtime_suite');
+          const root = suite === 'a22b' ? 'enrollment-streaming' : 'enrollment-runtime';
           const number = value => value === 'null' ? null : Number(value);
           const record = {
-            format: 'http-freekit-a22a-host-cleanup', revision: 1,
+            format: `http-freekit-${suite}-host-cleanup`, revision: 1,
             sourceCommit: process.env.GITHUB_SHA, api: Number(process.env.API_LEVEL),
             driverExitCode: number(process.env.A22_DRIVER_STATUS), emulatorStarted: true, stopAttempted: true,
             stopExitCode: number(process.env.A22_STOP_STATUS), terminationObserved: process.env.A22_TERMINATED === 'true',
             joinObserved: process.env.A22_JOINED === 'true', emulatorExitCode: number(process.env.A22_EMULATOR_STATUS),
           };
-          fs.mkdirSync('build/reports/enrollment-runtime', { recursive: true });
-          fs.writeFileSync('build/reports/enrollment-runtime/host-cleanup.json', JSON.stringify(record) + '\n', { mode: 0o600 });
+          fs.mkdirSync(`build/reports/${root}`, { recursive: true });
+          fs.writeFileSync(`build/reports/${root}/host-cleanup.json`, JSON.stringify(record) + '\n', { mode: 0o600 });
           JS
             then cleanup_status=1; fi
             printf 'Owned emulator cleanup: stop=%s terminated=%s joined=%s exit=%s\n' "$stop_status" "$terminated" "$joined" "$wait_status"
@@ -221,9 +256,9 @@ jobs:
           # END A22 FRESH AVD CLOCK ALIGNMENT
           align_enrollment_clock
           started="$(date +%s)"
-          if node tools/transport-spike/run-enrollment-runtime.mjs --serial emulator-5554; then driver_status=0; else driver_status=$?; fi
+          if node tools/transport-spike/run-enrollment-runtime.mjs --serial emulator-5554 --suite "$A22_SUITE"; then driver_status=0; else driver_status=$?; fi
           if cleanup "$driver_status"; then
-            node scripts/verify-enrollment-runtime.mjs --source "$GITHUB_SHA" --api "$API_LEVEL" --started "$started"
+            node scripts/verify-enrollment-runtime.mjs --source "$GITHUB_SHA" --api "$API_LEVEL" --started "$started" --suite "$A22_SUITE"
           else
             exit $?
           fi
@@ -232,11 +267,11 @@ jobs:
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: enrollment-api-${{ matrix.api }}-results
+          name: ${{ inputs.suite == 'a22b' && 'enrollment-streaming' || 'enrollment' }}-api-${{ matrix.api }}-results
           retention-days: 7
           if-no-files-found: warn
           path: |
-            tools/transport-spike/android/build/outputs/androidTest-results/enrollment-runtime/debug/runtime.json
-            tools/transport-spike/android/build/outputs/androidTest-results/enrollment-runtime/debug/TEST-enrollment-research.xml
-            tools/transport-spike/android/build/reports/androidTests/enrollment-runtime/debug/index.html
-            build/reports/enrollment-runtime/host-cleanup.json
+            ${{ steps.suite.outputs.runtime }}
+            ${{ steps.suite.outputs.xml }}
+            ${{ steps.suite.outputs.html }}
+            ${{ steps.suite.outputs.host }}
