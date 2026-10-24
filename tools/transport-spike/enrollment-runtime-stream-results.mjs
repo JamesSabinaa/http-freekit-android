@@ -209,6 +209,7 @@ function verifyScenario(item, descriptor) {
         value.readyUtcMillis !== first.readyUtcMillis || value.expiresUtcMillis !== first.expiresUtcMillis || value.expiresUtcMillis !== observation.sessionExpiresUtcMillis) fail('runtime_stream_profile_failed');
   }
   const expiry = terminal.expiresUtcMillis, ready = terminal.readyUtcMillis;
+  if (profile.credentialExpiresUtcMillis - ready > profile.credentialLifetimeSeconds * 1000) fail('runtime_stream_profile_failed');
   const bound = Math.floor(Math.min(ready + profile.sessionLifetimeMillis, profile.credentialExpiresUtcMillis, profile.gatewayExpiresUtcMillis, profile.anchorExpiresUtcMillis) / 1000) * 1000;
   if (expiry % 1000 || expiry <= ready || expiry > bound) fail('runtime_stream_profile_failed');
   if (host.credentialStatus !== ({ revocation: 'revoked', credential_expiry: 'credential_expired', session_expiry: 'active' })[item.scenario]) fail('runtime_stream_policy_failed');

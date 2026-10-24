@@ -196,6 +196,25 @@ test('expiry scenarios require the exact isolated limiter, destructive closure a
   }
 });
 
+test('declared sixty-second issuance cannot substitute an actual ninety-second remaining credential', () => {
+  const value = runtime(), item = value.scenarios[1], extra = 30000;
+  item.profile.credentialExpiresUtcMillis += extra;
+  Object.assign(item.invocation.observation, {
+    credentialExpiresUtcMillis: item.invocation.observation.credentialExpiresUtcMillis + extra,
+    sessionExpiresUtcMillis: item.invocation.observation.sessionExpiresUtcMillis + extra,
+    terminalObservedUtcMillis: item.invocation.observation.terminalObservedUtcMillis + extra,
+    terminalObservedElapsedMillis: item.invocation.observation.terminalObservedElapsedMillis + extra,
+  });
+  for (const snapshot of [item.host.blockedFirst, item.host.blockedLast, item.host.terminal]) {
+    snapshot.credentialExpiresUtcMillis += extra; snapshot.expiresUtcMillis += extra;
+  }
+  item.host.terminal.terminalUtcMillis += extra; item.host.terminal.terminalElapsedMillis += extra;
+  item.host.credentialStatusObservedUtcMillis += extra;
+  assert.equal(item.profile.credentialLifetimeSeconds, 60);
+  assert.equal(item.profile.credentialExpiresUtcMillis - item.host.terminal.readyUtcMillis, 90000);
+  assert.throws(() => verifyEnrolledStreamingReport(value, { source, api: 26 }), /runtime_stream_profile_failed/);
+});
+
 test('source, clock, private input, actual deliveries and all owned cleanup remain required', () => {
   for (const mutate of [value => { value.source.trackedDirty = true; }, value => { value.clock.lowerBoundMillis = 0; },
     value => { value.scenarios[0].input.inputClosed = false; }, value => { value.scenarios[0].approval.actualApprovedResponseDrops = 1; },
