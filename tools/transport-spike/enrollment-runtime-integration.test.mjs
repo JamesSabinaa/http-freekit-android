@@ -9,6 +9,8 @@ import tls from 'node:tls';
 import { fileURLToPath } from 'node:url';
 import { createHash, sign, X509Certificate } from 'node:crypto';
 import { EnrollmentRuntimeWorker } from './enrollment-runtime-worker.mjs';
+import { cleanupEnrollmentResources } from './enrollment-runtime-host.mjs';
+import { enrollmentCommandObservation } from './enrollment-runtime-results.mjs';
 import { encodeEnrollmentRuntimeInput } from './enrollment-runtime-input.mjs';
 import { createCryptoFixture } from './companion-enrollment-crypto-fixtures.mjs';
 import { decodeEnrollment, encodeEnrollment, enrollmentMessage, enrollmentProofPayload } from './companion-enrollment-codec.mjs';
@@ -51,7 +53,7 @@ async function exchange(metadata, channel, material) {
 }
 
 test('actual parent owner composes private input, HTTPS approval/drop and same-identity worker restart', { timeout: 45000 }, async () => {
-  const temp = fs.realpathSync(os.tmpdir()), directory = fs.mkdtempSync(path.join(temp, 'freekit-enrollment-parent-'));
+  const temp = fs.realpathSync(os.tmpdir()), directory = fs.mkdtempSync(path.join(temp, 'freekit-enrollment-runtime-'));
   const owners = [];
   let owner;
   const open = async (mode, ports = { setupPort: 0, credentialPort: 0 }) => {
@@ -109,11 +111,13 @@ test('actual parent owner composes private input, HTTPS approval/drop and same-i
     assert.equal(admitted.body.toString(), '{"type":"credential_admitted"}');
     assert.ok((await owner.request('snapshot')).material().approvedResponsesDelivered >= 1);
   } finally {
-    for (const child of owners) await child.close();
-    assert.equal(owners.every(child => child.commandObservation().closeObserved && child.commandObservation().processGroupClosed &&
-      child.closedSnapshot()?.material().storeClosed === true), true);
-    const resolved = path.resolve(directory);
-    assert.equal(path.dirname(resolved), temp);
-    fs.rmSync(resolved, { recursive: true, force: true });
+    const cleanup = await cleanupEnrollmentResources({ commands: [], adb() { throw Error('Unexpected device operation in host test'); } },
+      { workers: owners, mappings: [], directory }, enrollmentCommandObservation);
+    assert.equal(cleanup.failed, false);
+    assert.equal(cleanup.workerClosed.storeClosed, true);
+    assert.equal(cleanup.workerCommand.closeObserved, true);
+    assert.equal(cleanup.workerCommand.processGroupClosed, true);
+    assert.equal(cleanup.privateDirectoryRemoved, true);
+    assert.equal(fs.existsSync(directory), false);
   }
 });

@@ -40,6 +40,20 @@ test('invalid reverse endpoints cause no registration and known complete rows al
   assert.equal(enrollmentOwnedReversesAbsent({ ...successful(''), code: 1 }, owned), false);
 });
 
+test('streaming reverse registration validates all three endpoints and retains late third-port ownership', async () => {
+  const metadata = { setupPort: 32101, credentialPort: 32102, webSocketPort: 32103 };
+  let calls = 0;
+  await assert.rejects(registerEnrollmentReverses(async () => { calls++; }, { ...metadata, webSocketPort: 32101 }, []));
+  assert.equal(calls, 0);
+  const owned = [];
+  await assert.rejects(registerEnrollmentReverses(async args => {
+    assert.deepEqual(args, ['reverse', '--no-rebind', 'tcp:' + (32101 + calls), 'tcp:' + (32101 + calls)]);
+    return successful(++calls === 3 ? 'unexpected' : '');
+  }, metadata, owned), /^Error: enrollment_fixture_failed$/);
+  assert.deepEqual(owned, [32101, 32102, 32103].map(port => ({ devicePort: port, hostPort: port })));
+  assert.equal(enrollmentOwnedReversesAbsent(successful('host tcp:32103 tcp:32103\n'), owned), false);
+});
+
 test('driver requires one explicit serial and rejects duplicate/malformed executable arguments', () => {
   assert.throws(() => enrollmentRuntimeOptions([]), /^Error: explicit_enrollment_serial_required$/);
   for (const args of [['--serial', 'test', '--serial', 'other'], ['--serial', 'test\n'],
