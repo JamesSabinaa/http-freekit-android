@@ -16,6 +16,7 @@ import java.time.Instant
 internal class DraftEnrollmentResearchFiles(context: Context) {
     private val directory: File
     private val input: File
+    private val streamInput: File
     private val recovery: File
     init {
         check(context.packageName == "com.httpfreekit.interop.test") { "Unexpected enrollment research package" }
@@ -25,6 +26,7 @@ internal class DraftEnrollmentResearchFiles(context: Context) {
         val stat = Os.lstat(directory.path)
         check(OsConstants.S_ISDIR(stat.st_mode) && stat.st_uid == Process.myUid() && stat.st_mode and 63 == 0) { "Research directory is not private" }
         input = File(directory, "input-v1.bin")
+        streamInput = File(directory, "stream-input-v1.bin")
         recovery = File(directory, "recovery-v1.bin")
     }
 
@@ -35,9 +37,7 @@ internal class DraftEnrollmentResearchFiles(context: Context) {
             bytes = read(input, DraftEnrollmentStateCodec.MAX_INPUT_BYTES)
             val seed = DraftEnrollmentStateCodec.decodeSeed(bytes)
             try {
-                val certificate = DraftEnrollmentHttpsClient.certificate(seed.gatewayCertificateDer)
-                DraftEnrollmentHttpsClient.validateTrust(certificate, seed.gatewaySpkiSha256, seed.logicalName)
-                check(Instant.now().isBefore(Instant.parse(seed.invitationExpiresAt))) { "Research invitation already expired" }
+                validateSeed(seed)
                 return seed
             } catch (failure: Exception) { seed.clearInvitationSecret(); throw failure }
         } finally {
@@ -45,6 +45,29 @@ internal class DraftEnrollmentResearchFiles(context: Context) {
             // Delete only this fixed owned entry; never retain setup credentials for restart.
             check(!input.exists() || input.delete()) { "Research input was not removed" }
         }
+    }
+
+    fun consumeStreamInput(expectedScenario: Int): DraftEnrollmentStreamSeed {
+        check(expectedScenario in 1..3 && !recovery.exists() && !input.exists()) { "Unexpected stream enrollment state" }
+        var bytes: ByteArray? = null
+        try {
+            bytes = read(streamInput, DraftEnrollmentStateCodec.MAX_INPUT_BYTES)
+            val wrapper = DraftEnrollmentStreamInputCodec.decode(bytes)
+            try {
+                check(wrapper.scenario == expectedScenario) { "Wrong finite stream scenario" }
+                validateSeed(wrapper.enrollment)
+                return wrapper
+            } catch (failure: Exception) { wrapper.enrollment.clearInvitationSecret(); throw failure }
+        } finally {
+            bytes?.fill(0)
+            check(!streamInput.exists() || streamInput.delete()) { "Private stream input was not removed" }
+        }
+    }
+
+    private fun validateSeed(seed: DraftEnrollmentSeed) {
+        val certificate = DraftEnrollmentHttpsClient.certificate(seed.gatewayCertificateDer)
+        DraftEnrollmentHttpsClient.validateTrust(certificate, seed.gatewaySpkiSha256, seed.logicalName)
+        check(Instant.now().isBefore(Instant.parse(seed.invitationExpiresAt))) { "Research invitation already expired" }
     }
 
     fun saveRecovery(value: DraftEnrollmentRecovery) {
@@ -67,7 +90,7 @@ internal class DraftEnrollmentResearchFiles(context: Context) {
             check(recovery.delete()) { "Recovery file was not removed" }
             syncDirectory()
         }
-        check(!recovery.exists() && !input.exists()) { "Enrollment research files remained" }
+        check(!recovery.exists() && !input.exists() && !streamInput.exists()) { "Enrollment research files remained" }
     }
 
     private fun read(file: File, maximum: Int): ByteArray {
