@@ -18,6 +18,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextReplacement
 import androidx.core.view.ViewCompat
@@ -130,23 +131,23 @@ class InstalledAppsActivityTest {
             compose.onNode(hasText(label(R.string.sample_browser)) and isToggleable()).performScrollTo().performClick()
         }
         assertSampleSelected(true)
-        clickTag("apps-mode-installed")
+        clickMode("apps-mode-installed")
         search(FIXTURE_PACKAGE)
         waitFixture(present = true)
         assertFixtureSelected(false)
         clickTag(FIXTURE_TAG)
         assertFixtureSelected(true)
-        clickTag("apps-mode-sample")
+        clickMode("apps-mode-sample")
         assertSampleSelected(true)
         safeUi("Known sample app deselection failed") {
             compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(label(R.string.sample_browser)) and isToggleable())
             compose.onNode(hasText(label(R.string.sample_browser)) and isToggleable()).performScrollTo().performClick()
         }
         assertSampleSelected(false)
-        clickTag("apps-mode-installed")
+        clickMode("apps-mode-installed")
         waitFixture(present = true)
         assertFixtureSelected(true)
-        clickTag("apps-mode-sample")
+        clickMode("apps-mode-sample")
         assertSampleSelected(false)
         assertPreviewWarning()
     }
@@ -157,7 +158,7 @@ class InstalledAppsActivityTest {
 
     private fun openInstalled() {
         openApps()
-        clickTag("apps-mode-installed")
+        clickMode("apps-mode-installed")
         waitReady()
         assertPreviewWarning()
     }
@@ -167,9 +168,28 @@ class InstalledAppsActivityTest {
         compose.onNode(hasText(label(resource)) and hasClickAction()).performScrollTo().performClick()
     }
 
-    private fun clickTag(tag: String) = safeUi("Known catalog control failed") {
-        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasTestTag(tag))
-        compose.onNodeWithTag(tag).performScrollTo().performClick()
+    private fun clickMode(tag: String) {
+        // Chip descendants can be composed while vertically clipped; reset the vertical owner.
+        safeUi("Catalog source vertical reset failed", ::catalogDiagnostics) {
+            compose.onNode(hasScrollToIndexAction()).performScrollToIndex(0)
+        }
+        clickTag(tag)
+        safeUi("Clicked catalog source was not selected", ::catalogDiagnostics) {
+            val node = tagNodes(tag).singleOrNull()
+            assertTrue(node != null && node.config.contains(SemanticsProperties.Selected) && node.config[SemanticsProperties.Selected])
+        }
+    }
+
+    private fun clickTag(tag: String) {
+        safeUi("Known catalog control lookup failed", ::catalogDiagnostics) {
+            compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasTestTag(tag))
+        }
+        safeUi("Known catalog control was not displayed", ::catalogDiagnostics) {
+            compose.onNodeWithTag(tag).performScrollTo().assertIsDisplayed()
+        }
+        safeUi("Known catalog control touch failed", ::catalogDiagnostics) {
+            compose.onNodeWithTag(tag).performClick()
+        }
     }
 
     private fun search(value: String) {
@@ -207,9 +227,13 @@ class InstalledAppsActivityTest {
         return visible
     }
 
-    private fun waitReady() = safeUi("Installed catalog did not finish loading") {
-        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasTestTag("apps-catalog-status"))
-        compose.waitUntil(timeoutMillis = 15_000) { catalogReady() }
+    private fun waitReady() {
+        safeUi("Installed catalog status scrolling failed", ::catalogDiagnostics) {
+            compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasTestTag("apps-catalog-status"))
+        }
+        safeUi("Installed catalog ready state was not observed", ::catalogDiagnostics) {
+            compose.waitUntil(timeoutMillis = 15_000) { catalogReady() }
+        }
     }
 
     private fun waitFixture(present: Boolean) = safeUi("Known fixture catalog result was not observed") {
@@ -336,12 +360,31 @@ class InstalledAppsActivityTest {
     }
 
     // Compose failures can otherwise print an entire semantics tree containing installed packages.
-    private fun <T> safeUi(message: String, action: () -> T): T = try {
+    private fun <T> safeUi(message: String, diagnostics: (() -> String)? = null, action: () -> T): T = try {
         action()
     } catch (_: AssertionError) {
-        throw AssertionError(message)
+        throw AssertionError(if (diagnostics == null) message else "$message (${diagnostics()})")
     } catch (_: Exception) {
-        throw AssertionError(message)
+        throw AssertionError(if (diagnostics == null) message else "$message (${diagnostics()})")
+    }
+
+    private fun catalogDiagnostics(): String = try {
+        fun source(tag: String): String {
+            val node = tagNodes(tag).singleOrNull() ?: return "absent"
+            val selected = node.config.contains(SemanticsProperties.Selected) && node.config[SemanticsProperties.Selected]
+            val enabled = !node.config.contains(SemanticsProperties.Disabled)
+            val bounds = node.boundsInWindow
+            return "selected=$selected,enabled=$enabled,bounds=[${bounds.left},${bounds.top},${bounds.right},${bounds.bottom}]"
+        }
+        val statusNode = tagNodes("apps-catalog-status").singleOrNull()
+        val observed = if (statusNode != null && statusNode.config.contains(SemanticsProperties.StateDescription))
+            statusNode.config[SemanticsProperties.StateDescription] else null
+        val status = observed?.takeIf { it in setOf("loading", "ready", "error", "idle") } ?: "absent"
+        "sampleSource=(${source("apps-mode-sample")}),installedSource=(${source("apps-mode-installed")}),status=$status"
+    } catch (_: AssertionError) {
+        "catalogState=unavailable"
+    } catch (_: Exception) {
+        "catalogState=unavailable"
     }
 
     companion object {
