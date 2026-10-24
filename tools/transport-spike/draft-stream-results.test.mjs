@@ -90,7 +90,8 @@ test('unknown host failures are static and reports cannot narrow or rename the g
 
 test('real clock preflight uses stricter two-second bounds without rebasing time', () => {
   const epoch = 1800000000000;
-  assert.equal(clock('1800000002', epoch, epoch).draftClockStatus, 'within_bound');
+  assert.equal(clock('1800000001', epoch, epoch).draftClockStatus, 'within_bound');
+  assert.equal(clock('1800000002', epoch, epoch).draftClockStatus, 'skew_exceeds_bound');
   assert.equal(clock('1800000000', epoch + 2000, epoch + 2000).draftClockStatus, 'within_bound');
   assert.equal(clock('1800000003', epoch, epoch).draftClockStatus, 'skew_exceeds_bound');
   assert.equal(clock('1800000000', epoch + 3000, epoch + 3000).draftClockStatus, 'skew_exceeds_bound');
@@ -98,7 +99,24 @@ test('real clock preflight uses stricter two-second bounds without rebasing time
   assert.equal(bounded.draftClockStatus, 'within_bound');
   assert.equal(bounded.fixtureClockSkewMillis, 0);
   assert.equal(bounded.fixtureHostBeforeProbeEpochMillis, epoch);
+  assert.equal(bounded.fixtureClockSkewLowerBoundMillis, -1000);
+  assert.equal(bounded.fixtureClockSkewUpperBoundMillis, 1999);
   assert.equal(clock('1800000001', epoch, epoch + 2001).draftClockStatus, 'probe_budget_exceeded');
+});
+test('the entire second-resolution and round-trip uncertainty interval must fit the skew bound', () => {
+  const epoch = 1800000000000;
+  const ahead = clock('1800000002', epoch, epoch);
+  assert.equal(ahead.fixtureClockSkewMillis, 2000);
+  assert.equal(ahead.fixtureClockSkewLowerBoundMillis, 2000);
+  assert.equal(ahead.fixtureClockSkewUpperBoundMillis, 2999);
+  assert.equal(ahead.draftClockStatus, 'skew_exceeds_bound');
+  const behind = clock('1800000000', epoch + 1500, epoch + 2500);
+  assert.equal(behind.fixtureClockSkewMillis, -2000);
+  assert.equal(behind.fixtureClockSkewLowerBoundMillis, -2500);
+  assert.equal(behind.draftClockStatus, 'skew_exceeds_bound');
+  const edge = clock('1800000002', epoch + 999, epoch + 999);
+  assert.equal(edge.fixtureClockSkewUpperBoundMillis, 2000);
+  assert.equal(edge.draftClockStatus, 'within_bound');
 });
 test('malformed, backward or invalid clock probes fail with no supplied data', () => {
   const epoch = 1800000000000;

@@ -8,8 +8,13 @@ export function measureDraftStreamingClock(deviceEpochText, hostBeforeMillis, ho
   let measurement;
   try { measurement = measureFixtureClock(deviceEpochText, hostBeforeMillis, hostAfterMillis); }
   catch { throw Error('draft_clock_probe_invalid'); }
-  return { ...measurement, draftClockStatus: measurement.fixtureClockRoundTripMillis > MAX_DRAFT_CLOCK_PROBE_MILLIS
-    ? 'probe_budget_exceeded' : Math.abs(measurement.fixtureClockSkewMillis) > MAX_DRAFT_CLOCK_SKEW_MILLIS
+  // date +%s samples an unknown instant inside both the whole second and host RTT.
+  // A midpoint estimate alone can accept nearly an extra second of actual skew.
+  const lower = measurement.fixtureDeviceEpochSeconds * 1000 - hostAfterMillis;
+  const upper = measurement.fixtureDeviceEpochSeconds * 1000 + 999 - hostBeforeMillis;
+  return { ...measurement, fixtureClockSkewLowerBoundMillis: lower, fixtureClockSkewUpperBoundMillis: upper,
+    draftClockStatus: measurement.fixtureClockRoundTripMillis > MAX_DRAFT_CLOCK_PROBE_MILLIS
+    ? 'probe_budget_exceeded' : lower < -MAX_DRAFT_CLOCK_SKEW_MILLIS || upper > MAX_DRAFT_CLOCK_SKEW_MILLIS
       ? 'skew_exceeds_bound' : 'within_bound' };
 }
 
