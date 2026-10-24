@@ -4,8 +4,9 @@ import { startEnrollmentHttpsFixture } from './companion-enrollment-https.mjs';
 const codes = new Set(['invalid_message', 'message_too_large', 'unsupported_version', 'unsupported_capability', 'authentication_failed', 'invitation_expired', 'invitation_used', 'pairing_limit', 'pairing_unavailable']);
 const schema = {
   start: ['directory', 'mode', 'openssl', 'setupPort', 'credentialPort'], metadata: [], createInvitation: [],
+  startStreaming: ['directory', 'mode', 'openssl', 'setupPort', 'credentialPort', 'streamPort', 'credentialLifetimeSeconds', 'sessionLifetimeMillis'],
   waitForRegistered: ['invitationId', 'timeoutMillis'], approve: ['enrollmentId'], reject: ['enrollmentId'], revoke: ['enrollmentId'],
-  readResult: ['enrollmentId'], dropNextApprovedStatus: [], snapshot: [], close: [],
+  readResult: ['enrollmentId'], inspectEnrollment: ['enrollmentId'], dropNextApprovedStatus: [], snapshot: [], close: [],
 };
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype;
 const exact = (value, fields) => object(value) && Object.keys(value).length === fields.length && fields.every(field => Object.hasOwn(value, field));
@@ -15,9 +16,16 @@ function valid(message) {
   if (!exact(message, ['revision', 'id', 'op', 'args']) || message.revision !== 1 || !Number.isSafeInteger(message.id) || message.id < 1 ||
       !Object.hasOwn(schema, message.op) || !exact(message.args, schema[message.op])) return false;
   const args = message.args;
-  if (message.op === 'start') return text(args.directory) && text(args.openssl) && ['create', 'open'].includes(args.mode) &&
-    [args.setupPort, args.credentialPort].every(port => Number.isInteger(port) && port >= (args.mode === 'create' ? 0 : 1) && port <= 65535) &&
-    (args.setupPort === 0 || args.setupPort !== args.credentialPort);
+  if (message.op === 'start' || message.op === 'startStreaming') {
+    const streaming = message.op === 'startStreaming';
+    const ports = [args.setupPort, args.credentialPort, ...(streaming ? [args.streamPort] : [])];
+    if (!text(args.directory) || !text(args.openssl) || !['create', 'open'].includes(args.mode) ||
+        !ports.every(port => Number.isInteger(port) && port >= (args.mode === 'create' ? 0 : 1) && port <= 65535) ||
+        new Set(ports.filter(port => port !== 0)).size !== ports.filter(port => port !== 0).length) return false;
+    return !streaming || (args.mode === 'create' && Number.isInteger(args.credentialLifetimeSeconds) &&
+      args.credentialLifetimeSeconds >= 60 && args.credentialLifetimeSeconds <= 7776000 &&
+      Number.isInteger(args.sessionLifetimeMillis) && args.sessionLifetimeMillis >= 1000 && args.sessionLifetimeMillis <= 1800000);
+  }
   if (message.op === 'waitForRegistered') return full(args.invitationId, /^[A-Za-z0-9_-]{1,128}$/) && Number.isInteger(args.timeoutMillis) && args.timeoutMillis >= 1 && args.timeoutMillis <= 10000;
   if (schema[message.op].includes('enrollmentId')) return full(args.enrollmentId, /^enr_[A-Za-z0-9_-]{43}$/) && Buffer.from(args.enrollmentId.slice(4), 'base64url').toString('base64url') === args.enrollmentId.slice(4);
   return true;
@@ -46,9 +54,13 @@ function stopWithoutReply() {
   shutdown.catch(() => {}); return shutdown;
 }
 async function invoke(op, args) {
-  if (op === 'start') {
+  if (op === 'start' || op === 'startStreaming') {
     startAccepted = true;
-    starting = startEnrollmentHttpsFixture(args); fixture = await starting;
+    starting = op === 'start' ? startEnrollmentHttpsFixture(args) : (async () => {
+      const { startEnrollmentStreamFixture } = await import('./companion-enrollment-stream.mjs');
+      return startEnrollmentStreamFixture(args);
+    })();
+    fixture = await starting;
     return fixture.metadata().material();
   }
   if (!fixture) throw Object.assign(Error(), { code: 'pairing_unavailable' });
@@ -58,6 +70,10 @@ async function invoke(op, args) {
   if (op === 'approve') return (await fixture.approve(args.enrollmentId)).material();
   if (['reject', 'revoke', 'readResult'].includes(op)) return fixture[op](args.enrollmentId).material();
   if (op === 'dropNextApprovedStatus') { fixture.dropNextApprovedStatus(); return { armed: true }; }
+  if (op === 'inspectEnrollment') {
+    if (typeof fixture.inspectEnrollment !== 'function') throw Object.assign(Error(), { code: 'pairing_unavailable' });
+    return fixture.inspectEnrollment(args.enrollmentId);
+  }
   return fixture.snapshot();
 }
 function receive(message) {
@@ -69,7 +85,8 @@ function receive(message) {
   if (size > 16384) { refuse('message_too_large'); return; }
   if (!valid(message)) { refuse('invalid_message'); return; }
   if (pending.has(safeId)) { refuse('invalid_message'); return; }
-  if (closing || (message.op === 'start' ? startAccepted : !startAccepted)) { refuse('pairing_unavailable'); return; }
+  const starts = message.op === 'start' || message.op === 'startStreaming';
+  if (closing || (starts ? startAccepted : message.op !== 'close' && !startAccepted)) { refuse('pairing_unavailable'); return; }
   if (message.op !== 'close' && pending.size >= 3) { refuse('pairing_limit'); return; }
   if (message.op === 'close') closing = true;
   // Register before invoking any asynchronous owner; a refusal never deletes another request's slot.
@@ -81,8 +98,14 @@ function receive(message) {
       let result;
       if (message.op === 'close') {
         await starting?.catch(() => null);
-        if (!fixture) throw Object.assign(Error(), { code: 'pairing_unavailable' });
-        result = await fixture.close();
+        if (!fixture) {
+          // Invalid configuration never started any fixture/issuer. Close admission and
+          // attest that distinct state; an attempted but failed start still cannot do so.
+          if (startAccepted) throw Object.assign(Error(), { code: 'pairing_unavailable' });
+          result = { initializationAttempted: false, closed: true,
+            admissionClosed: true, listenersClosed: true, storeClosed: true, issuerChildrenJoined: true,
+            activeSockets: 0, pendingCallbacks: 0, pendingTimers: 0, issuerJobs: 0, signerGroups: 0, workers: 0 };
+        } else result = await fixture.close();
         await Promise.allSettled([...pending].filter(([id]) => id !== safeId).map(([, task]) => task));
         await Promise.allSettled([...sends]);
       } else result = await invoke(message.op, message.args);
