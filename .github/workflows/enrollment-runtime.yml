@@ -199,6 +199,27 @@ jobs:
           fi
           export ANDROID_SERIAL=emulator-5554
           printf 'Booted enrollment emulator API=%s\n' "$actual_api"
+          # BEGIN A22 FRESH AVD CLOCK ALIGNMENT
+          align_enrollment_clock() {
+            local clock_uid automatic_time host_time
+            timeout --kill-after=1s 10s adb -s emulator-5554 root >/dev/null || return "$?"
+            timeout --kill-after=1s 30s adb -s emulator-5554 wait-for-device >/dev/null || return "$?"
+            clock_uid="$(timeout --kill-after=1s 10s adb -s emulator-5554 shell id -u)" || return "$?"
+            if [[ "${clock_uid//$'\r'/}" != 0 ]]; then return 1; fi
+            timeout --kill-after=1s 10s adb -s emulator-5554 shell settings put global auto_time 0 >/dev/null || return "$?"
+            automatic_time="$(timeout --kill-after=1s 10s adb -s emulator-5554 shell settings get global auto_time)" || return "$?"
+            if [[ "${automatic_time//$'\r'/}" != 0 ]]; then return 1; fi
+            host_time="$(date +%s.%N)" || return "$?"
+            if [[ ! "$host_time" =~ ^[0-9]{10}\.[0-9]{9}$ ]]; then return 1; fi
+            timeout --kill-after=1s 10s adb -s emulator-5554 shell /system/bin/toybox date -u "@$host_time" >/dev/null || return "$?"
+            timeout --kill-after=1s 10s adb -s emulator-5554 unroot >/dev/null || return "$?"
+            timeout --kill-after=1s 30s adb -s emulator-5554 wait-for-device >/dev/null || return "$?"
+            clock_uid="$(timeout --kill-after=1s 10s adb -s emulator-5554 shell id -u)" || return "$?"
+            if [[ "${clock_uid//$'\r'/}" != 2000 ]]; then return 1; fi
+            echo 'Fresh AVD clock alignment completed; ordinary ADB shell restored.'
+          }
+          # END A22 FRESH AVD CLOCK ALIGNMENT
+          align_enrollment_clock
           started="$(date +%s)"
           if node tools/transport-spike/run-enrollment-runtime.mjs --serial emulator-5554; then driver_status=0; else driver_status=$?; fi
           if cleanup "$driver_status"; then
