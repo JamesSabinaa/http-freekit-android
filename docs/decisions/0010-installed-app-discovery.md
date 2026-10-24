@@ -1,0 +1,17 @@
+# Installed-app discovery for selected-app debugging
+
+Status: implementation in progress; no VPN routing or capture claim.
+
+The selected-app workflow must let a developer choose an installed application even if it has no launcher activity. B3 therefore uses `PackageManager.getInstalledApplications` for the current Android user/profile, with `QUERY_ALL_PACKAGES` visibility. A launcher-intent query would omit legitimate development targets. The companion itself and disabled applications are excluded. Other profiles, packages removed with retained data, and arbitrary remote inventories are outside this local list.
+
+[Android's package visibility guidance](https://developer.android.com/training/package-visibility/declaring) documents the broad visibility permission. It is declared for this debugging function, not as an assumption of store approval. [PackageManager](https://developer.android.com/reference/android/content/pm/PackageManager) defines the current-user query and the API 33 flags overload. The development filter uses the installed application's [`FLAG_DEBUGGABLE`](https://developer.android.com/reference/android/content/pm/ApplicationInfo#FLAG_DEBUGGABLE); it does not assert that an app trusts user certificate authorities or permits interception.
+
+Lint's `QueryAllPackagesPermission` check normally recommends a narrower queries declaration. The user explicitly approved a documented exception for full installed-app selection. The manifest suppresses this single issue on this permission declaration only; the app's remaining lint checks and warnings-as-errors remain enabled. A fixed list of queries or launcher-intent visibility cannot provide the intended arbitrary installed development-app list.
+
+Discovery runs on a background worker only after the user chooses installed apps or requests refresh. The activity does not own the worker. An activity-scoped ViewModel retains selections across rotation, and stale refresh completions cannot overwrite a different catalog or newer request. A successful refresh removes unavailable selections; an unsuccessful refresh preserves the previous list and selections. Name/package search and the development filter affect visibility without clearing selections. App inventory stays in process memory and is not logged, transmitted or saved to disk.
+
+Sample apps remain a separate catalog with separate selections. Existing sample walkthroughs and screenshots stay synthetic. The installed-app screen continues to disclose that capture is unimplemented; selecting real packages does not start a VPN, grant consent or mark traffic as captured. Selection changes remain unavailable during an active simulated connection.
+
+F's independent non-launcher fixture APK will test actual visibility, filtering, selection and refresh on API 26 and 37. The fixture must not be the app's instrumentation package: instrumentation-target visibility could otherwise mask a missing manifest declaration. Test output must avoid app inventory and retain only fixed fixture assertions. Unit checks cover asynchronous request ordering, filtering and selection transitions; compiled instrumentation alone does not prove device behavior.
+
+This decision changes Android package visibility only. It does not change protocol revision 0.3, TLS identity, desktop authorization, selected-app VPN routing policy or the production integration gate.
