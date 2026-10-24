@@ -1,0 +1,33 @@
+# Draft control/stream codecs and lifecycle
+
+Status: A19 implements [draft revision 0.3](../protocol-streams.md) independently in Kotlin and Node against a shared, independently authored conformance corpus. This is model/codec evidence, not a production protocol freeze, authenticated streaming adapter, registry or VPN implementation.
+
+## Wire and ownership decisions
+
+Keep one authenticated control session and one authenticated WebSocket per proxy flow. The control response negotiates bounded capabilities/limits and supplies a short-lived device-bound session header. Application JSON never supplies an arbitrary upstream address. Actual TLS, registry authorization, Origin policy and the configured proxy connection remain adapter responsibilities.
+
+Accept standard JSON whitespace, property order and escapes. Reject invalid UTF-8/BOM, duplicate or escape-equivalent members, excessive depth/members/key tokens, unknown fields, non-integer numeric spellings and invalid schema before interpreting the protocol version. A narrow canonical-byte restriction was considered but would reject otherwise valid JSON solely to simplify parsing. Instead, each implementation has a bounded structural/duplicate guard before its established JSON parser; deterministic encoding is an output convention, not an input restriction. Neither implementation claims general JCS canonicalization.
+
+Typed directional `end_write` follows earlier proxy bytes while opposite traffic continues. Queued and local-writer-in-flight bytes stay charged until positive writer acknowledgement. EOF effects wait for that direction's queued bytes to drain. A bounded defensive peek spans message boundaries; message boundaries remain accounting units rather than proxy-byte semantics. Frame-count, byte, concurrent-slot, session and stream-ID history ceilings bound model-owned data and metadata. Backpressure accepts no bytes and extends no progress/deadline.
+
+Separate observing WebSocket closure from confirming actual socket/buffer/writer cleanup. Cancellation, failure and expiry stop forwarding but retain their leases until cleanup confirmation. Normal completion requires both ordered EOF effects, empty queues, a normal WebSocket close and actual resource confirmation while the session remains valid. A timeout or cancellation flag cannot count as joined writers or released real sockets. Repeated confirmation releases at most once, including when time validation fails.
+
+Use injected UTC and controller-relative monotonic clocks. Monotonic observation detects rollback even on a backpressured call; UTC rollback cannot extend an already established lifetime. Every operational method checks session/stream deadlines, while snapshots are inert. The appendix fixes combined-defect precedence so identity, expiry, capability negotiation and capacity cannot be interpreted differently by the two peers.
+
+## Independent implementations and corpus
+
+- Kotlin [codec](../../core-protocol/src/main/kotlin/com/httpfreekit/protocol/DraftWireCodec.kt) and [lifecycle/budgets](../../core-protocol/src/main/kotlin/com/httpfreekit/protocol/DraftLifecycle.kt) are pure JVM code with no socket, timer or registry. Existing pairing parsing and app wiring are unchanged.
+- Node [codec](../../tools/transport-spike/companion-protocol-codec.mjs) and [reference lifecycle](../../tools/transport-spike/companion-protocol-lifecycle.mjs) use builtins and no new dependency or production endpoint. Message material is opaque/redacted by default; explicit encoding/header access supplies intended wire material.
+- F authored [142 codec cases and 73 lifecycle traces](../../protocol/fixtures/a19-draft-0.3/README.md), covering 704 operations. Neither producer computes actual outcomes from expectations. Its bounded validator checks format, payload descriptors, references and resource/EOF invariants; a separate comparator verifies every actual result against the corpus and the other implementation.
+
+The committed corpus digest is `2cfd77c90074facfc1a33c362da46ae3d88d9629a7196f239b4b1814b0b7fab3`. It frames the exact LF bytes of `codec.json`, `lifecycle.json` and `manifest.json` with filename/NUL separators. Manifest IDs are ordered and must execute exactly once. Reports contain actual normalized messages, effects, snapshots and synthetic peek bytes, capped at 16 MiB; console summaries omit payloads. Both implementations accept/reject all corpus cases identically.
+
+Review found and fixed a concrete JavaScript anchoring difference: `$` can match before a final newline, so schema regex matches now require full consumption, including escaped LF/CRLF identifier/capability cases. Local support sets are bounded, unique and defensive; empty local support is allowed but cannot activate traffic without an implemented HTTP/CONNECT feature. These checks do not weaken wire capability requirements.
+
+## Local validation and limits
+
+Combined Windows/JDK-17 validation passes 131 JVM cases: 19 app, 50 protocol and 62 security, with zero failures/errors/skips. Node 24.22.1 with local OpenSSL 3.6.1 passes 70 cases: five existing peer, twenty-nine result/ownership and thirty-six new protocol/reference/adapter cases. All 44 Python script regressions pass (fifteen Keystore-result, sixteen corpus-format, thirteen independent-comparison), along with nine documentation-checker tests, strict app/security/research lint, debug app assembly and compilation of all three instrumentation APKs. Reproduction commands are in [validation](../validation.md#draft-protocol-conformance).
+
+The root-generated Kotlin and Node reports independently match all 142/73/704 outcomes and each other. Deleting only the declared Kotlin report causes ordinary `:core-protocol:test` to rerun and regenerate byte-identical evidence; no unconditional rerun workaround is needed. Hosted A19 results are recorded separately after actual execution.
+
+The models serialize owner operations and prove explicit interleavings, not real multithreaded backpressure or total-process-memory bounds. A local `resources_closed` event is a trusted adapter assertion; it performs no cleanup itself. The existing 64 KiB Android/Node echo and native framed-SOCKS proof did not exercise this new session grammar. Next, prove gated request prefixes, ordered request EOF followed by a streaming response, bounded network queues, cancellation/expiry and actual writer/socket cleanup over authenticated WSS using the real Android credential. Enrollment approval/reservation/recovery/revocation, certificate/session lifetime composition, actual desktop proxy policy, selected-app/protected-socket/DNS/UDP capture and physical-network acceptance remain open. Full v1 stays draft.
