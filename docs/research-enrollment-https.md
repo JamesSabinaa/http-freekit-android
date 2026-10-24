@@ -8,7 +8,7 @@ Root owns this profile, board, new enrollment runtime driver/input helpers and t
 
 ## HTTP and TLS
 
-Two listeners bind only 127.0.0.1: setup HTTPS without a device certificate, and a separate mTLS credential-admission probe. Both use the same pinned gateway identity, TLS 1.2 or later and DNS-only SNI/name. The probe requires provider validation against the enrollment authority plus current exact-leaf Store authorization on every request. Disable research-probe TLS session caching/tickets and verify the exact presented leaf.
+Two listeners bind only 127.0.0.1: setup HTTPS without a device certificate, and a separate mTLS credential-admission probe. Both use the same pinned gateway identity, TLS 1.2 or later and DNS-only SNI/name. The probe requires provider validation against the enrollment authority plus current exact-leaf Store authorization on every request. Refuse probe session resumption: use SSL_OP_NO_TICKET, retain no session cache and decline resumeSession data. TLS 1.3 may still emit unresumable stateful tickets; do not claim zero ticket emission. Host tests offer prior sessions and require isSessionReused() false plus revalidation of the exact presented leaf.
 
 Host is exactly logicalName + ":" + listenerPort. Reserve equal explicit device/host ADB reverse ports with --no-rebind, fail collisions without replacing prior mappings, and remove only successful registrations owned by this run. Worker restart must rebind the same two ports; it cannot silently change endpoints.
 
