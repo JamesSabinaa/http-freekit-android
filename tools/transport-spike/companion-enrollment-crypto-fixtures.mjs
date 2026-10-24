@@ -35,11 +35,11 @@ export function createCryptoFixture({ utcMillis = defaultTime } = {}) {
     notBefore = utcMillis - (ca ? 86400000 : 300000), notAfter = utcMillis + (ca ? 86400000 : 3600000),
     basic = Buffer.from(ca ? '30060101ff020100' : '3000', 'hex'), usage = Buffer.from(ca ? '03020106' : '03020780', 'hex'),
     basicCritical = true, usageCritical = true, eku = Buffer.from('300a06082b06010505070302', 'hex'), ekuCritical = false,
-    extraExtensions = [], algorithm = alg } = {}) {
+    extraExtensions = [], algorithm = alg, beforeDer, afterDer } = {}) {
     const extensions = [extension('551d13', basic, basicCritical), extension('551d0f', usage, usageCritical),
       ...(eku === null ? [] : [extension('551d25', eku, ekuCritical)]), ...extraExtensions];
     const info = seq(Buffer.from('a003020102', 'hex'), integer(serial), algorithm, issuer,
-      seq(time(notBefore), time(notAfter)), subject, publicDer(key), tlv(163, seq(...extensions)));
+      seq(beforeDer ?? time(notBefore), afterDer ?? time(notAfter)), subject, publicDer(key), tlv(163, seq(...extensions)));
     return seq(info, algorithm, tlv(3, Buffer.concat([Buffer.of(0), sign('sha256', info, signer.privateKey)])));
   }
   return { authority, device, other, publicDer, csr, certificate, extension, utcMillis,

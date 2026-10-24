@@ -107,6 +107,7 @@ export function validateEnrollmentCsr(value) {
   });
 }
 function time(node) {
+  if (node.content.some(octet => octet > 127)) fail();
   const text = node.content.toString('ascii'); let iso;
   if (node.tag === 23 && /^[0-9]{12}Z$/.test(text)) {
     const year = Number(text.slice(0, 2)); if (year >= 50) fail();

@@ -94,6 +94,8 @@ test('canonical 2050 GeneralizedTime is accepted and bad ranges fail', () => {
   validateEnrollmentAuthority(future.caDer);
   validateEnrollmentCertificate(future.certificate(), { authority: future.caDer, utcMillis: future.utcMillis });
   reject(() => leaf({ notBefore: f.utcMillis + 1 }));
+  const highBitTime = Buffer.from('300101235500Z'); highBitTime[0] |= 128;
+  reject(() => leaf({ beforeDer: tlv(23, highBitTime) }));
 });
 test('duplicate extensions and unknown critical extensions fail; bounded noncritical extension survives', () => {
   const custom = f.extension('2a030405', tlv(4, Buffer.from('opaque')), false);
