@@ -1,6 +1,6 @@
 # Companion protocol draft
 
-Status: proposed v1, not frozen or implemented. Package A must prove interoperability and record a freeze decision before production integration depends on these fields. This document is canonical across the Android and desktop repositories. Change the protocol version for incompatible wire changes.
+Status: proposed v1, not frozen or integrated in production. Draft control/stream codecs and models are implemented separately from production wire integration. Package A must prove interoperability and record a freeze decision before production integration depends on these fields. This document is canonical across the Android and desktop repositories. Change the protocol version for incompatible wire changes.
 
 Draft revision 0.2 adds an optional `gatewayCertificateDer` invitation field for native platform trust bootstrap. This additive draft change preserves parsing of older pin-only invitations for review; those invitations are insufficient to start the new native enrollment path. Newly generated desktop invitations must include the public certificate. Whether it becomes mandatory in the frozen schema remains a foundation decision. No production enrollment client or gateway is integrated yet.
 
