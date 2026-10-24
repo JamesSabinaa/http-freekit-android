@@ -36,6 +36,8 @@ Assembling the app and security module's Android instrumentation APKs checks com
 
 Unit-test/lint reports and resolved dependency inventories are retained for seven days, including on failed builds when reports exist. The upload paths exclude `dist/`, APK outputs, signing material, and the temporary TLS identities created by the host test. A green workflow establishes only these host checks; Android installation, UI behavior, Keystore use, VPN packet forwarding on Android, and physical-network acceptance remain independent evidence requirements. Workflow syntax is checked locally with actionlint; execution evidence is recorded separately. A hosted run is not claimed until its actual run result is recorded.
 
+The host artifact includes app JVM XML under `app/build/test-results/testDebugUnitTest/`, alongside protocol/security XML and the HTML reports, so individual cases can be audited directly.
+
 The separate Linux native-engine job checks the fixtures, fetches HevSocks5Tunnel root commit `c0dfc4b07baa5e48022f5f88ac90488601f05674` and its pinned submodules, then executes the worker. Reproduce both checks with:
 
 ```sh
@@ -70,6 +72,10 @@ Both jobs used emulator 37.2.12.0 (build 16428233), reported KVM version 12 usab
 ## Preview runtime evidence
 
 The separate [preview runtime workflow and evidence](android-preview-runtime.md) cover the actual sample-only `MainActivity` UI, simulated consent, Stop, and rotation. Its first hosted run passed four tests on API 26 and produced a visually reviewed sample PNG. API 37 booted but failed in Espresso initialization before any test body ran; that compatibility failure remains open. Neither result establishes real Android permissions, VPN service behavior, or capture.
+
+## Manual Android-to-Node transport workflow
+
+The separate manual [Android-to-Node transport workflow](android-transport-runtime.md) is prepared for A5's isolated Keystore/TLS/Node experiment. Its loopback fixture and ADB reverse mappings do not establish physical USB capture or a production gateway. Runtime evidence remains pending until the integrated experiment executes on both emulator APIs.
 
 ## Dependency and licence evidence
 

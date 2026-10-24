@@ -120,6 +120,7 @@ jobs:
           if-no-files-found: warn
           path: |
             app/build/reports/tests/
+            app/build/test-results/testDebugUnitTest/
             app/build/reports/lint-results-debug.*
             core-protocol/build/reports/tests/
             core-protocol/build/test-results/test/
