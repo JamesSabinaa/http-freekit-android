@@ -120,6 +120,12 @@ fun PreviewApp(state: PreviewState, onAction: (PreviewAction) -> Unit, onInvitat
                             )
                         }
                     }
+                    Text(
+                        stringResource(R.string.preview_banner),
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
                 }
             },
         ) { padding ->
@@ -128,13 +134,6 @@ fun PreviewApp(state: PreviewState, onAction: (PreviewAction) -> Unit, onInvitat
                 contentPadding = PaddingValues(24.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                item {
-                    Text(
-                        stringResource(R.string.preview_banner),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                }
                 when (PreviewPage.valueOf(page)) {
                     PreviewPage.HOME -> {
                         item { SessionCard(state, onAction) { page = PreviewPage.APPS.name } }
