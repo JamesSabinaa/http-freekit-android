@@ -3,6 +3,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import re
 import sys
 
 
@@ -53,11 +54,12 @@ def require_envelope(value, kind):
 def ids(value):
     if not isinstance(value, list) or not 1 <= len(value) <= MAX_CASES:
         raise InvalidConformance("Missing or excessive case IDs")
-    if any(not isinstance(item, str) or not 1 <= len(item) <= 128 or
-           any(ord(character) < 33 or ord(character) > 126 for character in item) for item in value):
+    if any(not isinstance(item, str) or re.fullmatch(r"[a-z][a-z0-9-]{0,79}", item) is None for item in value):
         raise InvalidConformance("Invalid case ID")
     if len(set(value)) != len(value):
         raise InvalidConformance("Duplicate case ID")
+    if value != sorted(value):
+        raise InvalidConformance("Case IDs are not in manifest order")
     return value
 
 
@@ -80,7 +82,12 @@ def corpus(directory):
     require_envelope(manifest, "manifest")
     require_envelope(codec, "codec")
     require_envelope(lifecycle, "lifecycle")
+    if set(manifest) != {"format", "revision", "kind", "codecIds", "lifecycleIds"} or any(
+            set(envelope) != {"format", "revision", "kind", "cases"} for envelope in (codec, lifecycle)):
+        raise InvalidConformance("Unexpected corpus envelope fields")
     manifest_ids = {"codec": ids(manifest.get("codecIds")), "lifecycle": ids(manifest.get("lifecycleIds"))}
+    if set(manifest_ids["codec"]) & set(manifest_ids["lifecycle"]):
+        raise InvalidConformance("Case IDs overlap between corpus kinds")
     expected = {}
     for kind, envelope in (("codec", codec), ("lifecycle", lifecycle)):
         cases = envelope.get("cases")

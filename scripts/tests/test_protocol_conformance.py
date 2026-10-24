@@ -28,25 +28,26 @@ class ProtocolComparisonTest(unittest.TestCase):
         self.corpus = self.directory / "corpus"
         self.corpus.mkdir()
         self.codec = envelope("codec", cases=[
-            {"id": "hello", "channel": "control", "input": {"wireHex": "7b7d"},
+            {"id": "codec-hello", "channel": "control", "input": {"wireHex":
+                b'{"capabilities":["tcp-http"],"protocolVersion":1,"requiredCapabilities":[],"type":"hello"}'.hex()},
              "expect": {"code": "ok", "message": {"protocolVersion": 1, "type": "hello",
                          "capabilities": ["tcp-http"], "requiredCapabilities": []}}},
-            {"id": "bad-utf8", "channel": "control", "input": {"wireHex": "ff"},
+            {"id": "codec-invalid-utf8", "channel": "control", "input": {"wireHex": "ff"},
              "expect": {"code": "invalid_message"}},
         ])
         self.lifecycle = envelope("lifecycle", cases=[
-            {"id": "retained-cancellation", "steps": [
+            {"id": "life-cancel-retained", "steps": [
                 {"op": "cancel", "expect": {"code": "ok", "effects": [],
                  "snapshot": {"phase": "cancelled", "chargedBytes": 3, "streamLease": True}}},
                 {"op": "resources_closed", "expect": {"code": "ok", "effects": [],
                  "snapshot": {"phase": "cancelled", "chargedBytes": 0, "streamLease": False}}},
             ]},
-            {"id": "empty-peek", "steps": [
+            {"id": "life-empty-peek", "steps": [
                 {"op": "peek", "expect": {"code": "ok", "effects": [], "peekHex": "", "snapshot": {}}},
             ]},
         ])
-        self.manifest = envelope("manifest", codecIds=["hello", "bad-utf8"],
-                                 lifecycleIds=["retained-cancellation", "empty-peek"])
+        self.manifest = envelope("manifest", codecIds=["codec-hello", "codec-invalid-utf8"],
+                                 lifecycleIds=["life-cancel-retained", "life-empty-peek"])
         for name, value in (("codec.json", self.codec), ("lifecycle.json", self.lifecycle),
                             ("manifest.json", self.manifest)):
             self.write(self.corpus / name, value)
@@ -160,9 +161,9 @@ class ProtocolComparisonTest(unittest.TestCase):
                 self.reject()
 
     def test_corpus_manifest_or_missing_independent_expectations_cannot_pass(self):
-        for name, value in (("manifest.json", {**self.manifest, "codecIds": ["hello", "hello"]}),
-                            ("codec.json", {**self.codec, "cases": [{"id": "hello"}, {"id": "bad-utf8"}]}),
-                            ("lifecycle.json", {**self.lifecycle, "cases": [{"id": "retained-cancellation", "steps": []},
+        for name, value in (("manifest.json", {**self.manifest, "codecIds": ["codec-hello", "codec-hello"]}),
+                            ("codec.json", {**self.codec, "cases": [{"id": "codec-hello"}, {"id": "codec-invalid-utf8"}]}),
+                            ("lifecycle.json", {**self.lifecycle, "cases": [{"id": "life-cancel-retained", "steps": []},
                                                                            self.lifecycle["cases"][1]]})):
             with self.subTest(name=name):
                 self.write(self.corpus / name, value)
@@ -170,6 +171,23 @@ class ProtocolComparisonTest(unittest.TestCase):
                     self.verify()
                 original = {"manifest.json": self.manifest, "codec.json": self.codec, "lifecycle.json": self.lifecycle}[name]
                 self.write(self.corpus / name, original)
+
+    def test_manifest_order_cross_kind_unique_ids_and_exact_envelopes_are_required(self):
+        for mode in ("unsorted", "cross-kind-duplicate", "extra-field", "invalid-id"):
+            with self.subTest(mode=mode):
+                changed = copy.deepcopy(self.manifest)
+                if mode == "unsorted":
+                    changed["codecIds"].reverse()
+                elif mode == "cross-kind-duplicate":
+                    changed["lifecycleIds"][0] = changed["codecIds"][0]
+                elif mode == "extra-field":
+                    changed["unexpected"] = True
+                else:
+                    changed["codecIds"][0] = "DO_NOT_PRINT\nPRIVATE"
+                self.write(self.corpus / "manifest.json", changed)
+                with self.assertRaises(comparison.InvalidConformance):
+                    self.verify()
+        self.write(self.corpus / "manifest.json", self.manifest)
 
     def test_missing_invalid_duplicate_member_and_nonfinite_reports_are_rejected(self):
         path = self.directory / "node.json"
