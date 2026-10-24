@@ -46,7 +46,7 @@ class DraftStreamingInteropTest {
         val stream = context.owner.open()
         phase = "paused-proxy-actual-write"
         stream.produce(DraftStreamingOwner.BURST)
-        context.awaitProxyBackpressure()
+        context.awaitProxyBackpressure(stream)
         phase = "paused-android-actual-write"
         stream.observedBlockedWriter(retainPressureFailure = true)
         val before = stream.snapshot()
@@ -70,7 +70,7 @@ class DraftStreamingInteropTest {
         val stream = context.owner.open()
         phase = "cancel-proxy-actual-write"
         stream.produce(DraftStreamingOwner.BURST)
-        context.awaitProxyBackpressure()
+        context.awaitProxyBackpressure(stream)
         phase = "cancel-android-actual-write"
         stream.observedBlockedWriter(retainPressureFailure = true)
         val outstanding = stream.writeInFlight.get()
@@ -96,7 +96,7 @@ class DraftStreamingInteropTest {
         val stream = context.owner.open()
         phase = "expiry-proxy-actual-write"
         stream.produce(DraftStreamingOwner.BURST)
-        context.awaitProxyBackpressure()
+        context.awaitProxyBackpressure(stream)
         phase = "expiry-android-actual-write"
         stream.observedBlockedWriter(retainPressureFailure = true)
         check(context.owner.expiresAtMillis > System.currentTimeMillis()) { "Writer was not observed before expiry" }
@@ -229,24 +229,43 @@ class DraftStreamingInteropTest {
     private class Context(val fixture: DraftStreamingFixture, val credential: DraftStreamingFixture.Credential,
         val owner: DraftStreamingOwner) {
         val token = owner.token()
-        fun probe() = DraftStreamingProbe.read(fixture, credential, token)
+        fun probe(): DraftStreamingProbe {
+            val started = System.nanoTime()
+            val probe = DraftStreamingProbe.read(fixture, credential, token)
+            val received = System.nanoTime()
+            owner.rememberPeerProbe(probe, received, (received - started) / 1_000_000)
+            return probe
+        }
         fun command(command: String) = DraftStreamingProbe.command(fixture, credential, token, command)
         fun awaitProbe(predicate: (DraftStreamingProbe) -> Boolean): DraftStreamingProbe {
             var last: DraftStreamingProbe? = null
             draftAwait("bounded synthetic peer observation", 15000) { probe().also { last = it }.let(predicate) }
             return checkNotNull(last)
         }
-        fun awaitProxyBackpressure(): DraftStreamingProbe {
+        fun awaitProxyBackpressure(stream: DraftStreamingOwner.Stream): DraftStreamingProbe {
             var candidate = 0L
             var since = 0L
-            return awaitProbe {
-                val entry = it.number("io", "proxyWriteEntries")
-                val observed = it.boolean("fixture", "proxyReadPaused") && it.boolean("io", "proxyWritePending") &&
-                    entry > it.number("io", "proxyWriteCompletions") &&
-                    it.number("io", "pendingIngressBytes") in 1..4096 && it.number("io", "backpressureCount") > 0 &&
-                    it.number("control", "chargedBytes") in 1..16384
-                if (!observed || candidate != entry) { candidate = entry; since = System.nanoTime() }
-                observed && System.nanoTime() - since >= 250_000_000
+            var longestCandidateMillis = 0L
+            var seenPredicateMask = 0
+            val waitStartUtc = System.currentTimeMillis()
+            val waitStartElapsed = (System.nanoTime() - owner.readyAtNanos) / 1_000_000
+            try {
+                return awaitProbe {
+                    val entry = it.number("io", "proxyWriteEntries")
+                    val observed = it.boolean("fixture", "proxyReadPaused") && it.boolean("io", "proxyWritePending") &&
+                        entry > it.number("io", "proxyWriteCompletions") &&
+                        it.number("io", "pendingIngressBytes") in 1..4096 && it.number("io", "backpressureCount") > 0 &&
+                        it.number("control", "chargedBytes") in 1..16384
+                    if (entry > it.number("io", "proxyWriteCompletions")) seenPredicateMask = seenPredicateMask or 1
+                    if (it.number("io", "pendingIngressBytes") in 1..4096) seenPredicateMask = seenPredicateMask or 2
+                    if (it.number("control", "chargedBytes") in 1..16384) seenPredicateMask = seenPredicateMask or 4
+                    if (!observed || candidate != entry) { candidate = entry; since = System.nanoTime() }
+                    if (observed) longestCandidateMillis = maxOf(longestCandidateMillis, (System.nanoTime() - since) / 1_000_000)
+                    observed && System.nanoTime() - since >= 250_000_000
+                }
+            } catch (failure: Exception) {
+                stream.reportPressureFailure("proxy", waitStartUtc, waitStartElapsed, longestCandidateMillis, seenPredicateMask)
+                throw failure
             }
         }
         fun assertProxyUpload(length: Int) {

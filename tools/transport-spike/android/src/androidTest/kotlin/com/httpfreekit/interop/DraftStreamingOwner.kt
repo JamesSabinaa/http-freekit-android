@@ -16,6 +16,7 @@ import java.security.MessageDigest
 import java.util.Collections
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
@@ -38,6 +39,8 @@ internal class DraftStreamingOwner(
     private val workers = DraftStreamingWorkers { abort() }
     private val closed = AtomicBoolean(false)
     private val abortFailed = AtomicBoolean(false)
+    private val pressureReported = AtomicBoolean(false)
+    private val peerPressure = AtomicReference<PressurePeerSample?>()
     val expiresAtMillis: Long
     var readyAtUtcMillis: Long = 0
         private set
@@ -113,6 +116,17 @@ internal class DraftStreamingOwner(
     fun token(): String = lock.withLock { checkNotNull(model.sessionHeader()) }
     fun snapshot() = lock.withLock { model.snapshot() }
     fun budget() = pool.snapshot()
+
+    /** Keep selected immutable diagnostics from an already completed, validated request only. */
+    fun rememberPeerProbe(probe: DraftStreamingProbe, receivedNanos: Long, probeElapsedMillis: Long) {
+        peerPressure.set(PressurePeerSample((receivedNanos - readyAtNanos) / 1_000_000, probeElapsedMillis,
+            probe.number("io", "proxyWriteEntries"), probe.number("io", "proxyWriteCompletions"),
+            probe.boolean("io", "proxyWritePending"), probe.number("io", "pendingIngressBytes"),
+            probe.number("io", "backpressureCount"), checkNotNull(probe.phase("control")), probe.cause("control"),
+            probe.phase("stream") ?: "unobserved", probe.cause("stream"),
+            probe.number("control", "chargedBytes"), probe.boolean("fixture", "proxyReadPaused"),
+            probe.number("fixture", "uploadBytesRead")))
+    }
 
     fun open(): Stream {
         lock.withLock { check(streams.size < 8 && !closed.get()) { "Research stream admission exceeded" } }
@@ -442,27 +456,41 @@ internal class DraftStreamingOwner(
                     observed && System.nanoTime() - since >= 250_000_000
                 }
             } catch (failure: IllegalStateException) {
-                if (retainPressureFailure) {
-                    try {
-                        val failureUtc = System.currentTimeMillis()
-                        val failureElapsed = (System.nanoTime() - readyAtNanos) / 1_000_000
-                        val facts = lock.withLock {
-                            // Read monotonically increasing entered last, so sampled IDs cannot exceed it.
-                            val inFlight = writeInFlight.get()
-                            val completed = writeCompleted.get()
-                            val entered = writeEntered.get()
-                            pressureValues(waitStartUtc, waitStartElapsed, failureUtc, failureElapsed, expiresAtMillis,
-                                model.snapshot(), stream.snapshot(), entered, completed, inFlight, pendingClientBytes.get(),
-                                applicationWritten.get(), producerFinished.get(), owned.stopping.get(), owned.failure.get() != null,
-                                deadlineTicks.get(), expiredDeadlineTicks.get(), longestCandidateMillis, seenPredicateMask)
-                        }
-                        // Binder reporting owns no model lock and performs no additional peer/model operation.
-                        val bundle = Bundle().apply { facts.forEach { (key, value) -> putString(key, value) } }
-                        InstrumentationRegistry.getInstrumentation().sendStatus(3, bundle)
-                    } catch (_: Exception) { /* A reporting failure cannot replace the original failed wait. */ }
-                }
+                if (retainPressureFailure) reportPressureFailure("android", waitStartUtc, waitStartElapsed,
+                    longestCandidateMillis, seenPredicateMask)
                 throw failure
             }
+        }
+
+        fun reportPressureFailure(waitKind: String, waitStartUtc: Long, waitStartElapsed: Long,
+            longestCandidateMillis: Long, seenPredicateMask: Int) {
+            if (!pressureReported.compareAndSet(false, true)) return
+            try {
+                val failureUtc = System.currentTimeMillis()
+                val failureElapsed = (System.nanoTime() - readyAtNanos) / 1_000_000
+                val peer = peerPressure.get()
+                // Getters only: no socket configuration or model operation, and no model lock.
+                val buffers = intArrayOf(
+                    socketBuffer { connection?.raw?.sendBufferSize ?: 0 },
+                    socketBuffer { connection?.raw?.receiveBufferSize ?: 0 },
+                    socketBuffer { application.sendBufferSize }, socketBuffer { application.receiveBufferSize },
+                    socketBuffer { bridge.sendBufferSize }, socketBuffer { bridge.receiveBufferSize })
+                val facts = lock.withLock {
+                    // Read monotonically increasing entered last, so sampled IDs cannot exceed it.
+                    val inFlight = writeInFlight.get()
+                    val completed = writeCompleted.get()
+                    val entered = writeEntered.get()
+                    pressureValues(waitStartUtc, waitStartElapsed, failureUtc, failureElapsed, expiresAtMillis,
+                        model.snapshot(), stream.snapshot(), entered, completed, inFlight, pendingClientBytes.get(),
+                        applicationWritten.get(), producerFinished.get(), owned.stopping.get(), owned.failure.get() != null,
+                        deadlineTicks.get(), expiredDeadlineTicks.get(), longestCandidateMillis, seenPredicateMask,
+                        waitKind, peer, buffers)
+                }
+                // Binder reporting owns no model lock and performs no additional peer/model operation.
+                val bundle = Bundle().apply { facts.forEach { (key, value) -> putString(key, value) } }
+                InstrumentationRegistry.getInstrumentation().sendStatus(3, bundle)
+            } catch (_: Exception) { /* Reporting cannot replace the original failed wait. */ }
+            catch (_: AssertionError) { /* Preserve the failed wait if instrumentation reporting fails. */ }
         }
 
         /** Only these fixed negative cases bypass the established framing writer. */
@@ -532,13 +560,22 @@ internal class DraftStreamingOwner(
         val CAPABILITIES = listOf("tcp-http", "tcp-https-connect")
         val LIMITS = DraftLimits(FRAME, 8192, 16384, 2, 4, 64)
         private val TERMINAL = setOf(DraftStreamPhase.COMPLETE, DraftStreamPhase.CANCELLED, DraftStreamPhase.FAILED)
+        private data class PressurePeerSample(val sampleElapsed: Long, val probeElapsed: Long,
+            val entered: Long, val completed: Long, val pending: Boolean, val ingress: Long, val backpressure: Long,
+            val controlPhase: String, val controlCause: String?, val streamPhase: String, val streamCause: String?,
+            val charged: Long, val paused: Boolean, val uploaded: Long)
+        private fun socketBuffer(read: () -> Int): Int = try {
+            read().takeIf { it in 1..16777216 } ?: 0
+        } catch (_: Exception) { 0 }
         /** Explicit primitive serialization excludes IDs, credentials, payloads and worker error text. */
         private fun pressureValues(waitStartUtc: Long, waitStartElapsed: Long, failureUtc: Long, failureElapsed: Long,
             expiresUtc: Long, control: DraftSessionSnapshot, stream: DraftStreamSnapshot,
             entered: Long, completed: Long, inFlight: Long, pending: Long, applicationWritten: Long,
             producerFinished: Boolean, stopping: Boolean, workerFailed: Boolean, ticks: Long, expiryTicks: Long,
-            longestCandidate: Long, seenMask: Int): Map<String, String> = Collections.unmodifiableMap(linkedMapOf(
-            "draftPressureVersion" to "2",
+            longestCandidate: Long, seenMask: Int, waitKind: String, peer: PressurePeerSample?,
+            buffers: IntArray): Map<String, String> = Collections.unmodifiableMap(linkedMapOf(
+            "draftPressureVersion" to "3",
+            "draftPressureWaitKind" to waitKind,
             "draftPressureWaitStartUtcMillis" to waitStartUtc.toString(),
             "draftPressureWaitStartElapsedMillis" to waitStartElapsed.toString(),
             "draftPressureFailureUtcMillis" to failureUtc.toString(),
@@ -562,6 +599,26 @@ internal class DraftStreamingOwner(
             "draftPressureLocalExpiryTicks" to expiryTicks.toString(),
             "draftPressureLongestCandidateMillis" to longestCandidate.toString(),
             "draftPressureSeenPredicateMask" to seenMask.toString(),
+            "draftPressurePeerSampleElapsedMillis" to (peer?.sampleElapsed ?: -1).toString(),
+            "draftPressurePeerProbeElapsedMillis" to (peer?.probeElapsed ?: -1).toString(),
+            "draftPressurePeerProxyWriteEntered" to (peer?.entered ?: 0).toString(),
+            "draftPressurePeerProxyWriteCompleted" to (peer?.completed ?: 0).toString(),
+            "draftPressurePeerProxyWritePending" to (peer?.pending ?: false).toString(),
+            "draftPressurePeerPendingIngressBytes" to (peer?.ingress ?: 0).toString(),
+            "draftPressurePeerBackpressureCount" to (peer?.backpressure ?: 0).toString(),
+            "draftPressurePeerControlPhase" to (peer?.controlPhase ?: "unobserved"),
+            "draftPressurePeerControlCause" to (peer?.controlCause ?: "null"),
+            "draftPressurePeerStreamPhase" to (peer?.streamPhase ?: "unobserved"),
+            "draftPressurePeerStreamCause" to (peer?.streamCause ?: "null"),
+            "draftPressurePeerChargedBytes" to (peer?.charged ?: 0).toString(),
+            "draftPressurePeerProxyReadPaused" to (peer?.paused ?: false).toString(),
+            "draftPressurePeerUploadBytesRead" to (peer?.uploaded ?: 0).toString(),
+            "draftPressureRawSendBufferBytes" to buffers[0].toString(),
+            "draftPressureRawReceiveBufferBytes" to buffers[1].toString(),
+            "draftPressureApplicationSendBufferBytes" to buffers[2].toString(),
+            "draftPressureApplicationReceiveBufferBytes" to buffers[3].toString(),
+            "draftPressureBridgeSendBufferBytes" to buffers[4].toString(),
+            "draftPressureBridgeReceiveBufferBytes" to buffers[5].toString(),
         ))
         private fun createPair(): Pair<Socket, Socket> {
             val acceptor = ServerSocket()
