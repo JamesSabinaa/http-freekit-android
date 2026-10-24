@@ -43,6 +43,8 @@ Unit-test/lint reports and resolved dependency inventories are retained for seve
 
 The host artifact includes app JVM XML under `app/build/test-results/testDebugUnitTest/`, alongside protocol/security XML and the HTML reports, so individual cases can be audited directly.
 
+[Host run 40095826558](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40095826558) passed at source `89e5914e90f7a9827db52e7855d7191567a46092`. Downloaded XML confirms 69 unique JVM cases: 19 app, 10 protocol, and 40 security, with zero failures, errors, or skips. Its two Node fixture tests also passed, and the research module's strict lint report contains no issues.
+
 The separate Linux native-engine job checks the fixtures, fetches HevSocks5Tunnel root commit `c0dfc4b07baa5e48022f5f88ac90488601f05674` and its pinned submodules, then executes the worker. Reproduce both checks with:
 
 ```sh
@@ -51,6 +53,8 @@ python3 tools/engine-spike/run_linux.py --engine-root .gradle/engine-spike/hev-s
 ```
 
 The runner verifies its source checkout and builds the candidate locally. Its synthetic packet fixtures use a socket pair, a controlled SOCKS adapter, and an explicit-proxy peer. It needs GCC, make, and Python 3, with no sudo, TUN device, network-route changes, SDK, or phone. This isolates native packet-to-stream evidence from Android routing, protected sockets, real desktop proxy integration, and physical-device acceptance. It does not bundle the candidate into the APK or freeze the protocol.
+
+The same hosted run passed 14 Python fixture regressions and the actual native worker's four IPv4/IPv6 HTTP/CONNECT cases. Each transferred 16,421 upload bytes and 32,787 download bytes, with gated streaming and half-close checks, reply SHA-256 `62a22a63bb850ba7b263fccff99e868133570394d36d6ee16fd32e9d7c1a4601`, and the updated return source/destination address checks active. This is Linux synthetic-packet evidence; Android JNI execution and VPN routing remain separate.
 
 ## Manual Keystore runtime workflow
 
@@ -85,7 +89,7 @@ The real Android-local mutual-TLS case passed after fresh keys authorized prehas
 
 ## Preview runtime evidence
 
-The separate [preview runtime workflow and evidence](android-preview-runtime.md) cover the actual sample-only `MainActivity` UI, simulated consent, Stop, and rotation. Run 40095028000 at `ed12db3` passed all four named tests on each API after pinning Espresso 3.7.0; both original sample PNGs were visually inspected. A reported API 37 system status-bar contrast issue remains. These results do not establish real Android permissions, VPN service behavior, or capture.
+The separate [preview runtime workflow and evidence](android-preview-runtime.md) cover the actual sample-only `MainActivity` UI, simulated consent, Stop, and rotation. Run 40095827316 at `89e5914` passed all four named tests on each API; both original sample PNGs were visually inspected and show readable dark system-bar icons on the light background without header/card overlap. It supersedes the earlier API 37 status-bar contrast finding. These results do not establish real Android permissions, VPN service behavior, or capture.
 
 ## Manual Android-to-Node transport workflow
 

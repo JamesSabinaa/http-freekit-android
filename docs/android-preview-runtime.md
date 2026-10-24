@@ -45,11 +45,15 @@ That first API 37 attempt reported four initialization failures and no skips. Al
 
 [Run 40095028000](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40095028000) passed after pinning Espresso 3.7.0, at source commit `ed12db3b02451f67898f4ee19bbb80e1d5f42e5b`. Independent downloaded-XML checks confirmed all four named cases above exactly once on **each** API, with zero failures, errors, or skips. Boot logs identify API 26 / Android 8.0.0 and API 37 / Android 17; both used emulator 37.2.12.0 (build 16428233) and usable KVM version 12.
 
-Both original 1080 by 1920 PNGs were inspected at full size. The fixed banner, simulated ready state, public sample computer, selected-app count, Stop button, and VPN-inactive warning are readable without card overlap or clipping. API 37 has one reported visual issue: white system status-bar clock/icons have low contrast over the light background. The app content and bottom navigation controls remain visible. This observation is limited to the captured portrait frames.
+Both original 1080 by 1920 PNGs were inspected at full size. The fixed banner, simulated ready state, public sample computer, selected-app count, Stop button, and VPN-inactive warning were readable without card overlap or clipping. At that source, API 37 had one reported visual issue: white system status-bar clock/icons had low contrast over the light background.
+
+[Run 40095827316](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40095827316) verified the system-bar correction at source `89e5914e90f7a9827db52e7855d7191567a46092`. Downloaded XML again contains all four named methods exactly once on each API, with zero failures, errors, or skips. Both original 1080 by 1920 PNGs show readable dark status-bar clock/icons on the light background, readable navigation controls, and no header or card overlap. The previous API 37 contrast issue is resolved in these captured frames. This is portrait sample evidence, not a complete theme, physical-device, or accessibility audit.
+
+Latest reviewed PNG checksums from run 40095827316:
 
 | API | Sample PNG SHA-256 |
 | --- | --- |
-| 26 | `5933686107df7ae1c303cec053c93e11e0357f7aafabc9d54a1e4394016d95cc` |
-| 37 | `11a307a63a7e8c09f187006ff9a80323290576827fadab46cea9c93c631beb88` |
+| 26 | `ffd2e0fba61b430c0843f1fafa25f849d36597fdb1728a07b87df55422447730` |
+| 37 | `0f060cd54c52d69551b2e42074f039c4185dcd777f876da1ac3e231d415cfde8` |
 
 [Host run 40093068640](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40093068640) passed at the same source commit, including app instrumentation compilation. Physical-phone layout, accessibility, keyboard behavior, notification Stop, VPN revocation, USB routing, HTTPS interception, and cellular WAN remain unverified.
