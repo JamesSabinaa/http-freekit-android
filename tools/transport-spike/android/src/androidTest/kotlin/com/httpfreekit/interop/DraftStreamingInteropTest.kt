@@ -68,9 +68,10 @@ class DraftStreamingInteropTest {
 
     @Test(timeout = 90000) fun cancelClosesAnObservedBlockedWriterAndJoinsResources() = scenario("cancel") { context ->
         val stream = context.owner.open()
-        phase = "cancel-observe-real-writers"
+        phase = "cancel-proxy-actual-write"
         stream.produce(DraftStreamingOwner.BURST)
         context.awaitProxyBackpressure()
+        phase = "cancel-android-actual-write"
         stream.observedBlockedWriter()
         val outstanding = stream.writeInFlight.get()
         check(outstanding > stream.writeCompleted.get()) { "Cancel writer had already completed" }
@@ -93,9 +94,10 @@ class DraftStreamingInteropTest {
             profile.number("timing", "expiresUtcMillis") - profile.number("timing", "readyUtcMillis") in 30000..31000 &&
             remaining > 0) { "Expiry fixture was not the real thirty-second profile" }
         val stream = context.owner.open()
-        phase = "expiry-observe-real-writers"
+        phase = "expiry-proxy-actual-write"
         stream.produce(DraftStreamingOwner.BURST)
         context.awaitProxyBackpressure()
+        phase = "expiry-android-actual-write"
         stream.observedBlockedWriter()
         check(context.owner.expiresAtMillis > System.currentTimeMillis()) { "Writer was not observed before expiry" }
         phase = "real-session-expiry"
@@ -292,10 +294,32 @@ class DraftStreamingInteropTest {
                 DraftStreamingOwner(fixture, credential, name).use { owner -> run(Context(fixture, credential, owner)) }
             }
         } catch (failure: Exception) {
-            // Provider/JSON/framing exceptions can contain peer material; retain only a fixed stage/type.
-            throw AssertionError("Draft streaming $name failed at $phase (${failure.javaClass.simpleName})")
+            throw sanitizedFailure(name, failure)
         } catch (failure: AssertionError) {
-            throw AssertionError("Draft streaming $name failed at $phase (${failure.javaClass.simpleName})")
+            throw sanitizedFailure(name, failure)
         }
+    }
+
+    private fun sanitizedFailure(name: String, failure: Throwable): AssertionError {
+        // Never retain provider messages/causes. Keep only bounded compiled research source sites.
+        val result = AssertionError("Draft streaming $name failed at $phase (${failure.javaClass.simpleName})")
+        val classes = mapOf(
+            "DraftStreamingFixture.kt" to setOf("DraftStreamingFixture", "DraftStreamingFixtureKt", "DraftStreamingTls", "DraftStreamingClock", "DraftStreamingWorkers"),
+            "DraftStreamingOwner.kt" to setOf("DraftStreamingOwner"),
+            "DraftStreamingProbe.kt" to setOf("DraftStreamingProbe"),
+            "DraftStreamingInteropTest.kt" to setOf("DraftStreamingInteropTest"),
+        )
+        val retained = failure.stackTrace.asSequence().take(128).filter { frame ->
+            val root = frame.className.substringBefore('$')
+            root.startsWith("com.httpfreekit.interop.") &&
+                root.removePrefix("com.httpfreekit.interop.") in classes[frame.fileName].orEmpty() &&
+                frame.className.matches(Regex("[A-Za-z0-9_.$]{1,256}")) &&
+                frame.methodName.matches(Regex("[A-Za-z0-9_$]{1,128}|<init>|<clinit>")) &&
+                frame.lineNumber in 1..100000
+        }.take(16).map { frame ->
+            StackTraceElement(frame.className, frame.methodName, frame.fileName, frame.lineNumber)
+        }.toList()
+        result.stackTrace = if (retained.isEmpty()) result.stackTrace.take(1).toTypedArray() else retained.toTypedArray()
+        return result
     }
 }
