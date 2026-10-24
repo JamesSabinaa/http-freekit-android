@@ -1,8 +1,8 @@
 # Authenticated draft streaming proof
 
-Status: API 37 passes the seven-case research gate; API 26 writer-observation acceptance remains open. No production wire integration or v1 freeze.
+Status: the strict seven-case research gate is verified on API 26 and API 37 at `d6185fc`. Production enrollment, capture policy, actual desktop integration and protocol v1 freeze remain open.
 
-A19 proves the draft revision 0.3 codecs and lifecycle models. A20a/b proves bounded research framing, including independent Kotlin/Node raw TCP exchange. The next gate connects those components to actual scoped Android TLS and a fixed local proxy fixture. The installed preview and existing four-method Keystore/WSS echo proof stay independent.
+A19 proves the draft revision 0.3 codecs and lifecycle models. A20a/b proves bounded research framing, including independent Kotlin/Node raw TCP exchange. This research proof connects those components to actual scoped Android TLS and a fixed local proxy fixture. The installed preview and existing four-method Keystore/WSS echo proof stay independent.
 
 ## Ownership and compatibility
 
@@ -145,3 +145,13 @@ Strengthen the proxy observation with `ResearchPendingWriteObservation` from the
 Keep the full proxy predicate, original 15-second budget, Android local 20-second observation and 250 ms expression, all v3 fields and cleanup unchanged. Eight deterministic JVM cases cover late-response overclaim, slow first response, exact nanosecond threshold, ID and predicate resets, maximum-span diagnostics, invalid input and idle samples. The data-path change cannot turn a previously false peer predicate into evidence by weakening time checks: the independent timing correction only strengthens admission. Neither change freezes production v1 or establishes physical-device behavior.
 
 The conservative comparison is integrated as helper `51d6ab2`, UI `f7e3e34` in `754792d`, and F `5915679` in `9153b83`. Root passes all 28 framing cases in 39s; F independently executes the eight new actual compiled helper cases. The tested UI APK/lint/helper command passes in 12s, with integrated build inputs identical to its source. D and F independently verify the fresh payload/window pairing and stream-only send hint; nine documentation tests and 147 links pass. Publish this checked source for one full seven-case API 26/37 execution. Historical reported passes keep their source-specific observation limitation, and combined acceptance remains open pending the stricter runtime evidence.
+
+## Verified strict research checkpoint
+
+At exact source `d6185fc88946dec58391939a304e4b4ac5c0b2f8`, [runtime 40128216139](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40128216139) passes all seven exact methods once on each actual API 26/37 emulator, with zero failures, errors or skips. Hosted and independently replayed report gates pass, including fourteen positive real-expiry fields on each API. This source uses the conservative same-write proxy interval and retains the actual Android blocked-write gate, ordered resumption/digests, half-close, binding, malformed ingress and premature-close assertions. Source, clock, channel, selective package/reverse cleanup, real peer/child closure and emulator stop/join all pass.
+
+The matching [host run 40128214945](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40128214945) passes 173 JVM and 166 Node cases, five clean lint reports, 44 script tests, 38 native Python regressions, four Linux packet flows, nine documentation tests, 147 source-specific local links and hosted actionlint. Independent downloaded Kotlin/Node conformance reports match all 142 codec cases, 73 lifecycle traces and 704 operations at the committed digest. The five-profile host diagnostic report independently retains exact bounded schema/counters and actual joined zero-resource cleanup.
+
+Passing Android reports contain no failure-only buffer getters, so they establish the source's requested stream send hint and successful real I/O gates, not a measured effective buffer size or a specific TLS/ADB/kernel cause for earlier failures. Historical failures and the old receive-spacing limitation remain recorded. The unchanged revision-2 host pressure flags also use completion-based snapshot timing; treat them as diagnostic flags rather than independent certification of an exact 250 ms remote interval. Their final counters and actual joins remain checked; the current Android proof uses its separate conservative helper.
+
+A20's isolated authenticated streaming checkpoint is verified. No app network/VPN permission, production enrollment endpoint or gateway, packet-engine capture policy, physical USB/LAN/WAN proof, or production wire integration is added by this research result. Draft wire revision 0.3 is unchanged and v1 remains unfrozen.
