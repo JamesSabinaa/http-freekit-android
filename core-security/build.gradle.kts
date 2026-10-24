@@ -18,6 +18,18 @@ android {
         resources.merges += "META-INF/NOTICE.md"
     }
 }
+
+androidComponents.onVariants { variant ->
+    variant.hostTests.values.forEach { checkNotNull(it.sources.kotlin).addStaticSourceDirectory("src/sharedTest/kotlin") }
+    variant.deviceTests.values.forEach { checkNotNull(it.sources.kotlin).addStaticSourceDirectory("src/sharedTest/kotlin") }
+}
+
+tasks.withType<Test>().configureEach {
+    workingDir = rootProject.projectDir
+    inputs.files(rootProject.files(
+        "tools/transport-spike/server.mjs", "tools/transport-spike/package.json", "tools/transport-spike/package-lock.json",
+    ))
+}
 kotlin { jvmToolchain(17) }
 
 dependencies {
