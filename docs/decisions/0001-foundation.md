@@ -1,6 +1,6 @@
 # Foundation decisions and evidence
 
-Status: package A in progress. Protocol v1 remains a draft. This record does not satisfy the stage 0 forwarding or Android interoperability gates.
+Status: package A in progress. Android JNI synthetic-packet and Android Keystore-to-Node interoperability proofs now pass on API 26 and API 37. Capture-policy, actual desktop integration and complete wire-schema gates remain open; protocol v1 remains a draft.
 
 ## Implementation and build
 
@@ -12,7 +12,7 @@ The [AGP 9.4 compatibility table](https://developer.android.com/build/releases/a
 
 ## Forwarding-engine investigation
 
-Candidate: [HevSocks5Tunnel](https://github.com/heiher/hev-socks5-tunnel), inspected at `c0dfc4b07baa5e48022f5f88ac90488601f05674`. The upstream sources advertise Android, IPv4/IPv6, TCP and UDP relay support. Its C library accepts an existing TUN file descriptor and has run/stop entrypoints. Android build files target 16 KiB pages, four ABIs, and default to API 29. An API 26 native compile passes for ARM64 and x86_64. The isolated probe now loads JNI on API 26 and API 37 as recorded below; Android forwarding remains unverified.
+Candidate: [HevSocks5Tunnel](https://github.com/heiher/hev-socks5-tunnel), inspected at `c0dfc4b07baa5e48022f5f88ac90488601f05674`. The upstream sources advertise Android, IPv4/IPv6, TCP and UDP relay support. Its C library accepts an existing TUN file descriptor and has run/stop entrypoints. Android build files target 16 KiB pages, four ABIs, and default to API 29. An API 26 native compile passes for ARM64 and x86_64. The isolated probe now reconstructs four synthetic IPv4/IPv6 HTTP/CONNECT flows through JNI on API 26 and API 37; real TUN routing and the declared capture policy remain unverified.
 
 Source inspection found these pinned submodules:
 
@@ -23,9 +23,9 @@ Source inspection found these pinned submodules:
 | lwIP fork | e6d5fc6cdc7c2ab379ffffd13dfdc99fb826a86c | BSD-3-Clause |
 | yaml fork | 94441ec8777eb319936735a58b376963d09c73d4 | MIT |
 
-The tunnel root is MIT; Android makefiles include Apache-2.0 headers. The Windows-only Wintun directory has a separate licence and must not be imported into an Android distribution. This is a candidate inventory from a separate local research checkout, not an exhaustive shipped dependency audit. None of this native code is currently bundled.
+The tunnel root is MIT; Android makefiles include Apache-2.0 headers. The Windows-only Wintun directory has a separate licence and must not be imported into an Android distribution. This is a candidate inventory from a separate local research checkout, not an exhaustive shipped dependency audit. The isolated research APK bundles the checked native libraries and notices; the production app does not.
 
-Native build evidence: NDK `28.2.13676358` built the unchanged candidate's shared library and executable with `APP_PLATFORM=android-26`, `APP_ABI=arm64-v8a x86_64`, and `-j4`. `llvm-readelf -l -n` showed all shared-library LOAD segments aligned to `0x4000` (16 KiB), and `.note.android.ident` encoded API 26 for both ABIs. This proves compilation and ELF properties. The [isolated research bridge](0005-android-native-packet-probe.md) deliberately overrides the upstream JNI registration class without patching native implementation. A production adapter and packet-forwarding execution remain open.
+Native build evidence: NDK `28.2.13676358` built the unchanged candidate's shared library and executable with `APP_PLATFORM=android-26`, `APP_ABI=arm64-v8a x86_64`, and `-j4`. `llvm-readelf -l -n` showed all shared-library LOAD segments aligned to `0x4000` (16 KiB), and `.note.android.ident` encoded API 26 for both ABIs. This proves compilation and ELF properties. The [isolated research bridge](0005-android-native-packet-probe.md) deliberately overrides the upstream JNI registration class without patching native implementation. A production adapter and actual VPN packet forwarding remain open.
 
 To reproduce in a separate research checkout, set `$engineRoot` to that checkout, `$nativeBuildRoot` to a scratch build directory, and `$ndkRoot` to the installed NDK above. Clone with Git symlink support, check out the exact root commit above, and initialize its pinned submodules. Then run:
 
@@ -60,3 +60,13 @@ Validation passed with `./scripts/build.ps1`: eight pairing-parser tests and one
 The exported debug APK was verified with `apksigner verify --verbose` (APK Signature Scheme v2), and `aapt dump badging` confirmed `com.httpfreekit.android.debug`, minimum API 26, target API 37, and version `0.1.0-dev-debug`. `aapt dump permissions` showed only AndroidX's app-scoped receiver permission, with no Internet or VPN permission. The export script records the source revision, dirty state, SHA-256, and lack of desktop compatibility beside the APK in ignored `dist/`.
 
 `emulator -accel-check` reported that the Android Emulator hypervisor driver is not installed. An API 26 x86_64 AVD was attempted headlessly in software CPU mode (`-accel off`); it remained offline in ADB and was stopped. Installation, launch, and UI checks are therefore unrun. No system hypervisor settings were changed. Physical USB capture, cellular WAN, Keystore, packet forwarding, and desktop integration also remain unrun. Gradle reports deprecations affecting a future Gradle 10 upgrade; the pinned Gradle 9.8.2 build passes. Stages 0–6 remain open.
+
+## Verified emulator foundation checkpoint
+
+At exact Android source `7e9b1c8c03b4bb925fd894e37cd53c5dc522eff4`, [host run 40103175226](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40103175226) passes 91 JVM, 34 Node, 38 native-harness Python and 15 strict-result-verifier cases, four Linux packet flows, strict app/security/research lint and documentation checks. Its actual OpenSSL 3.0.13 executes the bounded certificate fixture, including normal future/expired rejection. Historical local unrun statements above describe their initial checkpoints; these hosted results supply the later emulator evidence.
+
+- [Keystore run 40103200664](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40103200664) passes exactly twelve identity/client/persistence methods on each API through the strict result gate. Public no-backup records reopen with the existing nonexportable key, while missing/replaced/legacy keys and interrupted cleanup fail closed. [Decision 0008](0008-enrolled-credential-persistence.md) records the bounded same-process and filesystem scope.
+- [Transport run 40103176026](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40103176026) passes four actual starts/completions per API: CSR proof and issued-client authentication with an exact 64 KiB WSS echo, plus wrong-pin, wrong-name and missing-client rejection. [Decision 0006](0006-android-node-interop.md) records timing, channel and cleanup evidence. This is an ephemeral research issuer, not production enrollment.
+- [Native run 40103179435](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40103179435) passes all four IPv4/IPv6 HTTP/opaque-CONNECT packet cases per API with gated streaming, original destinations, checksums, bytes, request EOF before reply and native peer FIN. Positive native counters, actual Stop/join/repeated Stop, packet-pump/descriptor cleanup and four joined research carrier sessions are verified. Each job also passes fourteen standalone JVM cases, lint and APK/source/notice/ABI checks. [Decision 0005](0005-android-native-packet-probe.md) records the exact assertions and carrier limitations.
+
+Both native runtime images are x86_64 with 4096-byte pages. ARM64 and 16 KiB ELF/ZIP alignment are build evidence, not ARM64 or 16 KiB-page execution. No real TUN/VpnService, selected-app/protected-socket/DNS/UDP policy, actual desktop proxy delivery, physical USB or LAN/WAN capture is established. Shared control/stream schemas, conformance fixtures, enrollment approval/reservation/revocation, lifetime policies, and production integration remain required before full protocol freeze and packages C/D can consume it.
