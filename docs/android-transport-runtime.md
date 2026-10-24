@@ -8,13 +8,15 @@ The workflow pins Node 24.22.1, checks for OpenSSL 3, installs the locked transp
 node tools/transport-spike/run-android-interop.mjs --serial emulator-5554
 ```
 
+Before creating the peer, the driver bounds its device-clock probe to five seconds and rejects a measured device-minus-host midpoint skew above two minutes in either direction. The research certificates share explicit dates from five minutes before host issuance to one hour after issuance. Issued dates must match that fixed profile exactly. Only public epoch, round-trip, skew, and status fields enter diagnostics. The driver neither changes device time nor relaxes production certificate-validity checks.
+
 The driver builds `:transport-interop:assembleDebugAndroidTest` and installs only the research test APK before starting the temporary loopback Node peer or allocating its two ADB reverse mappings. It then invokes the research runner explicitly using `adb shell am instrument -w -r`, with the exact test class and public fixture arguments. This keeps the mappings outside Gradle's test-device preparation. A missing driver or unsupported device fails instead of skipping execution.
 
 Each fixture listener is already bound to a distinct host port. The driver requests the same explicit port number on the device using `adb reverse --no-rebind tcp:P tcp:P`; host and device TCP ports occupy separate namespaces. It validates both ports before registration and fails on a collision. Only successful registrations become owned cleanup targets, including a successful command with unexpected response text. A partial allocation failure removes only its earlier successful registrations; it never uses `--remove-all` or retries by rebinding another owner's port.
 
 Instrumentation has a three-minute deadline and a 256 KiB combined-output limit. The driver requires each expected method's matching start/end status, the final successful instrumentation status, and preservation of its own reverse mappings. It writes only bounded, sanitized XML/HTML containing exception types and allowlisted research call sites; raw instrumentation output, peer logs, and exception messages are not retained. Cleanup stops its owned process, uninstalls only the research test package, removes only its own reverse mappings, stops its peer, and deletes private temporary files. A cleanup failure remains a failed run. The workflow independently shuts down its emulator while preserving the driver or validation exit status.
 
-The regular [host workflow](../.github/workflows/android.yml) checks OpenSSL 3, executes the two `android-peer.test.mjs` cases and twenty-nine `instrumentation-results.test.mjs` parser/ownership regressions, and runs `:transport-interop:assembleDebugAndroidTest :transport-interop:lintDebug`. Reproduce the Node checks from the repository root:
+The regular [host workflow](../.github/workflows/android.yml) checks OpenSSL 3, executes five `android-peer.test.mjs` cases and twenty-nine `instrumentation-results.test.mjs` parser/ownership regressions, and runs `:transport-interop:assembleDebugAndroidTest :transport-interop:lintDebug`. The peer cases include the fixed validity/clock bounds and normal TLS rejection of future and expired gateway certificates. Reproduce the Node checks from the repository root:
 
 ```sh
 node --test tools/transport-spike/android-peer.test.mjs
@@ -48,12 +50,27 @@ This experiment is intended to compose the real Android Keystore identity, [enro
 
 [Run 40094676455](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40094676455) tested source `30ea165bbdb069118f0ea6d06c92be8247349ade` on both emulator APIs. Booted Android versions were 8.0.0 (API 26) and 17 (API 37), with emulator 37.2.12.0, Node 24.22.1, and OpenSSL 3.0.13. SDK/KVM/boot checks passed, and the peer reported two allocated reverse mappings before Gradle began testing.
 
-Both jobs failed. Each downloaded XML reports only `missingClientCertificateIsRejected`, with one failure, zero errors/skips, and an empty failure body. The other three required methods are absent. There is no passing evidence for the complete suite or the positive mutual-TLS/WebSocket exchange. Console output supplies no instrumentation exception or crash cause. Cleanup then reported both owned reverse listeners absent; that later observation does not establish the original cause.
+Both jobs failed. Each downloaded XML reports only `missingClientCertificateIsRejected`, with one failure, zero errors/skips, and an empty failure body. The other three required methods are absent. Those reports provided no passing evidence for the complete suite or the positive mutual-TLS/WebSocket exchange. Console output supplies no instrumentation exception or crash cause. Cleanup then reported both owned reverse listeners absent; that later observation does not establish the original cause.
 
-The strict test gate remained unsatisfied. The updated driver in `1a3e28a` changes installation/mapping order and exposes bounded instrumentation diagnostics; its host regressions are not a runtime fix claim. Android-to-Node success remains unverified until a new integrated run provides all four named passing cases on each API, with four observed starts and completions and no run errors.
+The strict test gate remained unsatisfied at that checkpoint. The updated driver in `1a3e28a` changes installation/mapping order and exposes bounded instrumentation diagnostics; its host regressions alone did not establish runtime success.
 
 ## Explicit-port checkpoint
 
 [Run 40101591378](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40101591378) tested `bd7b67627d7382a16a32eeae5482b1fec0742c5a` with the explicit-port helper. Both API 26 and API 37 observed exactly four starts and four completions, with all four named cases above present. The instrumentation ADB process exited 0 without a signal; subsequent device and reverse queries succeeded, both owned mappings remained, and cleanup reported no errors. The emulator processes remained alive with no classified QEMU fatal marker. The private server-log reader reported `no_new_bytes`, zero bytes, and no markers.
 
-Both jobs still failed. API 26 reported `CertificateNotYetValidException` in gateway-factory validation for all four cases. API 37 passed the three rejection cases, while the positive `nonexportableIdentityEnrollsAndEchoes64KiB` case failed with `CertificateNotYetValidException` in enrolled-client binding. This checkpoint demonstrates complete execution with a usable ADB channel for that run; it does not establish a passing mutual-TLS/WebSocket exchange or identify the certificate-time cause. The strict four-case gate remains unchanged and unsatisfied.
+Both jobs still failed. API 26 reported `CertificateNotYetValidException` in gateway-factory validation for all four cases. API 37 passed the three rejection cases, while the positive `nonexportableIdentityEnrollsAndEchoes64KiB` case failed with `CertificateNotYetValidException` in enrolled-client binding. This checkpoint demonstrates complete execution with a usable ADB channel for that run; it does not establish a passing mutual-TLS/WebSocket exchange or identify the certificate-time cause. It did not satisfy the strict four-case gate.
+
+## Passing bounded-time checkpoint
+
+[Run 40103176026](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40103176026) at `7e9b1c8c03b4bb925fd894e37cd53c5dc522eff4` passed on API 26 and API 37. Each XML contains exactly the four named cases above, all paired passes, four observed starts and completions, verified terminal success, and zero failures, errors, or skips. The instrumentation process exited 0 without a signal or stderr; device and reverse queries succeeded with both owned pairs intact. The driver returned 0 after cleanup, then the independent workflow gate passed. The private server log had no new bytes or classified markers.
+
+Both jobs used Node 24.22.1 and OpenSSL 3.0.13. The public timing fields on 24 October 2026 were:
+
+| API | Clock probe round trip | Device minus host midpoint | Certificate not before (UTC) | Certificate not after (UTC) |
+| --- | --- | --- | --- | --- |
+| 26 | 8 ms | -437 ms | 14:33:21 | 15:38:21 |
+| 37 | 18 ms | -1489 ms | 14:32:59 | 15:37:59 |
+
+Both measurements meet the five-second/two-minute preflight bounds, and both certificate intervals use the fixed five-minute backdate/one-hour forward expiry. These are measurements from this run; the earlier failed run did not measure its exact skew. [Host run 40103175226](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40103175226) independently passed all five peer cases with Ubuntu's actual OpenSSL 3.0.13, including future/expired rejection.
+
+This establishes the tested Android Keystore enrollment/client binding, mutual-TLS binary WebSocket echo of 65,536 bytes, wrong-pin rejection, wrong-hostname rejection, and missing-client rejection against the controlled peer. The four methods do not force TLS 1.2 and TLS 1.3 separately. Physical USB capture, VPN traffic, production enrollment, the desktop gateway, hardware-backed protection, and protocol freeze remain separate gates. See [the transport decision and artifact evidence](decisions/0006-android-node-interop.md).
