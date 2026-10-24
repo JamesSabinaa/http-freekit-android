@@ -1,7 +1,9 @@
 package com.httpfreekit.security
 
 import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyInfo
 import android.security.keystore.KeyProperties
+import java.security.KeyFactory
 import java.security.KeyPairGenerator
 import java.security.KeyStore
 import java.security.MessageDigest
@@ -24,7 +26,8 @@ class AndroidDeviceIdentityStore {
             initialize(
                 KeyGenParameterSpec.Builder(alias, KeyProperties.PURPOSE_SIGN or KeyProperties.PURPOSE_VERIFY)
                     .setAlgorithmParameterSpec(ECGenParameterSpec("secp256r1"))
-                    .setDigests(KeyProperties.DIGEST_SHA256)
+                    // TLS hashes its transcript before the Keystore's delegated EC signature.
+                    .setDigests(KeyProperties.DIGEST_NONE, KeyProperties.DIGEST_SHA256)
                     .setUserAuthenticationRequired(false)
                     .build(),
             )
@@ -38,6 +41,15 @@ class AndroidDeviceIdentityStore {
         val entry = keyStore.getEntry(alias, null) as? KeyStore.PrivateKeyEntry
             ?: error("Device identity is unavailable; pair again")
         check(entry.privateKey.encoded == null) { "Device identity must be nonexportable" }
+        val keyInfo = try {
+            KeyFactory.getInstance(entry.privateKey.algorithm, "AndroidKeyStore")
+                .getKeySpec(entry.privateKey, KeyInfo::class.java)
+        } catch (failure: Exception) {
+            throw IllegalStateException("Device identity capabilities are unavailable; pair again", failure)
+        }
+        check(keyInfo.digests.toSet().containsAll(setOf(KeyProperties.DIGEST_NONE, KeyProperties.DIGEST_SHA256))) {
+            "Device identity cannot authenticate TLS; pair again"
+        }
         val publicKey = entry.certificate.publicKey
         val expectedSpki = publicKey.encoded.copyOf()
         DeviceIdentity(publicKey, entry.privateKey) {
