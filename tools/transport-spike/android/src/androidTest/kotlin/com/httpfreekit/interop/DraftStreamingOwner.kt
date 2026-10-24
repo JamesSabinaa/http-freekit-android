@@ -501,10 +501,11 @@ internal class DraftStreamingOwner(
                 acceptor.reuseAddress = false
                 acceptor.bind(InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 1)
                 acceptor.soTimeout = 5000
-                application.sendBufferSize = 1024; application.receiveBufferSize = 1024; application.tcpNoDelay = true
+                // Let the local seam feed the TLS boundary, where unfinished writes prove pressure.
+                application.sendBufferSize = 64 * 1024; application.receiveBufferSize = 64 * 1024; application.tcpNoDelay = true
                 application.connect(acceptor.localSocketAddress, 5000)
                 application.soTimeout = 0
-                bridge = acceptor.accept().apply { sendBufferSize = 1024; receiveBufferSize = 1024; tcpNoDelay = true }
+                bridge = acceptor.accept().apply { sendBufferSize = 64 * 1024; receiveBufferSize = 64 * 1024; tcpNoDelay = true }
                 check(bridge.remoteSocketAddress == application.localSocketAddress && bridge.localSocketAddress == application.remoteSocketAddress) {
                     "Local research socket endpoints did not match"
                 }
