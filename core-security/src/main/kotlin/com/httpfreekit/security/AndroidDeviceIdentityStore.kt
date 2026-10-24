@@ -64,6 +64,16 @@ class AndroidDeviceIdentityStore {
         keyStore.deleteEntry(aliasFor(desktopId))
     }
 
+    /**
+     * Coordinates public credential records with existing-key lookup/deletion in this process.
+     * Do not eagerly load here: an unusable legacy key must still be forgettable.
+     * This hook never creates an identity and is not a multi-process transaction.
+     */
+    internal fun <T> withExistingIdentityTransaction(desktopId: String, operation: () -> T): T = synchronized(storeLock) {
+        aliasFor(desktopId)
+        operation()
+    }
+
     private fun aliasFor(desktopId: String): String {
         require(Regex("[A-Za-z0-9_-]{1,128}").matches(desktopId)) { "Invalid computer identity" }
         val digest = MessageDigest.getInstance("SHA-256").digest(desktopId.toByteArray(Charsets.UTF_8))
