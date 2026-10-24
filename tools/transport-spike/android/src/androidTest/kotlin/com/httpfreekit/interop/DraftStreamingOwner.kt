@@ -418,7 +418,7 @@ internal class DraftStreamingOwner(
             }
         }
 
-        fun observedBlockedWriter(retainExpiryFailure: Boolean = false) {
+        fun observedBlockedWriter(retainPressureFailure: Boolean = false) {
             var candidate = 0L
             var since = 0L
             var longestCandidateMillis = 0L
@@ -441,7 +441,7 @@ internal class DraftStreamingOwner(
                     observed && System.nanoTime() - since >= 250_000_000
                 }
             } catch (failure: IllegalStateException) {
-                if (retainExpiryFailure) {
+                if (retainPressureFailure) {
                     try {
                         val failureUtc = System.currentTimeMillis()
                         val failureElapsed = (System.nanoTime() - readyAtNanos) / 1_000_000
@@ -535,7 +535,7 @@ internal class DraftStreamingOwner(
             entered: Long, completed: Long, inFlight: Long, pending: Long, applicationWritten: Long,
             producerFinished: Boolean, stopping: Boolean, workerFailed: Boolean, ticks: Long, expiryTicks: Long,
             longestCandidate: Long, seenMask: Int): Map<String, String> = Collections.unmodifiableMap(linkedMapOf(
-            "draftPressureVersion" to "1",
+            "draftPressureVersion" to "2",
             "draftPressureWaitStartUtcMillis" to waitStartUtc.toString(),
             "draftPressureWaitStartElapsedMillis" to waitStartElapsed.toString(),
             "draftPressureFailureUtcMillis" to failureUtc.toString(),

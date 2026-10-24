@@ -48,7 +48,7 @@ class DraftStreamingInteropTest {
         stream.produce(DraftStreamingOwner.BURST)
         context.awaitProxyBackpressure()
         phase = "paused-android-actual-write"
-        stream.observedBlockedWriter()
+        stream.observedBlockedWriter(retainPressureFailure = true)
         val before = stream.snapshot()
         check(before.chargedBytes in 1..8192 && before.chargedFrames in 1..4 &&
             stream.pendingClientBytes.get() in 1..4096 && stream.pendingGatewayBytes.get() == 0L && stream.backpressureCount.get() > 0) {
@@ -72,7 +72,7 @@ class DraftStreamingInteropTest {
         stream.produce(DraftStreamingOwner.BURST)
         context.awaitProxyBackpressure()
         phase = "cancel-android-actual-write"
-        stream.observedBlockedWriter()
+        stream.observedBlockedWriter(retainPressureFailure = true)
         val outstanding = stream.writeInFlight.get()
         check(outstanding > stream.writeCompleted.get()) { "Cancel writer had already completed" }
         phase = "cancel-independent-control"
@@ -98,7 +98,7 @@ class DraftStreamingInteropTest {
         stream.produce(DraftStreamingOwner.BURST)
         context.awaitProxyBackpressure()
         phase = "expiry-android-actual-write"
-        stream.observedBlockedWriter(retainExpiryFailure = true)
+        stream.observedBlockedWriter(retainPressureFailure = true)
         check(context.owner.expiresAtMillis > System.currentTimeMillis()) { "Writer was not observed before expiry" }
         phase = "real-session-expiry"
         var peerExpired = false
