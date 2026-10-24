@@ -91,6 +91,39 @@ function validExpiryObservation(bundle) {
   return true;
 }
 
+const pressureNames = ['Version', 'WaitStartUtcMillis', 'WaitStartElapsedMillis', 'FailureUtcMillis', 'FailureElapsedMillis',
+  'ExpiresUtcMillis', 'ControlPhase', 'ControlCause', 'StreamPhase', 'StreamCause', 'WriteEntered', 'WriteCompleted', 'WriteInFlight',
+  'ChargedBytes', 'ChargedFrames', 'PendingClientBytes', 'ApplicationWritten', 'ProducerFinished', 'OwnedStopping', 'WorkerFailed',
+  'LocalTicks', 'LocalExpiryTicks', 'LongestCandidateMillis', 'SeenPredicateMask'].map(name => `draftPressure${name}`);
+const pressureCauses = new Set(['null', 'cancelled', 'unsupported_version', 'unsupported_capability', 'authentication_failed',
+  'device_revoked', 'proxy_unavailable', 'session_limit', 'stream_limit', 'invalid_message', 'network_unreachable',
+  'session_expired', 'desktop_stopped', 'message_too_large']);
+function validPressureObservation(bundle) {
+  if (Object.keys(bundle).length !== pressureNames.length || pressureNames.some(name => !Object.hasOwn(bundle, name)) || bundle.draftPressureVersion !== '1') return false;
+  const numbers = {};
+  for (const name of pressureNames) {
+    const suffix = name.slice('draftPressure'.length), raw = bundle[name];
+    if (suffix === 'Version') continue;
+    if (['ProducerFinished', 'OwnedStopping', 'WorkerFailed'].includes(suffix)) {
+      if (!['true', 'false'].includes(raw)) return false;
+    } else if (suffix.endsWith('Cause')) { if (!pressureCauses.has(raw)) return false; }
+    else if (suffix === 'ControlPhase') {
+      if (!['awaiting_hello', 'awaiting_ready', 'active', 'closed', 'failed'].includes(raw)) return false;
+    } else if (suffix === 'StreamPhase') {
+      if (!['awaiting_open', 'awaiting_ready', 'open', 'half_closed', 'draining', 'closing', 'complete', 'cancelled', 'failed'].includes(raw)) return false;
+    } else {
+      if (!/^(?:0|[1-9][0-9]{0,15})$/.test(raw) || !Number.isSafeInteger(Number(raw))) return false;
+      const value = Number(raw); numbers[suffix] = value;
+      const maximum = suffix.endsWith('UtcMillis') ? 4102444800000
+        : suffix.endsWith('ElapsedMillis') || ['LocalTicks', 'LocalExpiryTicks', 'LongestCandidateMillis'].includes(suffix) ? 120000
+        : ({ ChargedBytes: 8192, ChargedFrames: 4, PendingClientBytes: 4096, SeenPredicateMask: 7 }[suffix] ?? 33562624);
+      if (value > maximum || (suffix.endsWith('UtcMillis') && value < 946684800000)) return false;
+    }
+  }
+  return numbers.FailureElapsedMillis >= numbers.WaitStartElapsedMillis && numbers.WriteCompleted <= numbers.WriteEntered &&
+    numbers.WriteInFlight <= numbers.WriteEntered && numbers.LocalExpiryTicks <= numbers.LocalTicks;
+}
+
 export function parseDraftStreamingInstrumentation(output, { exitCode = 0, signal = null, transportError = null } = {}) {
   const cases = expectedDraftStreamingTests.map(name => ({ name, state: 'not_started', detail: 'Case was not executed.' }));
   const problems = [];
@@ -101,7 +134,7 @@ export function parseDraftStreamingInstrumentation(output, { exitCode = 0, signa
   if (exitCode !== 0 || signal !== null) problem('adb_instrumentation_process_failed');
   if (transportError !== null) problem(draftSetupCode(transportError));
   let pending = Object.create(null), lastKey, active, terminalCount = 0, terminal;
-  let started = 0, completed = 0, expiryCount = 0, observations = {};
+  let started = 0, completed = 0, expiryCount = 0, pressureCount = 0, observations = {};
   for (const line of output.split(/\r?\n/)) {
     let match;
     if ((match = /^INSTRUMENTATION_STATUS: ([A-Za-z0-9_]+)=(.*)$/.exec(line))) {
@@ -117,7 +150,12 @@ export function parseDraftStreamingInstrumentation(output, { exitCode = 0, signa
       const status = Number(match[1]);
       if (status === 2 && Object.hasOwn(pending, 'draftExpiryVersion')) {
         if (active?.index !== 3 || !validExpiryObservation(pending)) problem('invalid_expiry_observation');
-        else { expiryCount++; observations = { ...pending }; }
+        else { expiryCount++; observations = { ...observations, ...pending }; }
+        pending = Object.create(null); lastKey = undefined; continue;
+      }
+      if (status === 3 && Object.hasOwn(pending, 'draftPressureVersion')) {
+        if (active?.index !== 3 || !validPressureObservation(pending)) problem('invalid_pressure_observation');
+        else { pressureCount++; observations = { ...observations, ...pending }; }
         pending = Object.create(null); lastKey = undefined; continue;
       }
       const index = cases.findIndex(value => value.name === pending.test);
@@ -161,6 +199,8 @@ export function parseDraftStreamingInstrumentation(output, { exitCode = 0, signa
   if (terminalCount !== 1 || terminal !== -1) problem('missing_or_failed_terminal_result');
   if (started !== cases.length || completed !== cases.length) problem('incomplete_test_execution');
   if (expiryCount !== 1) problem('missing_or_duplicate_expiry_observation');
+  if (pressureCount > 1) problem('duplicate_pressure_observation');
+  if (pressureCount && cases[3].state === 'passed') problem('failure_pressure_observation_on_passing_case');
   return { cases, problems, started, completed, observations,
     ok: problems.length === 0 && cases.every(value => value.state === 'passed') };
 }

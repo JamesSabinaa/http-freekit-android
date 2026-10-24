@@ -18,6 +18,19 @@ const progress = (values = expiry) => Object.entries(values).map(([name, value])
 const pair = (name, index) => bundle(name, 1, '', index + 1) + (name === names[3] ? progress() : '') + bundle(name, 0, '', index + 1);
 const terminal = 'INSTRUMENTATION_RESULT: stream=\nOK (7 tests)\nINSTRUMENTATION_CODE: -1\n';
 const success = names.map(pair).join('') + terminal;
+const pressure = {
+  draftPressureVersion: '1', draftPressureWaitStartUtcMillis: '1800000012000', draftPressureWaitStartElapsedMillis: '12000',
+  draftPressureFailureUtcMillis: '1800000032010', draftPressureFailureElapsedMillis: '32010', draftPressureExpiresUtcMillis: '1800000030000',
+  draftPressureControlPhase: 'failed', draftPressureControlCause: 'session_expired', draftPressureStreamPhase: 'failed',
+  draftPressureStreamCause: 'session_expired', draftPressureWriteEntered: '750', draftPressureWriteCompleted: '749',
+  draftPressureWriteInFlight: '0', draftPressureChargedBytes: '8192', draftPressureChargedFrames: '2', draftPressurePendingClientBytes: '4096',
+  draftPressureApplicationWritten: '3200117', draftPressureProducerFinished: 'false', draftPressureOwnedStopping: 'true',
+  draftPressureWorkerFailed: 'false', draftPressureLocalTicks: '1200', draftPressureLocalExpiryTicks: '1',
+  draftPressureLongestCandidateMillis: '200', draftPressureSeenPredicateMask: '7',
+};
+const pressureBundle = (values = pressure) => Object.entries(values).map(([key, value]) => `INSTRUMENTATION_STATUS: ${key}=${value}\n`).join('') + 'INSTRUMENTATION_STATUS_CODE: 3\n';
+const pressureFailure = (diagnostic = pressureBundle()) => names.map((name, index) => name === names[3]
+  ? bundle(name, 1) + diagnostic + bundle(name, -2) : pair(name, index)).join('') + terminal;
 
 test('seven actual exact pairs and terminal success are required and reported', () => {
   const result = parse(success);
@@ -58,6 +71,48 @@ test('either actual deadline owner can win with bounded skew and retained public
     { draftExpiryObservedUtcMillis: '1800000029000', draftExpiryPeerTerminalUtcMillis: '1800000029000' },
   ]) {
     assert.equal(parse(success.replace(progress(), progress({ ...expiry, ...replacement }))).ok, true);
+  }
+});
+test('failure-only pressure facts survive reports without proving successful expiry', () => {
+  const result = parse(pressureFailure());
+  assert.equal(result.ok, false); assert.equal(result.started, 7); assert.equal(result.completed, 7);
+  assert.equal(result.cases[3].state, 'failed'); assert.equal(Object.keys(result.observations).length, 24);
+  assert.match(xml(result), /name="draftPressureFailureElapsedMillis" value="32010"/);
+  assert.match(html(result), /draftPressureWriteInFlight/);
+  assert.ok(result.problems.includes('missing_or_duplicate_expiry_observation'));
+});
+test('pressure facts require their exact active case, unique bundle and a failed completion', () => {
+  for (const output of [pressureBundle() + pressureFailure(''), pressureFailure('') + pressureBundle(),
+    pressureFailure(pressureBundle() + pressureBundle()), success.replace(progress(), pressureBundle() + progress())]) {
+    assert.equal(parse(output).ok, false);
+  }
+  const passed = parse(success.replace(progress(), pressureBundle() + progress()));
+  assert.ok(passed.problems.includes('failure_pressure_observation_on_passing_case'));
+});
+test('pressure facts reject noncanonical, out-of-bound or inconsistent data without retaining secrets', () => {
+  for (const values of [{ ...pressure, PRIVATE_VALUE: 'SECRET' }, { ...pressure, draftPressureControlCause: 'SECRET' },
+    { ...pressure, draftPressureStreamPhase: 'SECRET' }, { ...pressure, draftPressureWorkerFailed: 'yes' },
+    { ...pressure, draftPressureWriteEntered: '0750' }, { ...pressure, draftPressureWriteEntered: '750.0' },
+    { ...pressure, draftPressureWriteCompleted: '751' }, { ...pressure, draftPressureWriteInFlight: '751' },
+    { ...pressure, draftPressureChargedBytes: '8193' }, { ...pressure, draftPressureChargedFrames: '5' },
+    { ...pressure, draftPressurePendingClientBytes: '4097' }, { ...pressure, draftPressureApplicationWritten: '33562625' },
+    { ...pressure, draftPressureSeenPredicateMask: '8' }, { ...pressure, draftPressureLocalExpiryTicks: '1201' },
+    { ...pressure, draftPressureFailureElapsedMillis: '11999' }, { ...pressure, draftPressureFailureUtcMillis: '0' }]) {
+    const result = parse(pressureFailure(pressureBundle(values)));
+    assert.ok(result.problems.includes('invalid_pressure_observation'));
+    assert.equal(Object.keys(result.observations).length, 0);
+    assert.doesNotMatch(xml(result) + html(result), /PRIVATE_VALUE|SECRET/);
+  }
+});
+test('pressure facts preserve active/exhausted/partial-predicate states without assuming a cause', () => {
+  for (const values of [{ ...pressure, draftPressureControlPhase: 'active', draftPressureControlCause: 'null', draftPressureStreamPhase: 'half_closed',
+    draftPressureStreamCause: 'null', draftPressureWriteCompleted: '750', draftPressureChargedBytes: '0', draftPressureChargedFrames: '0',
+    draftPressurePendingClientBytes: '0', draftPressureApplicationWritten: '33554549', draftPressureProducerFinished: 'true',
+    draftPressureOwnedStopping: 'false', draftPressureLocalExpiryTicks: '0', draftPressureLongestCandidateMillis: '0', draftPressureSeenPredicateMask: '1' },
+    { ...pressure, draftPressureControlCause: 'network_unreachable', draftPressureStreamCause: 'network_unreachable', draftPressureLocalExpiryTicks: '0' }]) {
+    const result = parse(pressureFailure(pressureBundle(values)));
+    assert.equal(result.ok, false); assert.equal(Object.keys(result.observations).length, 24);
+    assert.ok(!result.problems.includes('invalid_pressure_observation'));
   }
 });
 test('all seven can execute in another JUnit order without changing the report contract', () => {
