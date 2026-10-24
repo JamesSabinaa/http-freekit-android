@@ -3,7 +3,7 @@ import { execFileSync, spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { startPeer } from './android-peer.mjs';
+import { measureFixtureClock, startPeer } from './android-peer.mjs';
 import { releaseOwnedReversePorts, reserveFixtureReversePorts } from './reverse-mappings.mjs';
 import { MAX_ADB_DIAGNOSTIC_BYTES, MAX_INSTRUMENTATION_BYTES, adbPublicVersion, commandDiagnostic, parseInstrumentation, readAdbServerLog, researchClass, resultHtml, resultXml, snapshotAdbServerLog } from './instrumentation-results.mjs';
 
@@ -27,8 +27,8 @@ const diagnostics = {};
 function recordDiagnostic(prefix, value) {
   for (const [key, item] of Object.entries(value)) diagnostics[prefix + key[0].toUpperCase() + key.slice(1)] = item;
 }
-function probe(args) {
-  try { return { ok: true, output: adb(args), diagnostic: commandDiagnostic({ code: 0 }) }; }
+function probe(args, timeout = 10000) {
+  try { return { ok: true, output: adb(args, timeout), diagnostic: commandDiagnostic({ code: 0 }) }; }
   catch (failure) {
     return { ok: false, output: '', diagnostic: commandDiagnostic({ code: failure.status, signal: failure.signal,
       stderr: failure.stderr, spawnError: typeof failure.code === 'string' ? failure.code : null }) };
@@ -146,8 +146,16 @@ try {
   if (!adb(['shell', 'pm', 'list', 'instrumentation']).split('\n').some(line => line.startsWith(`instrumentation:${component} `))) throw Error('research_runner_not_registered');
   console.log('Research APK installed before fixture startup and reverse allocation.');
   ensureRunning();
+  const hostBeforeClockProbe = Date.now();
+  const deviceClock = probe(['shell', 'date', '+%s'], 5000);
+  const hostAfterClockProbe = Date.now();
+  recordDiagnostic('deviceClockQuery', deviceClock.diagnostic);
+  if (!deviceClock.ok) throw Error('device_clock_probe_failed');
+  Object.assign(diagnostics, measureFixtureClock(deviceClock.output, hostBeforeClockProbe, hostAfterClockProbe));
+  if (diagnostics.fixtureClockStatus !== 'within_bound') throw Error('research_clock_' + diagnostics.fixtureClockStatus);
   peerPromise = startPeer({ openssl: options.openssl });
   peer = await peerPromise;
+  recordDiagnostic('certificateValidity', peer.validity);
   ensureRunning();
   const publicInputs = { ...peer.metadata };
   Object.assign(publicInputs, reserveFixtureReversePorts(adb, peer.metadata, mappings));

@@ -12,6 +12,29 @@ export const expectedTests = [
   'nonexportableIdentityEnrollsAndEchoes64KiB', 'wrongPinIsRejected',
   'wrongHostnameIsRejected', 'missingClientCertificateIsRejected',
 ];
+export const FIXTURE_BACKDATE_SECONDS = 300;
+export const FIXTURE_LIFETIME_SECONDS = 3600;
+export const MAX_RESEARCH_CLOCK_SKEW_MILLIS = 120000;
+export const MAX_CLOCK_PROBE_MILLIS = 5000;
+
+export function fixtureValidity(nowMillis = Date.now()) {
+  if (!Number.isSafeInteger(nowMillis) || nowMillis < 946684800000 || nowMillis > 4102444800000) throw Error('invalid_fixture_issue_epoch');
+  const hostIssueEpochSeconds = Math.floor(nowMillis / 1000);
+  return Object.freeze({ hostIssueEpochSeconds, notBeforeEpochSeconds: hostIssueEpochSeconds - FIXTURE_BACKDATE_SECONDS,
+    notAfterEpochSeconds: hostIssueEpochSeconds + FIXTURE_LIFETIME_SECONDS });
+}
+export function measureFixtureClock(deviceEpochText, hostBeforeMillis, hostAfterMillis) {
+  fixtureValidity(hostBeforeMillis); fixtureValidity(hostAfterMillis);
+  if (!/^[0-9]{10}$/.test(deviceEpochText) || hostAfterMillis < hostBeforeMillis) throw Error('invalid_device_clock_probe');
+  const deviceEpochSeconds = Number(deviceEpochText);
+  const roundTripMillis = hostAfterMillis - hostBeforeMillis;
+  const skewMillis = deviceEpochSeconds * 1000 - Math.floor((hostBeforeMillis + hostAfterMillis) / 2);
+  return { fixtureClockStatus: roundTripMillis > MAX_CLOCK_PROBE_MILLIS ? 'probe_budget_exceeded'
+    : Math.abs(skewMillis) > MAX_RESEARCH_CLOCK_SKEW_MILLIS ? 'skew_exceeds_bound' : 'within_bound',
+    fixtureHostBeforeProbeEpochMillis: hostBeforeMillis, fixtureHostAfterProbeEpochMillis: hostAfterMillis,
+    fixtureDeviceEpochSeconds: deviceEpochSeconds, fixtureClockRoundTripMillis: roundTripMillis, fixtureClockSkewMillis: skewMillis };
+}
+const opensslDate = epoch => new Date(epoch * 1000).toISOString().replace(/[-:]/g, '').replace('T', '').slice(0, 14) + 'Z';
 
 // Small strict DER envelope reader for this fixture's PKCS#10 profile, not a general ASN.1 parser.
 function item(bytes, offset, limit = bytes.length) {
@@ -58,7 +81,8 @@ export function verifyRequest(bytes) {
   return key;
 }
 
-export async function startPeer({ openssl = process.env.OPENSSL_BIN ?? 'openssl' } = {}) {
+export async function startPeer({ openssl = process.env.OPENSSL_BIN ?? 'openssl', nowMillis = Date.now() } = {}) {
+  const validity = fixtureValidity(nowMillis);
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'freekit-android-node-'));
   fs.chmodSync(directory, 0o700);
   const sockets = new Set();
@@ -82,15 +106,31 @@ export async function startPeer({ openssl = process.env.OPENSSL_BIN ?? 'openssl'
   try {
     if (!/^OpenSSL 3\./.test(command(['version']).toString())) throw Error('OpenSSL 3 is required');
     fs.writeFileSync(path.join(directory, 'request.cnf'), '[req]\ndistinguished_name=dn\nprompt=no\n[dn]\nCN=HTTP FreeKit test device\n');
-    command(['req', '-config', 'request.cnf', '-new', '-x509', '-newkey', 'ec', '-pkeyopt', 'ec_paramgen_curve:P-256', '-nodes', '-sha256', '-days', '1',
-      '-subj', '/CN=Ephemeral research enrollment CA', '-keyout', 'ca-key.pem', '-out', 'ca.pem',
-      '-addext', 'basicConstraints=critical,CA:TRUE,pathlen:0', '-addext', 'keyUsage=critical,keyCertSign,cRLSign']);
-    command(['req', '-config', 'request.cnf', '-new', '-x509', '-newkey', 'ec', '-pkeyopt', 'ec_paramgen_curve:P-256', '-nodes', '-sha256', '-days', '1',
-      '-subj', `/CN=${logicalName}`, '-keyout', 'server-key.pem', '-out', 'server.pem',
-      '-addext', 'basicConstraints=critical,CA:FALSE', '-addext', 'keyUsage=critical,digitalSignature',
-      '-addext', 'extendedKeyUsage=serverAuth', '-addext', `subjectAltName=DNS:${logicalName}`]);
+    fs.mkdirSync(path.join(directory, 'issued'));
+    fs.writeFileSync(path.join(directory, 'index.txt'), '');
+    fs.writeFileSync(path.join(directory, 'serial'), randomBytes(16).toString('hex') + '\n');
+    fs.writeFileSync(path.join(directory, 'issuer.cnf'), '[ca]\ndefault_ca=issuer\n[issuer]\n' +
+      'database=index.txt\nnew_certs_dir=issued\nserial=serial\nprivate_key=ca-key.pem\ncertificate=ca.pem\n' +
+      'default_md=sha256\ndefault_days=1\npolicy=names\nunique_subject=no\ncopy_extensions=none\n[names]\ncommonName=supplied\n' +
+      '[authority]\nbasicConstraints=critical,CA:TRUE,pathlen:0\nkeyUsage=critical,keyCertSign,cRLSign\n' +
+      `[gateway]\nbasicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature\nextendedKeyUsage=serverAuth\nsubjectAltName=DNS:${logicalName}\n` +
+      '[client]\nbasicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature\nextendedKeyUsage=clientAuth\n');
+    const issue = (name, section, selfSign = false) => {
+      command(['ca', '-config', 'issuer.cnf', '-batch', '-notext', '-md', 'sha256',
+        '-startdate', opensslDate(validity.notBeforeEpochSeconds), '-enddate', opensslDate(validity.notAfterEpochSeconds),
+        '-extensions', section, '-in', `${name}.csr.pem`, '-out', `${name}.pem`,
+        ...(selfSign ? ['-selfsign', '-keyfile', `${name}-key.pem`] : [])]);
+      const certificate = new X509Certificate(fs.readFileSync(path.join(directory, `${name}.pem`)));
+      if (Date.parse(certificate.validFrom) !== validity.notBeforeEpochSeconds * 1000 ||
+          Date.parse(certificate.validTo) !== validity.notAfterEpochSeconds * 1000) throw Error('fixture_validity_profile_mismatch');
+      return certificate;
+    };
+    for (const [name, subject] of [['ca', 'Ephemeral research enrollment CA'], ['server', logicalName]]) {
+      command(['req', '-config', 'request.cnf', '-new', '-newkey', 'ec', '-pkeyopt', 'ec_paramgen_curve:P-256', '-nodes', '-sha256',
+        '-subj', `/CN=${subject}`, '-keyout', `${name}-key.pem`, '-out', `${name}.csr.pem`]);
+      issue(name, name === 'ca' ? 'authority' : 'gateway', true);
+    }
     for (const name of ['ca-key.pem', 'server-key.pem']) fs.chmodSync(path.join(directory, name), 0o600);
-    fs.writeFileSync(path.join(directory, 'client.ext'), 'basicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature\nextendedKeyUsage=clientAuth\n');
     const serverCertificate = new X509Certificate(fs.readFileSync(path.join(directory, 'server.pem')));
     const authority = new X509Certificate(fs.readFileSync(path.join(directory, 'ca.pem')));
     const tls = { key: fs.readFileSync(path.join(directory, 'server-key.pem')), cert: serverCertificate.toString(),
@@ -120,11 +160,9 @@ export async function startPeer({ openssl = process.env.OPENSSL_BIN ?? 'openssl'
           if (received !== Number(length)) throw Error('invalid_csr');
           const csr = Buffer.concat(chunks);
           const key = verifyRequest(csr);
-          fs.writeFileSync(path.join(directory, 'client.csr'), csr);
-          command(['x509', '-req', '-inform', 'DER', '-in', 'client.csr', '-CA', 'ca.pem', '-CAkey', 'ca-key.pem',
-            '-set_serial', `0x${randomBytes(16).toString('hex')}`, '-days', '1', '-sha256', '-copy_extensions', 'none',
-            '-extfile', 'client.ext', '-out', 'client.pem']);
-          const leaf = new X509Certificate(fs.readFileSync(path.join(directory, 'client.pem')));
+          fs.writeFileSync(path.join(directory, 'client.csr.pem'), '-----BEGIN CERTIFICATE REQUEST-----\n' +
+            csr.toString('base64').match(/.{1,64}/g).join('\n') + '\n-----END CERTIFICATE REQUEST-----\n');
+          const leaf = issue('client', 'client');
           const spki = key.export({ format: 'der', type: 'spki' });
           if (!leaf.publicKey.export({ format: 'der', type: 'spki' }).equals(spki) || !leaf.verify(authority.publicKey)) throw Error('invalid_issued_key');
           if (authority.raw.length > 4096 || leaf.raw.length > 4096) throw Error('oversized_certificate');
@@ -161,7 +199,7 @@ export async function startPeer({ openssl = process.env.OPENSSL_BIN ?? 'openssl'
       server.on('tlsClientError', () => {});
       await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
     }
-    return { directory, close, command, metadata: { enrollmentPort: enrollment.address().port, webSocketPort: echo.address().port,
+    return { directory, close, command, validity, metadata: { enrollmentPort: enrollment.address().port, webSocketPort: echo.address().port,
       gatewayDer: serverCertificate.raw.toString('base64url'), gatewayPin: createHash('sha256').update(serverCertificate.publicKey.export({ format: 'der', type: 'spki' })).digest('base64url') } };
   } catch (failure) { await close(); throw failure; }
 }
