@@ -45,6 +45,22 @@ python3 tools/engine-spike/run_linux.py --engine-root .gradle/engine-spike/hev-s
 
 The runner verifies its source checkout and builds the candidate locally. Its synthetic packet fixtures use a socket pair, a controlled SOCKS adapter, and an explicit-proxy peer. It needs GCC, make, and Python 3, with no sudo, TUN device, network-route changes, SDK, or phone. This isolates native packet-to-stream evidence from Android routing, protected sockets, real desktop proxy integration, and physical-device acceptance. It does not bundle the candidate into the APK or freeze the protocol.
 
+## Manual Keystore runtime workflow
+
+[Android Keystore runtime](../.github/workflows/keystore-runtime.yml) is a separate `workflow_dispatch` workflow; pushes and pull requests do not launch it. It uses standard public `ubuntu-24.04` runners, with independent API 26 and API 37 AOSP x86_64 images. [GitHub documents Linux Android hardware acceleration](https://docs.github.com/en/actions/reference/runners/github-hosted-runners), and the SDK catalogue lists both images. A runner must expose usable `/dev/kvm`; absent or inaccessible KVM is a failure, with no software fallback or successful skip.
+
+The workflow uses the same verified command-line tools bootstrap as the host workflow, accepts SDK licences explicitly, and installs platform tools, the emulator, the chosen system image, compile SDK 37.0, and build tools 36.0.0. SDK/emulator versions are printed in the job log. It grants KVM access only inside that ephemeral runner VM, requires `emulator -accel-check`, and starts the AVD with `-accel on` and software graphics. [The emulator's `-no-snapshot` option](https://developer.android.com/studio/run/emulator-commandline#common) disables loading and saving snapshots. No AVD or userdata cache is configured; only Gradle dependencies are cached.
+
+After a bounded boot wait and an API-level check, the job runs:
+
+```sh
+./gradlew --no-daemon --console=plain :core-security:connectedDebugAndroidTest
+```
+
+The existing instrumented tests exercise identity reopen, challenge/CSR signing and deletion, refusal to replace an existing key, and concurrent key creation. Result validation requires nonempty instrumentation XML with no failures, errors, or skipped tests. Reports are retained for seven days; upload paths exclude APKs, emulator logs, keystores, snapshots, AVD directories, and userdata. Emulator shutdown preserves the test command's exit status.
+
+This workflow is prepared for a manual hosted run. Compilation and workflow lint do not count as device execution. Even a successful emulator run would establish only the tested Android Keystore behavior on those images; hardware-backed key protection, Android-to-Node mutual TLS, VPN routing, physical USB capture, and cellular WAN acceptance remain separate gates.
+
 ## Dependency and licence evidence
 
 The workflow records the resolved Gradle debug/release runtime graphs, the core JVM and security test runtime graphs, and the Node peer dependency graph under `build/reports/dependencies/`. To inspect the same inputs locally:
