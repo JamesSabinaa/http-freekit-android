@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import { inspect } from 'node:util';
 import { sign, generateKeyPairSync } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { createCryptoFixture, seq, tlv, fixedSubject } from './companion-enrollment-crypto-fixtures.mjs';
 import { validateEnrollmentCsr, validateEnrollmentAuthority, validateEnrollmentCertificate, verifyEnrollmentSignature } from './companion-enrollment-crypto.mjs';
 
@@ -12,10 +15,15 @@ const leaf = (overrides = {}, options = {}) => validateEnrollmentCertificate(f.c
 
 test('independent OpenSSL accepts actual fixed-subject CSR and provider verifies both public certificates', () => {
   const openssl = process.env.OPENSSL_BIN ?? 'openssl';
-  for (const [args, input] of [[['req', '-inform', 'DER', '-verify', '-noout'], f.csr()], [['x509', '-inform', 'DER', '-noout'], f.caDer], [['x509', '-inform', 'DER', '-noout'], f.certificate()]]) {
-    const result = spawnSync(openssl, args, { input, timeout: 5000, maxBuffer: 4096 });
-    assert.equal(result.status, 0, 'OpenSSL public fixture validation');
-  }
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'freekit-enrollment-public-'));
+  try {
+    for (const [index, [args, input]] of [[['req', '-inform', 'DER', '-verify', '-noout'], f.csr()], [['x509', '-inform', 'DER', '-noout'], f.caDer], [['x509', '-inform', 'DER', '-noout'], f.certificate()]].entries()) {
+      // Explicit public files avoid Windows x509 binary-stdin portability differences.
+      const filename = path.join(directory, `public-${index}.der`); fs.writeFileSync(filename, input, { mode: 0o600 });
+      const result = spawnSync(openssl, [...args, '-in', filename], { timeout: 5000, maxBuffer: 4096, stdio: ['ignore', 'pipe', 'pipe'] });
+      assert.equal(result.status, 0, 'OpenSSL public fixture validation');
+    }
+  } finally { fs.rmSync(directory, { recursive: true, force: true }); }
   assert.equal(validateEnrollmentCsr(f.csr()).material().deviceSpkiDer, f.deviceSpkiDer.toString('base64url'));
   validateEnrollmentAuthority(f.caDer, { utcMillis: f.utcMillis }); leaf();
 });
