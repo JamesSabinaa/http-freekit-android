@@ -1,0 +1,131 @@
+name: Android host validation
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-host-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  documentation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24.22.1'
+          package-manager-cache: false
+      - name: Check documentation links and checker regressions
+        run: |
+          node --test scripts/tests/check-doc-links.test.mjs
+          node scripts/check-doc-links.mjs
+      - name: Check committed whitespace
+        run: git diff --check --no-renames "$(git hash-object -t tree --stdin </dev/null)" HEAD
+      - name: Validate workflow syntax
+        env:
+          ACTIONLINT_VERSION: '1.7.12'
+          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+        run: |
+          archive="$RUNNER_TEMP/actionlint.tar.gz"
+          curl --fail --location --retry 3 \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" \
+            --output "$archive"
+          printf '%s  %s\n' "$ACTIONLINT_SHA256" "$archive" | sha256sum --check
+          mkdir -p "$RUNNER_TEMP/actionlint"
+          tar -xzf "$archive" -C "$RUNNER_TEMP/actionlint" actionlint
+          "$RUNNER_TEMP/actionlint/actionlint"
+
+  android:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up JDK 17
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - name: Set up Node test peer
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24.22.1'
+          cache: npm
+          cache-dependency-path: tools/transport-spike/package-lock.json
+      - name: Install Android SDK packages
+        run: |
+          sdkmanager --sdk_root="$ANDROID_HOME" 'platforms;android-37.0' 'build-tools;36.0.0'
+      - name: Install locked transport test dependencies
+        run: npm --prefix tools/transport-spike ci --ignore-scripts --no-fund
+      - name: Compile, test, and lint
+        run: >-
+          ./gradlew --no-daemon --console=plain
+          :core-protocol:test
+          :core-security:testDebugUnitTest :core-security:assembleDebugAndroidTest :core-security:lintDebug
+          :app:testDebugUnitTest :app:assembleDebug :app:lintDebug
+      - name: Record resolved dependency inventories
+        run: |
+          mkdir -p build/reports/dependencies
+          ./gradlew --no-daemon --console=plain :app:dependencies --configuration debugRuntimeClasspath \
+            > build/reports/dependencies/android-debug-runtime.txt
+          ./gradlew --no-daemon --console=plain :app:dependencies --configuration releaseRuntimeClasspath \
+            > build/reports/dependencies/android-release-runtime.txt
+          ./gradlew --no-daemon --console=plain :core-protocol:dependencies --configuration testRuntimeClasspath \
+            > build/reports/dependencies/core-test-runtime.txt
+          ./gradlew --no-daemon --console=plain :core-security:dependencies --configuration debugUnitTestRuntimeClasspath \
+            > build/reports/dependencies/security-test-runtime.txt
+          npm --prefix tools/transport-spike ls --all --json > build/reports/dependencies/node-test-runtime.json
+      # Publish reports only. APKs, local debug keys, temporary TLS keys, and dist/ are excluded.
+      - name: Retain host validation reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: android-host-validation-reports
+          retention-days: 7
+          if-no-files-found: warn
+          path: |
+            app/build/reports/tests/
+            app/build/reports/lint-results-debug.*
+            core-protocol/build/reports/tests/
+            core-protocol/build/test-results/test/
+            core-security/build/reports/tests/
+            core-security/build/reports/lint-results-debug.*
+            core-security/build/test-results/testDebugUnitTest/
+            build/reports/dependencies/
+
+  native-engine:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check raw-packet and proxy fixture regressions
+        run: python3 -m unittest discover -s tools/engine-spike -p 'test_*.py'
+      - name: Fetch the pinned engine and its submodules
+        env:
+          ENGINE_COMMIT: c0dfc4b07baa5e48022f5f88ac90488601f05674
+        run: |
+          engine_root=.gradle/engine-spike/hev-socks5-tunnel
+          git init "$engine_root"
+          git -C "$engine_root" remote add origin https://github.com/heiher/hev-socks5-tunnel.git
+          git -C "$engine_root" fetch --depth 1 origin "$ENGINE_COMMIT"
+          git -C "$engine_root" checkout --detach FETCH_HEAD
+          git -C "$engine_root" submodule update --init --recursive --depth 1
+      - name: Prove packet-to-stream forwarding without privileged networking
+        run: python3 tools/engine-spike/run_linux.py --engine-root .gradle/engine-spike/hev-socks5-tunnel
