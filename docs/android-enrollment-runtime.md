@@ -1,6 +1,6 @@
 # Android enrollment runtime report contract
 
-This A22a research adapter/report contract implements the [live enrollment profile](research-enrollment-https.md). It adds no production wire fields. The profile is normative for the two methods and binary private input. This early contract precedes parser, driver and workflow integration; no new runtime result is claimed. A22 adversarial Android cases and A22b active WSS revocation/expiry remain separate gates.
+This A22a research adapter/report contract implements the [live enrollment profile](research-enrollment-https.md). It adds no production wire fields. The profile is normative for the two methods and binary private input. The parser, driver and manual workflow are integrated; actual Android runtime validation remains pending. A22 adversarial Android cases and A22b active WSS revocation/expiry remain separate gates.
 
 ## Files and ownership
 
