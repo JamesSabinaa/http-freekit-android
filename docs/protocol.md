@@ -64,7 +64,7 @@ Each successful control session receives a short-lived opaque session ID bound t
 
 ## Session and stream behavior
 
-Control hello and response carry protocolVersion, message type, capabilities, session ID, desktop ID, and configured limits. Capabilities include tcp-http, tcp-https-connect, app-selection, and direct-wan where implemented; unsupported capabilities must not be advertised. Connection readiness requires successful authentication and proxy availability, not merely a WebSocket upgrade.
+Client hello carries protocolVersion, type, offered capabilities and required capabilities. Gateway readiness returns the negotiated capabilities, session ID, desktop ID, expiry and limits, using the exact appendix schemas. Capabilities include tcp-http, tcp-https-connect, app-selection, and direct-wan where implemented; unsupported features must not be advertised as negotiated. Connection readiness requires successful authentication and proxy availability, not merely a WebSocket upgrade.
 
 Each stream begins with a bounded JSON open message containing protocolVersion and an opaque streamId. After a ready response, client binary frames contain an ordinary explicit-proxy byte stream. HTTP starts with an absolute-form request; HTTPS starts with CONNECT authority and includes the proxy's response before subsequent TLS bytes. Gateway forwards only to its configured local proxy, preserving ordered bytes and backpressure. It does not parse a client-supplied local forwarding address or grant access to the management API.
 

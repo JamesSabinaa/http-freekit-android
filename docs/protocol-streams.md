@@ -8,6 +8,8 @@ One mutually authenticated control WebSocket owns a short-lived session. Each pr
 
 The lifecycle owner receives a **trusted local device ID**, expected paired desktop ID, shared budget pool and injected clock. Neither a message nor a caller-supplied destination can select that identity or an arbitrary upstream. The gateway connects streams only to its configured local proxy. HTTP bytes use absolute-form original-IP URLs with the original logical Host; CONNECT uses the original IP authority and preserves subsequent TLS bytes. Actual destination policy is enforced at the desktop proxy's connection boundary.
 
+Trusted local device/desktop identifiers use `[A-Za-z0-9_-]{1,128}`. The local implemented-capability collection contains 0–16 unique names with the capability syntax below and is defensively snapshotted; duplicate/excess local values are configuration errors, not silently deduplicated. Empty local support is permitted so negotiation can reject unsupported requirements cleanly, but it can never establish a traffic session without an implemented HTTP/CONNECT capability. This local constructor rule does not define or change enrollment wire fields.
+
 The model observes `client` and `gateway` directions. It performs no I/O and starts no hidden timer. Adapters serialize operations on one owner, run deadline ticks even without input, and close/cancel real resources before confirming closure. A model pass is not network, threading, cancellation or total-process-memory evidence.
 
 ## Text decoding
