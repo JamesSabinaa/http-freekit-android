@@ -98,7 +98,7 @@ class CompanionStreamPressure {
         boolean success = false; String phase = "config";
         try {
             DataInputStream input = new DataInputStream(System.in);
-            check(input.readInt() == 1);
+            check(input.readInt() == 2);
             int port = input.readInt(), buffer = input.readInt(), mode = input.readInt(), seam = input.readInt(), localBuffer = input.readInt();
             check(port > 0 && port <= 65535 && (buffer == 1024 || buffer == 65536) && (mode == 0 || mode == 1) &&
                 (seam == 0 || seam == 1) && (localBuffer == 1024 || localBuffer == 65536));

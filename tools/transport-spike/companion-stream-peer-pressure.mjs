@@ -28,7 +28,7 @@ const number = value => { const n = Number(value); if (!Number.isSafeInteger(n) 
 function config(peer, credential, session, requestedBufferBytes, combined, localPair, localBufferBytes) {
   const integers = (...values) => { const bytes = Buffer.alloc(values.length * 4); values.forEach((v, i) => bytes.writeUInt32BE(v, i * 4)); return bytes; };
   const blob = value => Buffer.concat([integers(value.length), value]);
-  return Buffer.concat([integers(1, peer.metadata.webSocketPort, requestedBufferBytes, combined ? 1 : 0, localPair ? 1 : 0, localBufferBytes),
+  return Buffer.concat([integers(2, peer.metadata.webSocketPort, requestedBufferBytes, combined ? 1 : 0, localPair ? 1 : 0, localBufferBytes),
     ...[Buffer.from(logicalName), Buffer.from(peer.metadata.gatewayDer, 'base64url'), new X509Certificate(credential.cert).raw,
       createPrivateKey(credential.key).export({ format: 'der', type: 'pkcs8' }), Buffer.from(session.token)].map(blob)]);
 }
@@ -171,7 +171,7 @@ export async function pressureMain(args = process.argv.slice(2)) {
   if (revision.status !== 0 || !/^[a-f0-9]{40}$/.test(sourceCommit ?? '') || dirty.status !== 0) fail();
   const results = [];
   for (const profile of pressureProfiles) results.push(await runPressureProbe({ ...profile, java: executable('java'), javac: executable('javac') }));
-  const report = { format: 'http-freekit-a20-pressure', revision: 1, baseSourceCommit: '277939d72d2d5ad33bc0f5be1e636d5fbe17ca3c',
+  const report = { format: 'http-freekit-a20-pressure', revision: 2, baseSourceCommit: '277939d72d2d5ad33bc0f5be1e636d5fbe17ca3c',
     sourceCommit, sourceDirty: dirty.stdout.length !== 0, nodeVersion: process.version, javaVersion, platform: process.platform,
     limitations: ['software_key', 'host_jsse', 'no_conscrypt', 'no_adb', 'no_android_client_model', 'no_android_kernel'], results };
   const rendered = JSON.stringify(report, null, 2) + '\n';
