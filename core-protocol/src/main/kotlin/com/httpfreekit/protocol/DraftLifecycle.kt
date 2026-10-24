@@ -65,7 +65,14 @@ class DraftSession(
     internal val pool: DraftBudgetPool,
     created: DraftClock,
 ) {
-    private val supported = supportedCapabilities.toSet()
+    private val supported = buildSet {
+        val expectedSize = supportedCapabilities.size
+        require(expectedSize in 0..16) { "invalid_message" }
+        for (capability in supportedCapabilities) {
+            require(size < 16 && add(capability)) { "invalid_message" }
+        }
+        require(size == expectedSize) { "invalid_message" }
+    }
     private val createdMono = created.monotonicMillis
     private var observedMono = created.monotonicMillis
     private var readyMono = 0L

@@ -348,4 +348,30 @@ class DraftLifecycleTest {
         assertEquals("network_unreachable", flow.peek(DraftDirection.CLIENT, 1, clock(15000)).result.code)
         assertEquals(DraftStreamPhase.FAILED, flow.snapshot().phase)
     }
+    @Test fun localCapabilityConstructorRejectsDuplicatesAndExcessWithoutClaimingResources() {
+        val pool = DraftBudgetPool()
+        for (values in listOf(listOf("tcp-http", "tcp-http"), List(17) { "feature-$it" }, List(17) { "tcp-http" })) {
+            val failure = assertThrows(IllegalArgumentException::class.java) { controller(pool, supported = values) }
+            assertEquals("invalid_message", failure.message)
+            assertEquals(0, pool.snapshot().sessionLeases)
+        }
+        assertEquals(DraftControlPhase.AWAITING_HELLO, controller(pool, supported = List(16) { "feature-$it" }).snapshot().phase)
+    }
+    @Test fun emptyLocalSupportIsValidButCannotNegotiateTrafficReadiness() {
+        val pool = DraftBudgetPool(); val session = controller(pool, supported = emptyList())
+        assertEquals(DraftControlPhase.AWAITING_HELLO, session.snapshot().phase)
+        assertEquals("ok", send(session, DraftDirection.CLIENT, DraftMessage.Hello(listOf("tcp-http"), emptyList())).code)
+        assertEquals("unsupported_capability", send(session, DraftDirection.GATEWAY,
+            DraftMessage.SessionReady(listOf("tcp-http"), "desktop", Instant.ofEpochMilli(epoch + 1000), DraftLimits(), token)).code)
+        assertEquals(0, pool.snapshot().sessionLeases)
+    }
+    @Test fun localCapabilityConstructorSnapshotsCallerOwnedSupport() {
+        val support = arrayListOf("tcp-http")
+        val session = controller(supported = support)
+        support.clear(); support.add("future-feature")
+        assertEquals("ok", send(session, DraftDirection.CLIENT, DraftMessage.Hello(listOf("tcp-http"), listOf("tcp-http"))).code)
+        assertEquals("ok", send(session, DraftDirection.GATEWAY,
+            DraftMessage.SessionReady(listOf("tcp-http"), "desktop", Instant.ofEpochMilli(epoch + 1000), DraftLimits(), token)).code)
+        assertEquals(DraftControlPhase.ACTIVE, session.snapshot().phase)
+    }
 }
