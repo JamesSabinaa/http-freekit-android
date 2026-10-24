@@ -162,3 +162,5 @@ jobs:
           path: |
             tools/engine-spike/android/build/reports/native-runtime/
             tools/engine-spike/android/build/reports/lint-results-debug.*
+            tools/engine-spike/android/build/test-results/testDebugUnitTest/*.xml
+            tools/engine-spike/android/build/reports/tests/testDebugUnitTest/
