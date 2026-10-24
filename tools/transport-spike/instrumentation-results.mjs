@@ -81,6 +81,7 @@ export function readAdbServerLog(baseline) {
       if (line.includes('failed to get kill-server process callchain')) markers.add('adb_callchain_capture_failed_marker');
       else if (line.includes('kill-server process callchain')) markers.add('adb_callchain_positive_marker');
       if (line.includes('adb server killed by remote request')) markers.add('adb_remote_kill_request_marker');
+      if (line.includes('disallowed connect to')) markers.add('adb_reverse_connect_rejection_marker');
       for (const match of line.matchAll(/(?:^|[\s/\\])([A-Za-z0-9_]+\.cpp):([1-9][0-9]{0,6})(?=$|[\s:])/g)) {
         if (sourceNames.has(match[1]) && sources.size < 16) sources.add(`${match[1]}:${match[2]}`);
       }

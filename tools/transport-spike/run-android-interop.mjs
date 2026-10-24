@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { startPeer } from './android-peer.mjs';
+import { releaseOwnedReversePorts, reserveFixtureReversePorts } from './reverse-mappings.mjs';
 import { MAX_ADB_DIAGNOSTIC_BYTES, MAX_INSTRUMENTATION_BYTES, adbPublicVersion, commandDiagnostic, parseInstrumentation, readAdbServerLog, researchClass, resultHtml, resultXml, snapshotAdbServerLog } from './instrumentation-results.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -98,9 +99,7 @@ function cleanup() {
       try { adb(['shell', 'am', 'force-stop', testPackage]); adb(['uninstall', testPackage], 60000); }
       catch { failures.push('research_test_package_cleanup_failed'); }
     }
-    for (const mapping of mappings.splice(0).reverse()) {
-      try { adb(['reverse', '--remove', `tcp:${mapping.devicePort}`]); } catch { failures.push('owned_reverse_mapping_cleanup_failed'); }
-    }
+    failures.push(...releaseOwnedReversePorts(adb, mappings));
     try { await (peer ?? await peerPromise?.catch(() => null))?.close(); } catch { failures.push('ephemeral_peer_cleanup_failed'); }
     if (failures.length) throw Error(failures.join(', '));
   })();
@@ -151,11 +150,7 @@ try {
   peer = await peerPromise;
   ensureRunning();
   const publicInputs = { ...peer.metadata };
-  for (const key of ['enrollmentPort', 'webSocketPort']) {
-    const mapped = adb(['reverse', '--no-rebind', 'tcp:0', `tcp:${publicInputs[key]}`]);
-    if (!/^[0-9]{1,5}$/.test(mapped) || Number(mapped) < 1 || Number(mapped) > 65535) throw Error('invalid_reverse_port_allocation');
-    mappings.push({ devicePort: mapped, hostPort: String(publicInputs[key]) }); publicInputs[key] = mapped;
-  }
+  Object.assign(publicInputs, reserveFixtureReversePorts(adb, peer.metadata, mappings));
   const args = ['-s', options.serial, 'shell', 'am', 'instrument', '-w', '-r', '-e', 'class', researchClass];
   for (const [name, value] of Object.entries(publicInputs)) {
     if (!/^[A-Za-z0-9_-]+$/.test(String(value))) throw Error('invalid_public_fixture_input');

@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { expectedTests } from './android-peer.mjs';
+import { releaseOwnedReversePorts, reserveFixtureReversePorts } from './reverse-mappings.mjs';
 import { MAX_ADB_DIAGNOSTIC_BYTES, MAX_ADB_SERVER_LOG_BYTES, MAX_INSTRUMENTATION_BYTES, adbPublicVersion, adbStderrCategories, commandDiagnostic, parseInstrumentation, readAdbServerLog, researchClass, resultHtml, resultXml, safeStack, snapshotAdbServerLog } from './instrumentation-results.mjs';
 
 const bundle = (name, code, extra = '') => `INSTRUMENTATION_STATUS: class=${researchClass}\nINSTRUMENTATION_STATUS: test=${name}\nINSTRUMENTATION_STATUS: numtests=4\n${extra}INSTRUMENTATION_STATUS_CODE: ${code}\n`;
@@ -174,10 +175,11 @@ test('verified callchain failure is distinct from positive callchain and remote-
     assert.equal(readAdbServerLog(failed).markers, 'adb_callchain_capture_failed_marker');
     const positive = snapshotAdbServerLog(file);
     fs.appendFileSync(file, 'adb.cpp:501 kill-server process callchain DO_NOT_RETAIN --private-argument\n' +
-      'adb.cpp:502 adb server killed by remote request DO_NOT_RETAIN\n');
+      'adb.cpp:502 adb server killed by remote request DO_NOT_RETAIN\n' +
+      'adb.cpp:525 handle_packet disallowed connect to tcp:43123 from emulator-5554 DO_NOT_RETAIN\n');
     const result = readAdbServerLog(positive);
-    assert.equal(result.markers, 'adb_callchain_positive_marker, adb_remote_kill_request_marker');
-    assert.doesNotMatch(JSON.stringify(result), /DO_NOT_RETAIN|private-argument/);
+    assert.equal(result.markers, 'adb_callchain_positive_marker, adb_remote_kill_request_marker, adb_reverse_connect_rejection_marker');
+    assert.doesNotMatch(JSON.stringify(result), /DO_NOT_RETAIN|private-argument|43123|emulator-5554/);
   });
 });
 test('server-log rotation and truncation fail closed without classifying replacement bytes', () => {
@@ -244,4 +246,103 @@ test('server-log diagnostics have no shared-default fallback and baselines are s
       assert.equal(snapshotAdbServerLog(file + '.link').status, 'not_regular_file');
     }
   });
+});
+
+function mappingBackend({ response = () => '', initial = [], failReserve, failRemove } = {}) {
+  const state = new Map(initial);
+  const commands = [];
+  const adb = args => {
+    commands.push([...args]);
+    assert.equal(args[0], 'reverse');
+    if (args[1] === '--no-rebind') {
+      assert.equal(args.length, 4);
+      const device = args[2];
+      const host = args[3];
+      assert.match(device, /^tcp:[1-9][0-9]*$/);
+      assert.match(host, /^tcp:[1-9][0-9]*$/);
+      if (state.has(device)) throw Error('existing_mapping_collision');
+      if (device === failReserve) throw Error('registration_command_failed');
+      state.set(device, host);
+      return response(device.slice(4), commands.length);
+    }
+    assert.equal(args[1], '--remove');
+    assert.equal(args.length, 3);
+    if (args[2] === failRemove) throw Error('removal_command_failed');
+    assert.ok(state.delete(args[2]), 'Cleanup attempted an unowned or missing mapping');
+    return '';
+  };
+  return { adb, state, commands };
+}
+const fixturePorts = { enrollmentPort: 50111, webSocketPort: 50112 };
+test('explicit distinct ports register and release with both documented successful responses', () => {
+  for (const response of [() => '', port => `\r\n${port}\n`]) {
+    const backend = mappingBackend({ response });
+    const owned = [];
+    const selected = reserveFixtureReversePorts(backend.adb, fixturePorts, owned);
+    assert.deepEqual(selected, { enrollmentPort: '50111', webSocketPort: '50112' });
+    assert.deepEqual([...backend.state], [['tcp:50111', 'tcp:50111'], ['tcp:50112', 'tcp:50112']]);
+    assert.equal(owned.length, 2);
+    assert.deepEqual(releaseOwnedReversePorts(backend.adb, owned), []);
+    assert.equal(backend.state.size, 0);
+    assert.equal(owned.length, 0);
+  }
+});
+test('an initial collision preserves the existing mapping and records no ownership', () => {
+  const backend = mappingBackend({ initial: [['tcp:50111', 'tcp:60200']] });
+  const owned = [];
+  assert.throws(() => reserveFixtureReversePorts(backend.adb, fixturePorts, owned), /existing_mapping_collision/);
+  assert.equal(owned.length, 0);
+  assert.deepEqual(releaseOwnedReversePorts(backend.adb, owned), []);
+  assert.deepEqual([...backend.state], [['tcp:50111', 'tcp:60200']]);
+  assert.equal(backend.commands.length, 1);
+});
+test('a second-port collision releases only the first successful reservation', () => {
+  const backend = mappingBackend({ initial: [['tcp:50112', 'tcp:60200']] });
+  const owned = [];
+  assert.throws(() => reserveFixtureReversePorts(backend.adb, fixturePorts, owned), /existing_mapping_collision/);
+  assert.deepEqual(owned, [{ devicePort: '50111', hostPort: '50111' }]);
+  assert.equal(backend.state.get('tcp:50112'), 'tcp:60200');
+  assert.deepEqual(releaseOwnedReversePorts(backend.adb, owned), []);
+  assert.deepEqual([...backend.state], [['tcp:50112', 'tcp:60200']]);
+});
+test('command failure never records the failed port and preserves unrelated mappings', () => {
+  const backend = mappingBackend({ initial: [['tcp:50113', 'tcp:60200']], failReserve: 'tcp:50112' });
+  const owned = [];
+  assert.throws(() => reserveFixtureReversePorts(backend.adb, fixturePorts, owned), /registration_command_failed/);
+  assert.equal(owned.length, 1);
+  assert.equal(backend.state.has('tcp:50112'), false);
+  assert.deepEqual(releaseOwnedReversePorts(backend.adb, owned), []);
+  assert.deepEqual([...backend.state], [['tcp:50113', 'tcp:60200']]);
+});
+test('unexpected output after command success still leaves every successful port cleanable', () => {
+  for (const failureAt of [1, 2]) for (const unexpected of ['unexpected_response', '65535']) {
+    const backend = mappingBackend({ initial: [['tcp:65535', 'tcp:60200']], response: (_port, command) => command === failureAt ? unexpected : '' });
+    const owned = [];
+    assert.throws(() => reserveFixtureReversePorts(backend.adb, fixturePorts, owned), /unexpected_reverse_registration_response/);
+    assert.equal(owned.length, failureAt);
+    assert.equal(backend.state.size, failureAt + 1);
+    assert.deepEqual(releaseOwnedReversePorts(backend.adb, owned), []);
+    assert.deepEqual([...backend.state], [['tcp:65535', 'tcp:60200']]);
+  }
+});
+test('invalid or repeated fixture ports fail before any reverse command runs', () => {
+  for (const ports of [{ enrollmentPort: 0, webSocketPort: 50112 }, { enrollmentPort: 50111, webSocketPort: 50111 },
+    { enrollmentPort: '50111', webSocketPort: 50112 }, { enrollmentPort: 50111, webSocketPort: 65536 }]) {
+    const backend = mappingBackend();
+    const owned = [];
+    assert.throws(() => reserveFixtureReversePorts(backend.adb, ports, owned), /invalid_distinct_fixture_ports/);
+    assert.equal(backend.commands.length, 0);
+    assert.equal(backend.state.size, 0);
+    assert.equal(owned.length, 0);
+  }
+});
+test('cleanup attempts all owned ports, reports failures, and never removes unrelated registrations', () => {
+  const backend = mappingBackend({ initial: [['tcp:50113', 'tcp:60200']], failRemove: 'tcp:50112' });
+  const owned = [];
+  reserveFixtureReversePorts(backend.adb, fixturePorts, owned);
+  assert.deepEqual(releaseOwnedReversePorts(backend.adb, owned), ['owned_reverse_mapping_cleanup_failed']);
+  assert.deepEqual([...backend.state], [['tcp:50113', 'tcp:60200'], ['tcp:50112', 'tcp:50112']]);
+  const count = backend.commands.length;
+  assert.deepEqual(releaseOwnedReversePorts(backend.adb, owned), []);
+  assert.equal(backend.commands.length, count);
 });
