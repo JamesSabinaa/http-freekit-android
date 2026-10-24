@@ -48,6 +48,8 @@ The codec accepts any capability name matching the common syntax, including unkn
 
 `session_ready.capabilities` is nonempty, unique, a subset of the client's offer and the local implemented set, and contains every required capability. An unoffered result is `invalid_message`; an unsupported result or unsatisfied requirement is `unsupported_capability`. A desktop-ID mismatch is `authentication_failed`. Its expiry must be strictly later than the current UTC instant and at most 1800 seconds later. An elapsed expiry yields `session_expired`; an invalid/far-future interval yields `invalid_message`. At least one actual HTTP/CONNECT capability is required for this traffic session.
 
+For simultaneous readiness defects after successful decoding/version checks, apply this exact order: sender/phase; paired desktop identity; readiness expiry interval; unoffered capabilities; unsupported/missing-required/no-HTTP capabilities; negotiated frame size fitting the trusted global byte ceiling; session-lease acquisition. The first failing check supplies the code. Schema/calendar defects still precede version and lifecycle checks as specified above.
+
 The exact `limits` object contains:
 
 | Key | Negotiated bound | Default |
@@ -103,6 +105,8 @@ Stream phases are `awaiting_open`, `awaiting_ready`, `open`, `half_closed`, `dra
 
 On terminal cancellation/failure, `peek`, drain, binary, text and EOF propagation cannot continue; only ticks/snapshots and idempotent closure confirmation are allowed. The snapshot continues reporting charged bytes/frames/leases until confirmed closure, then reports zero resources and its original terminal phase/cause. Successful completion cannot be inferred from HTTP-looking response bytes, EOF in one direction, a WebSocket upgrade or a timeout.
 
+Valid bounded peek is allowed before stream open/ready as a local inspection of its empty queue. It still checks the existing session/handshake clocks, never counts as progress and cannot extend the handshake. It does not authorize binary data or END_WRITE before ready. A drain without outstanding bytes remains invalid.
+
 A trusted local cancellation operation is also allowed in any nonterminal control/stream phase, including before hello/open. It has the same local cancellation/invalidation result without inventing a pre-open wire cancel. It must still close real resources and confirm their release. The first *wire* message rules above remain unchanged.
 
 ## Clocks, deadlines and event precedence
@@ -117,6 +121,8 @@ Inject safe-integer UTC epoch milliseconds and nonnegative safe-integer monotoni
 Every event, including binary, peek, drain, allocation and explicit tick, first checks clocks and existing session deadlines, then stream deadlines, before decoding/applying new input. If expiry and idle coincide, `session_expired` wins. Once terminal, preserve its original cause; subsequent events return a fixed invalid-operation result without mutating it. For live text events, decoding precedence is size, UTF-8/BOM/structural/syntax/duplicate/integer/schema validity, version, direction/order/identity, then negotiation/resource checks. Oversize text is `message_too_large`; other decoding defects are `invalid_message`. For valid binary offers, schema/size and sealed-direction checks precede capacity/backpressure. Timeouts and invalidations retain resources until confirmed closure.
 
 Snapshots are inert immutable inspection: they read no clock, apply no deadlines and change no state. A snapshot alone is not authorization to forward bytes; operational methods still check time. Ticks/snapshots and repeated closure confirmations on terminal owners succeed without reviving them; other terminal operations return `invalid_message` without replacing the stored cause. Closure confirmation always performs its idempotent release, even if that event also detects expiry, a deadline or bad clock. Such a time failure prevents normal completion but can never prevent cleanup. A control tick checks all its owned stream deadlines as well as its own. A stream operation checks its bound session before its own deadline; it cannot use an otherwise expired/closed session merely because no control tick ran.
+
+If a stream was already terminal before a new wire/queue/local-cancel operation, its result remains `invalid_message` even when the same call newly expires/fails its still-active controller. The controller's clocks are still checked and may invalidate other nonterminal streams; the already-terminal stream preserves its own earlier cause. This differs from a previously live stream, whose newly detected time failure is the operation result.
 
 WebSocket-close observation and full resource confirmation are deliberately separate, so stalled cleanup cannot free capacity or count as completed shutdown. A control resource confirmation without a preceding close observation also implies an abnormal control close, invalidating its streams, before checking whether its lease can be released. Repeated identical WebSocket-close observations on controls are idempotent; other observations never replace an existing terminal cause. After a normal stream close observation, ticks and trusted local cancellation/cleanup remain possible; new wire or queue operations fail that still-nonterminal stream as `invalid_message`.
 
