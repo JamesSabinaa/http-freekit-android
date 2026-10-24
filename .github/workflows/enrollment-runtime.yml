@@ -11,6 +11,7 @@ on:
         options:
           - a22a
           - a22b
+          - a22c
 
 permissions:
   contents: read
@@ -54,6 +55,13 @@ jobs:
               test -f tools/transport-spike/enrollment-runtime-stream-results.mjs
               test -f tools/transport-spike/run-enrolled-stream-runtime.mjs
               test -f tools/transport-spike/android/src/androidTest/kotlin/com/httpfreekit/interop/DraftEnrolledStreamingInteropTest.kt
+              ;;
+            a22c)
+              report_root=enrollment-adversarial
+              report_xml=TEST-enrollment-adversarial-research.xml
+              test -f tools/transport-spike/enrollment-runtime-adversarial-results.mjs
+              test -f tools/transport-spike/run-enrollment-adversarial-runtime.mjs
+              test -f tools/transport-spike/android/src/androidTest/kotlin/com/httpfreekit/interop/DraftEnrollmentAdversarialInteropTest.kt
               ;;
             *) echo '::error::Unknown enrollment research suite.'; exit 1 ;;
           esac
@@ -192,8 +200,8 @@ jobs:
             if ! node --input-type=module <<'JS'
           import fs from 'node:fs';
           const suite = process.env.A22_SUITE;
-          if (!['a22a', 'a22b'].includes(suite)) throw Error('invalid_runtime_suite');
-          const root = suite === 'a22b' ? 'enrollment-streaming' : 'enrollment-runtime';
+          if (!['a22a', 'a22b', 'a22c'].includes(suite)) throw Error('invalid_runtime_suite');
+          const root = { a22a: 'enrollment-runtime', a22b: 'enrollment-streaming', a22c: 'enrollment-adversarial' }[suite];
           const number = value => value === 'null' ? null : Number(value);
           const record = {
             format: `http-freekit-${suite}-host-cleanup`, revision: 1,
@@ -267,7 +275,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: ${{ inputs.suite == 'a22b' && 'enrollment-streaming' || 'enrollment' }}-api-${{ matrix.api }}-results
+          name: ${{ inputs.suite == 'a22c' && 'enrollment-adversarial' || inputs.suite == 'a22b' && 'enrollment-streaming' || 'enrollment' }}-api-${{ matrix.api }}-results
           retention-days: 7
           if-no-files-found: warn
           path: |

@@ -4,6 +4,13 @@ import { decodeEnrollmentRuntime, decodeEnrollmentHostCleanup, enrollmentReportP
   verifyEnrollmentRuntime, verifyEnrollmentHostCleanup, enrollmentRuntimeXml, enrollmentRuntimeHtml, EnrollmentRuntimeError } from '../tools/transport-spike/enrollment-runtime-results.mjs';
 import { decodeEnrolledStreamingReport, verifyEnrolledStreamingReport, enrolledStreamingRuntimeXml, enrolledStreamingRuntimeHtml,
   enrolledStreamingReportPaths } from '../tools/transport-spike/enrollment-runtime-stream-results.mjs';
+import { decodeEnrollmentAdversarialReport, verifyEnrollmentAdversarialReport, enrollmentAdversarialRuntimeXml, enrollmentAdversarialRuntimeHtml,
+  enrollmentAdversarialReportPaths } from '../tools/transport-spike/enrollment-runtime-adversarial-results.mjs';
+const adapters = Object.freeze({
+  a22a: [enrollmentReportPaths, decodeEnrollmentRuntime, verifyEnrollmentRuntime, enrollmentRuntimeXml, enrollmentRuntimeHtml],
+  a22b: [enrolledStreamingReportPaths, decodeEnrolledStreamingReport, verifyEnrolledStreamingReport, enrolledStreamingRuntimeXml, enrolledStreamingRuntimeHtml],
+  a22c: [enrollmentAdversarialReportPaths, decodeEnrollmentAdversarialReport, verifyEnrollmentAdversarialReport, enrollmentAdversarialRuntimeXml, enrollmentAdversarialRuntimeHtml],
+});
 
 export function readEnrollmentRuntimeFile(file, limit, started) {
   let descriptor;
@@ -30,11 +37,8 @@ export function readEnrollmentRuntimeFile(file, limit, started) {
 }
 export function verifyEnrollmentRuntimeFiles({ runtime, host, xml, html, source, api, started, suite = 'a22a' }) {
   if (typeof source !== 'string' || source.length !== 40 || !/^[0-9a-f]{40}$/.test(source) || ![26, 37].includes(api) ||
-      !Number.isSafeInteger(started) || started < 946684800 || started > 4102444800 || !['a22a', 'a22b'].includes(suite)) throw new EnrollmentRuntimeError('invalid_runtime_arguments');
-  const paths = suite === 'a22b' ? enrolledStreamingReportPaths : enrollmentReportPaths;
-  const [decode, verify, renderXml, renderHtml] = suite === 'a22b'
-    ? [decodeEnrolledStreamingReport, verifyEnrolledStreamingReport, enrolledStreamingRuntimeXml, enrolledStreamingRuntimeHtml]
-    : [decodeEnrollmentRuntime, verifyEnrollmentRuntime, enrollmentRuntimeXml, enrollmentRuntimeHtml];
+      !Number.isSafeInteger(started) || started < 946684800 || started > 4102444800 || !Object.hasOwn(adapters, suite)) throw new EnrollmentRuntimeError('invalid_runtime_arguments');
+  const [paths, decode, verify, renderXml, renderHtml] = adapters[suite];
   const report = decode(readEnrollmentRuntimeFile(runtime ?? paths.runtime, enrollmentRuntimeLimits.runtime, started));
   const cleanup = decodeEnrollmentHostCleanup(readEnrollmentRuntimeFile(host ?? paths.host, enrollmentRuntimeLimits.host, started), { suite });
   const result = verify(report, { source, api });
@@ -46,7 +50,7 @@ export function verifyEnrollmentRuntimeFiles({ runtime, host, xml, html, source,
 }
 function main(args) {
   if (args.length === 1 && args[0] === '--help') {
-    console.log('Usage: node scripts/verify-enrollment-runtime.mjs --source COMMIT --api 26|37 --started EPOCH_SECONDS [--suite a22a|a22b] [--runtime FILE] [--host FILE] [--xml FILE] [--html FILE]'); return;
+    console.log('Usage: node scripts/verify-enrollment-runtime.mjs --source COMMIT --api 26|37 --started EPOCH_SECONDS [--suite a22a|a22b|a22c] [--runtime FILE] [--host FILE] [--xml FILE] [--html FILE]'); return;
   }
   const options = {}, names = new Set(['--runtime', '--host', '--xml', '--html', '--source', '--api', '--started', '--suite']);
   for (let index = 0; index < args.length; index += 2) {
@@ -57,7 +61,7 @@ function main(args) {
   if (!['26', '37'].includes(options.api) || !/^[1-9][0-9]{8,9}$/.test(options.started ?? '') || String(Number(options.started)) !== options.started) throw new EnrollmentRuntimeError('invalid_runtime_arguments');
   options.api = Number(options.api); options.started = Number(options.started);
   const result = verifyEnrollmentRuntimeFiles(options);
-  console.log(`${options.suite === 'a22b' ? 'A22b' : 'A22a'} verified: ${result.methods} exact methods, ${result.actualStarted} starts, ${result.actualCompleted} completions; API ${result.api}; source ${result.source}; all cleanup joined.`);
+  console.log(`${options.suite === 'a22c' ? 'A22c' : options.suite === 'a22b' ? 'A22b' : 'A22a'} verified: ${result.methods} exact methods, ${result.actualStarted} starts, ${result.actualCompleted} completions; API ${result.api}; source ${result.source}; all cleanup joined.`);
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try { main(process.argv.slice(2)); }

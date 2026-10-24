@@ -14,7 +14,7 @@ const cleanup = block[1].replace(/^ {10}/gm, '');
 const bash = process.platform === 'win32' ? 'C:/Program Files/Git/bin/bash.exe' : '/bin/bash';
 const nodeDirectory = path.dirname(process.execPath);
 
-for (const suite of ['a22a', 'a22b']) for (const viaTrap of [false, true]) for (const originalStatus of [0, 7, 124]) {
+for (const suite of ['a22a', 'a22b', 'a22c']) for (const viaTrap of [false, true]) for (const originalStatus of [0, 7, 124]) {
   test(`actual ${suite} workflow cleanup ${viaTrap ? 'EXIT trap' : 'explicit'} preserves status ${originalStatus} and joins an owned child`, () => {
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'freekit-a22-cleanup-'));
     try {
@@ -32,7 +32,8 @@ for (const suite of ['a22a', 'a22b']) for (const viaTrap of [false, true]) for (
           TEST_NODE_DIRECTORY: nodeDirectory, TEST_ORIGINAL_STATUS: String(originalStatus), TEST_STOP_MODE: originalStatus === 0 ? 'graceful' : 'failed' },
       });
       assert.equal(result.error, undefined); assert.equal(result.status, originalStatus, result.stderr);
-      const reportPath = path.join(directory, `build/reports/${suite === 'a22b' ? 'enrollment-streaming' : 'enrollment-runtime'}/host-cleanup.json`);
+      const root = { a22a: 'enrollment-runtime', a22b: 'enrollment-streaming', a22c: 'enrollment-adversarial' }[suite];
+      const reportPath = path.join(directory, `build/reports/${root}/host-cleanup.json`);
       const report = decodeEnrollmentHostCleanup(fs.readFileSync(reportPath), { suite });
       assert.equal(report.driverExitCode, originalStatus); assert.equal(report.stopExitCode, originalStatus === 0 ? 0 : 9);
       assert.equal(report.terminationObserved, true); assert.equal(report.joinObserved, true); assert.notEqual(report.emulatorExitCode, null);
