@@ -10,6 +10,8 @@ A21 foundation is verified at public source 155f013 in [host run 40132791278](ht
 
 ## Assignments
 
+A22 is assigned from109ae16 against the [live enrollment research profile](../docs/research-enrollment-https.md). Root owns shared contracts/board, enrollment runtime driver/input helpers and the optional bounded stdin/live-observer extension to draft-stream-command.mjs. UI owns new DraftEnrollment-prefixed Android research files on feat/a22-android-enrollment in its isolated runtime worktree. D owns new companion-enrollment-https/issuer/worker-prefixed Node sources/tests on feat/a22-enrollment-https in its isolated carrier worktree. F owns new enrollment runtime verification/manual workflow/validation documentation on test/f-a22-enrollment in its isolated worktree. Commit this profile before implementation. A22a is the first live HTTPS/Keystore/approval/lost-result/save/process-reopen proof; additional Android adversarial cases and A22b active WSS revocation/credential-expiry remain required. Existing A19/A20/app/core-security/production desktop sources stay unchanged except the explicitly assigned backward-compatible command-helper extension. No local emulator retry or production integration is assigned.
+
 | Package | Owner | Branch | Status | Dependencies |
 | --- | --- | --- | --- | --- |
 | A Foundation and contracts | Codex | plan/a-foundation | Credential/streaming/native/enrollment foundations verified; capture policy and v1 freeze open | None |

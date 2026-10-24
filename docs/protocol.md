@@ -8,6 +8,8 @@ Draft revision 0.3 specifies the [control/stream grammar and conformance contrac
 
 Draft revision 0.4 adds the [bounded enrollment/approval/recovery contract](protocol-enrollment.md): exact request/reply schemas, canonical key-bound status/cancel proof bytes, strict CSR/certificate profiles and durable publication/replay rules. It is normative for A21 foundation implementations and independent fixtures; the revision-0.3 control/stream grammar is unchanged. A22 live HTTPS/Keystore/recovery proof and the remaining foundation gates precede production integration and v1 freeze.
 
+The [A22 live enrollment research profile](research-enrollment-https.md) defines the isolated HTTPS, host-operator, private input and process-reopen proof. It preserves draft 0.4 body/proof bytes. Full A22 additionally requires active WSS revocation and credential/session-expiry teardown; a credential probe alone does not clear those gates.
+
 ## Encoding and identity
 
 Use UTF-8 JSON for bounded control messages and binary WebSocket frames for proxy bytes. JSON timestamps use UTC RFC 3339. IDs are opaque strings; do not trust display names as identities. Unknown required capabilities or unsupported protocol versions produce explicit errors. Ignore unknown optional fields only where the schema permits them. Validate field types, lengths, endpoint syntax, and total payload size before acting.
