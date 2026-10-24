@@ -19,7 +19,7 @@ const pair = (name, index) => bundle(name, 1, '', index + 1) + (name === names[3
 const terminal = 'INSTRUMENTATION_RESULT: stream=\nOK (7 tests)\nINSTRUMENTATION_CODE: -1\n';
 const success = names.map(pair).join('') + terminal;
 const pressure = {
-  draftPressureVersion: '2', draftPressureWaitStartUtcMillis: '1800000012000', draftPressureWaitStartElapsedMillis: '12000',
+  draftPressureVersion: '3', draftPressureWaitStartUtcMillis: '1800000012000', draftPressureWaitStartElapsedMillis: '12000',
   draftPressureFailureUtcMillis: '1800000032010', draftPressureFailureElapsedMillis: '32010', draftPressureExpiresUtcMillis: '1800000030000',
   draftPressureControlPhase: 'failed', draftPressureControlCause: 'session_expired', draftPressureStreamPhase: 'failed',
   draftPressureStreamCause: 'session_expired', draftPressureWriteEntered: '750', draftPressureWriteCompleted: '749',
@@ -27,6 +27,15 @@ const pressure = {
   draftPressureApplicationWritten: '3200117', draftPressureProducerFinished: 'false', draftPressureOwnedStopping: 'true',
   draftPressureWorkerFailed: 'false', draftPressureLocalTicks: '1200', draftPressureLocalExpiryTicks: '1',
   draftPressureLongestCandidateMillis: '200', draftPressureSeenPredicateMask: '7',
+  draftPressureWaitKind: 'android', draftPressurePeerSampleElapsedMillis: '32000', draftPressurePeerProbeElapsedMillis: '100',
+  draftPressurePeerProxyWriteEntered: '668', draftPressurePeerProxyWriteCompleted: '667', draftPressurePeerProxyWritePending: 'true',
+  draftPressurePeerPendingIngressBytes: '4096', draftPressurePeerBackpressureCount: '1', draftPressurePeerChargedBytes: '8192',
+  draftPressurePeerControlPhase: 'failed', draftPressurePeerControlCause: 'session_expired',
+  draftPressurePeerStreamPhase: 'failed', draftPressurePeerStreamCause: 'session_expired',
+  draftPressurePeerProxyReadPaused: 'true', draftPressurePeerUploadBytesRead: '0',
+  draftPressureRawSendBufferBytes: '2304', draftPressureRawReceiveBufferBytes: '1152',
+  draftPressureApplicationSendBufferBytes: '131072', draftPressureApplicationReceiveBufferBytes: '131072',
+  draftPressureBridgeSendBufferBytes: '131072', draftPressureBridgeReceiveBufferBytes: '131072',
 };
 const pressureBundle = (values = pressure) => Object.entries(values).map(([key, value]) => `INSTRUMENTATION_STATUS: ${key}=${value}\n`).join('') + 'INSTRUMENTATION_STATUS_CODE: 3\n';
 const pressureFailure = (diagnostic = pressureBundle()) => names.map((name, index) => name === names[3]
@@ -76,7 +85,7 @@ test('either actual deadline owner can win with bounded skew and retained public
 test('failure-only pressure facts survive reports without proving successful expiry', () => {
   const result = parse(pressureFailure());
   assert.equal(result.ok, false); assert.equal(result.started, 7); assert.equal(result.completed, 7);
-  assert.equal(result.cases[3].state, 'failed'); assert.equal(Object.keys(result.observations).length, 24);
+  assert.equal(result.cases[3].state, 'failed'); assert.equal(Object.keys(result.observations).length, 45);
   assert.match(xml(result), /name="draftPressureExpiryFailureElapsedMillis" value="32010"/);
   assert.match(html(result), /draftPressureExpiryWriteInFlight/);
   assert.ok(result.problems.includes('missing_or_duplicate_expiry_observation'));
@@ -97,7 +106,8 @@ test('pressure facts require their exact active case, unique bundle and a failed
   }
 });
 test('pressure facts reject noncanonical, out-of-bound or inconsistent data without retaining secrets', () => {
-  for (const values of [{ ...pressure, PRIVATE_VALUE: 'SECRET' }, { ...pressure, draftPressureVersion: '1' }, { ...pressure, draftPressureControlCause: 'SECRET' },
+  for (const values of [{ ...pressure, PRIVATE_VALUE: 'SECRET' }, { ...pressure, draftPressureVersion: '1' },
+    { ...pressure, draftPressureVersion: '2' }, { ...pressure, draftPressureControlCause: 'SECRET' },
     { ...pressure, draftPressureStreamPhase: 'SECRET' }, { ...pressure, draftPressureWorkerFailed: 'yes' },
     { ...pressure, draftPressureWriteEntered: '0750' }, { ...pressure, draftPressureWriteEntered: '750.0' },
     { ...pressure, draftPressureWriteCompleted: '751' }, { ...pressure, draftPressureWriteInFlight: '751' },
@@ -111,14 +121,14 @@ test('pressure facts reject noncanonical, out-of-bound or inconsistent data with
     assert.doesNotMatch(xml(result) + html(result), /PRIVATE_VALUE|SECRET/);
   }
 });
-test('all three writer failures retain independent v2 facts without overwriting another case', () => {
+test('all three pressure failures retain independent v3 facts without overwriting another case', () => {
   const output = names.map((name, index) => [1, 2, 3].includes(index)
     ? bundle(name, 1) + pressureBundle({ ...pressure, draftPressureApplicationWritten: String(1000 + index) }) + bundle(name, -2)
     : pair(name, index)).join('') + terminal;
   const result = parse(output);
-  assert.equal(result.ok, false); assert.equal(Object.keys(result.observations).length, 72);
+  assert.equal(result.ok, false); assert.equal(Object.keys(result.observations).length, 135);
   for (const [index, scope] of [[1, 'Backpressure'], [2, 'Cancel'], [3, 'Expiry']]) {
-    assert.equal(result.observations[`draftPressure${scope}Version`], '2');
+    assert.equal(result.observations[`draftPressure${scope}Version`], '3');
     assert.equal(result.observations[`draftPressure${scope}ApplicationWritten`], String(1000 + index));
   }
   assert.ok(!result.problems.includes('duplicate_pressure_observation'));
@@ -130,10 +140,71 @@ test('pressure facts preserve active/exhausted/partial-predicate states without 
     draftPressureOwnedStopping: 'false', draftPressureLocalExpiryTicks: '0', draftPressureLongestCandidateMillis: '0', draftPressureSeenPredicateMask: '1' },
     { ...pressure, draftPressureControlCause: 'network_unreachable', draftPressureStreamCause: 'network_unreachable', draftPressureLocalExpiryTicks: '0' }]) {
     const result = parse(pressureFailure(pressureBundle(values)));
-    assert.equal(result.ok, false); assert.equal(Object.keys(result.observations).length, 24);
+    assert.equal(result.ok, false); assert.equal(Object.keys(result.observations).length, 45);
     assert.ok(!result.problems.includes('invalid_pressure_observation'));
   }
 });
+test('both actual wait kinds retain cached peer age and socket facts without proving success', () => {
+  for (const kind of ['proxy', 'android']) {
+    const result = parse(pressureFailure(pressureBundle({ ...pressure, draftPressureWaitKind: kind,
+      draftPressurePeerSampleElapsedMillis: '1000', draftPressurePeerStreamPhase: 'unobserved', draftPressurePeerStreamCause: 'null',
+      draftPressureRawSendBufferBytes: '0', draftPressureBridgeReceiveBufferBytes: '16777216' })));
+    assert.equal(Object.keys(result.observations).length, 45);
+    assert.equal(result.observations.draftPressureExpiryWaitKind, kind);
+    assert.equal(result.observations.draftPressureExpiryPeerSampleElapsedMillis, '1000');
+    assert.ok(!result.problems.includes('invalid_pressure_observation'));
+    assert.equal(result.ok, false);
+  }
+});
+
+test('absent peer snapshots require the complete unobserved sentinel and cannot retain invented values', () => {
+  const absent = { ...pressure, draftPressurePeerSampleElapsedMillis: '-1', draftPressurePeerProbeElapsedMillis: '-1',
+    draftPressurePeerControlPhase: 'unobserved', draftPressurePeerControlCause: 'null',
+    draftPressurePeerStreamPhase: 'unobserved', draftPressurePeerStreamCause: 'null',
+    draftPressurePeerProxyWriteEntered: '0', draftPressurePeerProxyWriteCompleted: '0', draftPressurePeerProxyWritePending: 'false',
+    draftPressurePeerPendingIngressBytes: '0', draftPressurePeerBackpressureCount: '0', draftPressurePeerChargedBytes: '0',
+    draftPressurePeerProxyReadPaused: 'false', draftPressurePeerUploadBytesRead: '0' };
+  assert.equal(Object.keys(parse(pressureFailure(pressureBundle(absent))).observations).length, 45);
+  for (const replacement of [{ draftPressurePeerProbeElapsedMillis: '0' }, { draftPressurePeerControlPhase: 'active' },
+    { draftPressurePeerStreamCause: 'cancelled' }, { draftPressurePeerProxyWriteEntered: '1' },
+    { draftPressurePeerProxyWritePending: 'true' }, { draftPressurePeerProxyReadPaused: 'true' },
+    { draftPressurePeerSampleElapsedMillis: '0' }]) {
+    const result = parse(pressureFailure(pressureBundle({ ...absent, ...replacement })));
+    assert.ok(result.problems.includes('invalid_pressure_observation'));
+    assert.equal(Object.keys(result.observations).length, 0);
+  }
+});
+
+test('peer timing, enums, accounting and actual socket-buffer bounds reject private or inconsistent facts', () => {
+  for (const replacement of [{ draftPressureWaitKind: 'SECRET' }, { draftPressurePeerSampleElapsedMillis: '32011' },
+    { draftPressurePeerSampleElapsedMillis: '-2' }, { draftPressurePeerProbeElapsedMillis: '-1' },
+    { draftPressurePeerProbeElapsedMillis: '120001' }, { draftPressurePeerProbeElapsedMillis: '0100' },
+    { draftPressurePeerControlPhase: 'unobserved' }, { draftPressurePeerControlCause: 'SECRET' },
+    { draftPressurePeerStreamPhase: 'SECRET' }, { draftPressurePeerStreamPhase: 'unobserved' },
+    { draftPressurePeerProxyWriteCompleted: '669' }, { draftPressurePeerPendingIngressBytes: '4097' },
+    { draftPressurePeerChargedBytes: '16385' }, { draftPressurePeerBackpressureCount: '33562625' },
+    { draftPressurePeerUploadBytesRead: '33562625' }, { draftPressurePeerProxyReadPaused: 'yes' },
+    ...['RawSend', 'RawReceive', 'ApplicationSend', 'ApplicationReceive', 'BridgeSend', 'BridgeReceive']
+      .flatMap(name => ['-1', '16777217', '1.0'].map(value => ({ [`draftPressure${name}BufferBytes`]: value })))]) {
+    const result = parse(pressureFailure(pressureBundle({ ...pressure, ...replacement })));
+    assert.ok(result.problems.includes('invalid_pressure_observation'));
+    assert.equal(Object.keys(result.observations).length, 0);
+    assert.doesNotMatch(xml(result) + html(result), /SECRET/);
+  }
+});
+
+test('status metadata admission stays bounded while fitting an exact 45-field pressure bundle', () => {
+  assert.ok(!parse(pressureFailure()).problems.includes('status_field_limit'));
+  for (const extras of [3, 4]) {
+    const values = { ...pressure, ...Object.fromEntries(Array.from({ length: extras }, (_, index) => [`PRIVATE_${index}`, 'SECRET'])) };
+    const result = parse(pressureFailure(pressureBundle(values)));
+    assert.equal(result.problems.includes('status_field_limit'), extras === 4);
+    assert.ok(result.problems.includes('invalid_pressure_observation'));
+    assert.equal(Object.keys(result.observations).length, 0);
+    assert.doesNotMatch(xml(result) + html(result), /PRIVATE_|SECRET/);
+  }
+});
+
 test('all seven can execute in another JUnit order without changing the report contract', () => {
   const result = parse([...names].reverse().map(pair).join('') + terminal);
   assert.equal(result.ok, true); assert.deepEqual(result.cases.map(value => value.name), names);
@@ -220,7 +291,7 @@ test('pressure failures retain distinct proxy and Android stages plus bounded or
 });
 test('success with a failure stack and excessive status metadata fails closed', () => {
   assert.equal(parse(success.replace('current=1\n', 'current=1\nINSTRUMENTATION_STATUS: stack=SECRET\n')).ok, false);
-  const fields = Array.from({ length: 35 }, (_, index) => `INSTRUMENTATION_STATUS: field${index}=SECRET\n`).join('');
+  const fields = Array.from({ length: 45 }, (_, index) => `INSTRUMENTATION_STATUS: field${index}=SECRET\n`).join('');
   const result = parse(success.replace('current=1\n', 'current=1\n' + fields));
   assert.equal(result.ok, false); assert.doesNotMatch(xml(result), /SECRET/);
 });

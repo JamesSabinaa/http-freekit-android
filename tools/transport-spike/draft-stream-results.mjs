@@ -94,35 +94,58 @@ function validExpiryObservation(bundle) {
 const pressureNames = ['Version', 'WaitStartUtcMillis', 'WaitStartElapsedMillis', 'FailureUtcMillis', 'FailureElapsedMillis',
   'ExpiresUtcMillis', 'ControlPhase', 'ControlCause', 'StreamPhase', 'StreamCause', 'WriteEntered', 'WriteCompleted', 'WriteInFlight',
   'ChargedBytes', 'ChargedFrames', 'PendingClientBytes', 'ApplicationWritten', 'ProducerFinished', 'OwnedStopping', 'WorkerFailed',
-  'LocalTicks', 'LocalExpiryTicks', 'LongestCandidateMillis', 'SeenPredicateMask'].map(name => `draftPressure${name}`);
+  'LocalTicks', 'LocalExpiryTicks', 'LongestCandidateMillis', 'SeenPredicateMask', 'WaitKind',
+  'PeerSampleElapsedMillis', 'PeerProbeElapsedMillis', 'PeerProxyWriteEntered', 'PeerProxyWriteCompleted',
+  'PeerProxyWritePending', 'PeerPendingIngressBytes', 'PeerBackpressureCount', 'PeerControlPhase', 'PeerControlCause',
+  'PeerStreamPhase', 'PeerStreamCause', 'PeerChargedBytes', 'PeerProxyReadPaused', 'PeerUploadBytesRead',
+  'RawSendBufferBytes', 'RawReceiveBufferBytes', 'ApplicationSendBufferBytes', 'ApplicationReceiveBufferBytes',
+  'BridgeSendBufferBytes', 'BridgeReceiveBufferBytes'].map(name => `draftPressure${name}`);
 const pressureCauses = new Set(['null', 'cancelled', 'unsupported_version', 'unsupported_capability', 'authentication_failed',
   'device_revoked', 'proxy_unavailable', 'session_limit', 'stream_limit', 'invalid_message', 'network_unreachable',
   'session_expired', 'desktop_stopped', 'message_too_large']);
 const pressureScopes = Object.freeze({ 1: 'Backpressure', 2: 'Cancel', 3: 'Expiry' });
 function validPressureObservation(bundle) {
-  if (Object.keys(bundle).length !== pressureNames.length || pressureNames.some(name => !Object.hasOwn(bundle, name)) || bundle.draftPressureVersion !== '2') return false;
+  if (Object.keys(bundle).length !== pressureNames.length || pressureNames.some(name => !Object.hasOwn(bundle, name)) || bundle.draftPressureVersion !== '3') return false;
   const numbers = {};
   for (const name of pressureNames) {
     const suffix = name.slice('draftPressure'.length), raw = bundle[name];
     if (suffix === 'Version') continue;
-    if (['ProducerFinished', 'OwnedStopping', 'WorkerFailed'].includes(suffix)) {
+    if (suffix === 'WaitKind') {
+      if (!['proxy', 'android'].includes(raw)) return false;
+    } else if (['ProducerFinished', 'OwnedStopping', 'WorkerFailed', 'PeerProxyWritePending', 'PeerProxyReadPaused'].includes(suffix)) {
       if (!['true', 'false'].includes(raw)) return false;
     } else if (suffix.endsWith('Cause')) { if (!pressureCauses.has(raw)) return false; }
-    else if (suffix === 'ControlPhase') {
-      if (!['awaiting_hello', 'awaiting_ready', 'active', 'closed', 'failed'].includes(raw)) return false;
-    } else if (suffix === 'StreamPhase') {
-      if (!['awaiting_open', 'awaiting_ready', 'open', 'half_closed', 'draining', 'closing', 'complete', 'cancelled', 'failed'].includes(raw)) return false;
+    else if (suffix.endsWith('ControlPhase')) {
+      if (!['awaiting_hello', 'awaiting_ready', 'active', 'closed', 'failed', ...(suffix.startsWith('Peer') ? ['unobserved'] : [])].includes(raw)) return false;
+    } else if (suffix.endsWith('StreamPhase')) {
+      if (!['awaiting_open', 'awaiting_ready', 'open', 'half_closed', 'draining', 'closing', 'complete', 'cancelled', 'failed',
+        ...(suffix.startsWith('Peer') ? ['unobserved'] : [])].includes(raw)) return false;
     } else {
-      if (!/^(?:0|[1-9][0-9]{0,15})$/.test(raw) || !Number.isSafeInteger(Number(raw))) return false;
+      const peerTime = ['PeerSampleElapsedMillis', 'PeerProbeElapsedMillis'].includes(suffix);
+      if ((!/^(?:0|[1-9][0-9]{0,15})$/.test(raw) && !(peerTime && raw === '-1')) || !Number.isSafeInteger(Number(raw))) return false;
       const value = Number(raw); numbers[suffix] = value;
       const maximum = suffix.endsWith('UtcMillis') ? 4102444800000
         : suffix.endsWith('ElapsedMillis') || ['LocalTicks', 'LocalExpiryTicks', 'LongestCandidateMillis'].includes(suffix) ? 120000
-        : ({ ChargedBytes: 8192, ChargedFrames: 4, PendingClientBytes: 4096, SeenPredicateMask: 7 }[suffix] ?? 33562624);
+        : suffix.endsWith('BufferBytes') ? 16777216
+        : ({ ChargedBytes: 8192, ChargedFrames: 4, PendingClientBytes: 4096, SeenPredicateMask: 7,
+          PeerPendingIngressBytes: 4096, PeerChargedBytes: 16384 }[suffix] ?? 33562624);
       if (value > maximum || (suffix.endsWith('UtcMillis') && value < 946684800000)) return false;
     }
   }
-  return numbers.FailureElapsedMillis >= numbers.WaitStartElapsedMillis && numbers.WriteCompleted <= numbers.WriteEntered &&
-    numbers.WriteInFlight <= numbers.WriteEntered && numbers.LocalExpiryTicks <= numbers.LocalTicks;
+  if (numbers.FailureElapsedMillis < numbers.WaitStartElapsedMillis || numbers.WriteCompleted > numbers.WriteEntered ||
+      numbers.WriteInFlight > numbers.WriteEntered || numbers.LocalExpiryTicks > numbers.LocalTicks ||
+      numbers.PeerProxyWriteCompleted > numbers.PeerProxyWriteEntered) return false;
+  if (numbers.PeerSampleElapsedMillis === -1) {
+    return numbers.PeerProbeElapsedMillis === -1 && bundle.draftPressurePeerControlPhase === 'unobserved' &&
+      bundle.draftPressurePeerStreamPhase === 'unobserved' &&
+      ['PeerControlCause', 'PeerStreamCause'].every(name => bundle[`draftPressure${name}`] === 'null') &&
+      ['PeerProxyWritePending', 'PeerProxyReadPaused'].every(name => bundle[`draftPressure${name}`] === 'false') &&
+      ['PeerProxyWriteEntered', 'PeerProxyWriteCompleted', 'PeerPendingIngressBytes', 'PeerBackpressureCount',
+        'PeerChargedBytes', 'PeerUploadBytesRead'].every(name => numbers[name] === 0);
+  }
+  return numbers.PeerProbeElapsedMillis >= 0 && numbers.PeerSampleElapsedMillis <= numbers.FailureElapsedMillis &&
+    bundle.draftPressurePeerControlPhase !== 'unobserved' &&
+    (bundle.draftPressurePeerStreamPhase !== 'unobserved' || bundle.draftPressurePeerStreamCause === 'null');
 }
 
 export function parseDraftStreamingInstrumentation(output, { exitCode = 0, signal = null, transportError = null } = {}) {
@@ -143,7 +166,7 @@ export function parseDraftStreamingInstrumentation(output, { exitCode = 0, signa
       if (terminalCount) problem('status_after_terminal_result');
       const [, key, value] = match;
       if (Object.hasOwn(pending, key)) problem('duplicate_status_field');
-      if (Object.keys(pending).length >= 32 && !Object.hasOwn(pending, key)) {
+      if (Object.keys(pending).length >= 48 && !Object.hasOwn(pending, key)) {
         problem('status_field_limit'); lastKey = undefined; continue;
       }
       pending[key] = value.slice(0, 8192); lastKey = key;
