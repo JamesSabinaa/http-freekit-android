@@ -10,6 +10,8 @@ node tools/transport-spike/run-android-interop.mjs --serial emulator-5554
 
 The A5 driver owns the temporary loopback Node peer, ephemeral certificate material, two dynamically allocated ADB reverse mappings, and the `:transport-interop:connectedDebugAndroidTest` invocation. It must remove only its own mappings, stop its peer, delete its private temporary files, and retain a nonzero status on failure. The workflow independently shuts down its emulator while preserving the driver or validation exit status. A missing driver or unsupported device fails instead of skipping execution.
 
+The regular [host workflow](../.github/workflows/android.yml) checks OpenSSL 3, executes `node --test tools/transport-spike/android-peer.test.mjs`, and runs `:transport-interop:assembleDebugAndroidTest :transport-interop:lintDebug`. Those checks validate the controlled peer and instrumentation compilation without claiming Android execution.
+
 The expected `com.httpfreekit.interop.AndroidNodeInteropTest` cases are:
 
 - `nonexportableIdentityEnrollsAndEchoes64KiB`

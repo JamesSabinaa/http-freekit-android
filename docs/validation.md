@@ -26,13 +26,18 @@ After installing the SDK/JDK and locked Node peer dependencies, CI runs:
 
 ```sh
 npm --prefix tools/transport-spike ci --ignore-scripts --no-fund
+openssl version # The research fixture requires OpenSSL 3.
+node --test tools/transport-spike/android-peer.test.mjs
 ./gradlew --no-daemon --console=plain \
   :core-protocol:test \
   :core-security:testDebugUnitTest :core-security:assembleDebugAndroidTest :core-security:lintDebug \
-  :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug
+  :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug \
+  :transport-interop:assembleDebugAndroidTest :transport-interop:lintDebug
 ```
 
 Assembling the app and security module's Android instrumentation APKs checks compilation only; no UI, Keystore, or device result is inferred from it.
+
+The host job checks OpenSSL 3 explicitly and runs the two loopback Node fixture tests for bounded CSR validation, certificate issuance, authenticated WebSocket echo, missing-client rejection, and temporary-file cleanup. It also compiles and strictly lints the isolated transport module, retaining its lint reports. It does not run connected Android tests. A local Windows research check can select an installed OpenSSL 3 executable through `OPENSSL_BIN`; no system OpenSSL setting is changed.
 
 Unit-test/lint reports and resolved dependency inventories are retained for seven days, including on failed builds when reports exist. The upload paths exclude `dist/`, APK outputs, signing material, and the temporary TLS identities created by the host test. A green workflow establishes only these host checks; Android installation, UI behavior, Keystore use, VPN packet forwarding on Android, and physical-network acceptance remain independent evidence requirements. Workflow syntax is checked locally with actionlint; execution evidence is recorded separately. A hosted run is not claimed until its actual run result is recorded.
 

@@ -92,12 +92,22 @@ jobs:
           sdkmanager --sdk_root="$ANDROID_HOME" 'platforms;android-37.0' 'build-tools;36.0.0'
       - name: Install locked transport test dependencies
         run: npm --prefix tools/transport-spike ci --ignore-scripts --no-fund
+      - name: Check the research fixture's OpenSSL prerequisite
+        run: |
+          openssl version
+          if [[ "$(openssl version)" != 'OpenSSL 3.'* ]]; then
+            echo '::error::The Android-to-Node research fixture requires OpenSSL 3.'
+            exit 1
+          fi
+      - name: Test the loopback enrollment and WebSocket fixture
+        run: node --test tools/transport-spike/android-peer.test.mjs
       - name: Compile, test, and lint
         run: >-
           ./gradlew --no-daemon --console=plain
           :core-protocol:test
           :core-security:testDebugUnitTest :core-security:assembleDebugAndroidTest :core-security:lintDebug
           :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug
+          :transport-interop:assembleDebugAndroidTest :transport-interop:lintDebug
       - name: Record resolved dependency inventories
         run: |
           mkdir -p build/reports/dependencies
@@ -127,6 +137,7 @@ jobs:
             core-security/build/reports/tests/
             core-security/build/reports/lint-results-debug.*
             core-security/build/test-results/testDebugUnitTest/
+            tools/transport-spike/android/build/reports/lint-results-debug.*
             build/reports/dependencies/
 
   native-engine:
