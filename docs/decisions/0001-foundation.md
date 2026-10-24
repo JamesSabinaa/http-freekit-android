@@ -12,7 +12,7 @@ The [AGP 9.4 compatibility table](https://developer.android.com/build/releases/a
 
 ## Forwarding-engine investigation
 
-Candidate: [HevSocks5Tunnel](https://github.com/heiher/hev-socks5-tunnel), inspected at `c0dfc4b07baa5e48022f5f88ac90488601f05674`. The upstream sources advertise Android, IPv4/IPv6, TCP and UDP relay support. Its C library accepts an existing TUN file descriptor and has run/stop entrypoints. Android build files target 16 KiB pages, four ABIs, and default to API 29. An API 26 native compile now passes for ARM64 and x86_64; actual API 26 loading and forwarding remain unverified.
+Candidate: [HevSocks5Tunnel](https://github.com/heiher/hev-socks5-tunnel), inspected at `c0dfc4b07baa5e48022f5f88ac90488601f05674`. The upstream sources advertise Android, IPv4/IPv6, TCP and UDP relay support. Its C library accepts an existing TUN file descriptor and has run/stop entrypoints. Android build files target 16 KiB pages, four ABIs, and default to API 29. An API 26 native compile passes for ARM64 and x86_64. The isolated probe now loads JNI on API 26 and API 37 as recorded below; Android forwarding remains unverified.
 
 Source inspection found these pinned submodules:
 
@@ -25,7 +25,7 @@ Source inspection found these pinned submodules:
 
 The tunnel root is MIT; Android makefiles include Apache-2.0 headers. The Windows-only Wintun directory has a separate licence and must not be imported into an Android distribution. This is a candidate inventory from a separate local research checkout, not an exhaustive shipped dependency audit. None of this native code is currently bundled.
 
-Native build evidence: NDK `28.2.13676358` built the unchanged candidate's shared library and executable with `APP_PLATFORM=android-26`, `APP_ABI=arm64-v8a x86_64`, and `-j4`. `llvm-readelf -l -n` showed all shared-library LOAD segments aligned to `0x4000` (16 KiB), and `.note.android.ident` encoded API 26 for both ABIs. This proves compilation and ELF properties, not runtime compatibility or packet forwarding. The upstream default JNI registration expects its own service class; a deliberate FreeKit bridge is still required.
+Native build evidence: NDK `28.2.13676358` built the unchanged candidate's shared library and executable with `APP_PLATFORM=android-26`, `APP_ABI=arm64-v8a x86_64`, and `-j4`. `llvm-readelf -l -n` showed all shared-library LOAD segments aligned to `0x4000` (16 KiB), and `.note.android.ident` encoded API 26 for both ABIs. This proves compilation and ELF properties. The [isolated research bridge](0005-android-native-packet-probe.md) deliberately overrides the upstream JNI registration class without patching native implementation. A production adapter and packet-forwarding execution remain open.
 
 To reproduce in a separate research checkout, set `$engineRoot` to that checkout, `$nativeBuildRoot` to a scratch build directory, and `$ndkRoot` to the installed NDK above. Clone with Git symlink support, check out the exact root commit above, and initialize its pinned submodules. Then run:
 
@@ -42,6 +42,8 @@ The initial Windows checkout had `core.symlinks=false`, so headers were text pla
 Proposed adapter: the engine points at a loopback SOCKS5 adapter in the app; that adapter routes TCP 80/443 to explicit-proxy streams and other traffic through protected sockets. UDP/443 must be blocked, DNS must use the selected underlying network, and IPv6 must either work or be deliberately blocked. Required proofs include protected sockets/no capture loop, selected-app routing, bounded buffering, half-close, cancellation, and packet-to-HTTP/CONNECT compatibility with the actual desktop proxy. A SOCKS5 engine alone does not implement these policies. No engine is selected until the spike proves them.
 
 HTTP Toolkit's AGPL implementation was not copied; adopting a fork would change the intended independent licensing strategy. A new TCP stack is excluded. Alternative engines still need a documented comparison if this candidate fails the gate.
+
+The diagnostic Android probe at `df5f80a` ([run 40097782339](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40097782339)) demonstrates library loading, native not-running inspection and a returning pre-start Stop on both AOSP x86_64 API 26 and API 37. It stops at the bridge connection: the host ADB daemon disappears, instrumentation exits 255 and reverse mappings are lost while emulator processes remain alive. No native worker is started and no packet case, worker statistics, worker Stop or page-size evidence is accepted. This narrows the blocker to the bridge/ADB path without establishing its cause or satisfying the engine-selection gate. See the exact-run audit in decision 0005.
 
 ## Host transport spike
 
