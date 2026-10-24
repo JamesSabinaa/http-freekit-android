@@ -1,0 +1,15 @@
+# Bounded WebSocket reader prerequisite
+
+Status: research framing implementation; authenticated draft streaming is still unverified.
+
+A19 established deterministic codec/lifecycle behavior. Its model cannot prove that a real WebSocket adapter stops accepting messages when a queue is full or that closing a socket unblocks a writer. The next proof needs bounded ingress and observable write/resource completion.
+
+The existing echo helper is insufficient for that proof. OkHttp's public WebSocket API accumulates inbound messages before delivering them and does not expose a configurable inbound message ceiling or writer join. Node `ws.pause()` can still deliver already buffered messages. Those APIs alone therefore do not establish the strict application ownership required by the draft. This is a limitation of the proposed proof using those public APIs, not a general production-library recommendation. Sources: [OkHttp reader](https://raw.githubusercontent.com/square/okhttp/parent-5.5.1/okhttp/src/commonJvmAndroid/kotlin/okhttp3/internal/ws/WebSocketReader.kt), [WebSocket API](https://raw.githubusercontent.com/square/okhttp/parent-5.5.1/okhttp/src/commonJvmAndroid/kotlin/okhttp3/WebSocket.kt), and [ws documentation](https://raw.githubusercontent.com/websockets/ws/8.21.1/doc/ws.md).
+
+The coordinator authorizes an original, research-only framing experiment on Kotlin streams and Node's non-flowing Duplex API. The experiment may implement ping/pong itself; the protocol appendix's established-library requirement for production is unchanged. No upstream implementation is copied and no third-party dependency is added. [RFC 6455](https://datatracker.ietf.org/doc/html/rfc6455) supplies the framing requirements. The experiment has explicit limits of 64 data fragments and 64 interleaved controls per fragmented message, alongside the draft payload ceilings. It does not claim general extension support or production selection.
+
+The Kotlin prerequisite lives in the separate JVM-only `:transport-framing` module. It is not a dependency of the app or existing Android echo proof. Its 17 local JVM tests cover length/cumulative bounds before payload reads, masked roles, strict UTF-8 and close validation, fragmented/control ordering, short and truncated reads, coalesced input with explicit event leases, serialized writes and actual local flush completion. The tests also distinguish caller misuse from peer failure and prevent payload/provider exception text from entering diagnostics.
+
+Node framing, paired Kotlin/Node exchange, authenticated Android control/stream negotiation, gated streaming and directional EOF, actual backpressure/resumption, blocked-write cancel/expiry, socket/worker/timer joins, and API 26/37 execution are separate evidence. A timeout, queued send, cancelled future or model `resources_closed()` event cannot stand in for actual I/O termination. Existing Keystore/echo/native probe evidence continues to have its original scope.
+
+No protocol version, enrollment transaction, desktop endpoint or VPN policy changes in this prerequisite. V1 remains draft, and production C/D integration stays gated.

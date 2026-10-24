@@ -1,0 +1,13 @@
+# Bounded WebSocket framing research
+
+This JVM-only module is a test prerequisite for the authenticated draft streaming proof, not an application or production WebSocket dependency. Run `./gradlew :transport-framing:test`. There is no HTTP upgrade, TLS, socket, timer or proxy implementation here.
+
+`ResearchWebSocketReader.read()` returns one leased text, binary, ping, pong or close event. Process it and call `release()` before reading again. `copyBytes()` returns caller-owned copies; retention of those copies must be bounded by the adapter. The reader stops exactly at the event boundary, so coalesced following frames are not consumed. Interleaved control events retain a bounded partial message. A protocol/I/O failure permanently fails the reader. Caller mistakes such as a concurrent read or unreleased event do not corrupt an active read or partial message.
+
+Payload lengths and cumulative fragments are checked before reading/allocating the offending payload. Text is limited to 16384 bytes, binary to a configured 1–65536 bytes and control payloads to 125 bytes. Fragmented messages accept at most 64 data frames and 64 interleaved controls. These are explicit research admission limits. Extensions, compression and reserved opcodes are unsupported. Fragment assembly retains at most one configured-size buffer plus its final delivery copy. UTF-8 and close codes/reasons are checked separately from application JSON. Empty binary messages are legal at the framing layer; the draft application codec/lifecycle must reject them where required.
+
+`ResearchWebSocketWriter` uses one synchronous lock and no asynchronous mailbox. Each accepted call snapshots bounded bytes and completes only after output write/flush returns. That is local writer completion, not proof of remote consumption. It generates fresh client masks and rejects invalid outgoing messages before writing headers. An I/O failure permanently closes the writer to subsequent calls. A successful close frame prevents further writes.
+
+The later adapter must own sockets, interrupt actual blocked I/O by closing them, enforce deadlines and ping/pong responses, serialize protocol/model operations, account for bytes until real delivery or confirmed resource teardown, and join its workers before calling `resources_closed()`. These classes do none of that work on its behalf. InputStream/TLS/kernel buffering and threads waiting to enter the writer are outside their memory bound. Unit tests using gated streams do not prove Android socket cancellation or authenticated streaming.
+
+See [the research decision](../../../docs/decisions/0011-bounded-websocket-research.md) and [the draft lifecycle](../../../docs/protocol-streams.md).

@@ -16,3 +16,5 @@ rootProject.name = "HTTPFreeKitAndroid"
 include(":app", ":core-protocol", ":core-security")
 include(":transport-interop")
 project(":transport-interop").projectDir = file("tools/transport-spike/android")
+include(":transport-framing")
+project(":transport-framing").projectDir = file("tools/transport-spike/framing")
