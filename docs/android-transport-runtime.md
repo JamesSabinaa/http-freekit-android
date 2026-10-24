@@ -23,4 +23,10 @@ After the driver succeeds, the workflow independently requires XML containing ex
 
 This experiment is intended to compose the real Android Keystore identity, [enrolled client credential binding](decisions/0004-enrolled-client-credentials.md), and [scoped gateway TLS factory](decisions/0003-scoped-tls-connections.md) with a controlled Node peer. An ADB reverse mapping transports test bytes to the host loopback; it does not establish the physical USB capture milestone. No production enrollment, desktop gateway, packet engine, VPN, certificate installer, or WAN route is exercised.
 
-The workflow is being prepared alongside the A5 module and driver. No Android-to-Node runtime result is claimed until the integrated source is committed, pushed, dispatched, and its actual four-case XML is audited on each API. Record the run, source commit, actual Android/emulator/Node/OpenSSL versions, named results, and remaining limitations after execution.
+## First hosted attempt
+
+[Run 40094676455](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40094676455) tested source `30ea165bbdb069118f0ea6d06c92be8247349ade` on both emulator APIs. Booted Android versions were 8.0.0 (API 26) and 17 (API 37), with emulator 37.2.12.0, Node 24.22.1, and OpenSSL 3.0.13. SDK/KVM/boot checks passed, and the peer reported two allocated reverse mappings before Gradle began testing.
+
+Both jobs failed. Each downloaded XML reports only `missingClientCertificateIsRejected`, with one failure, zero errors/skips, and an empty failure body. The other three required methods are absent. There is no passing evidence for the complete suite or the positive mutual-TLS/WebSocket exchange. Console output supplies no instrumentation exception or crash cause. Cleanup then reported both owned reverse listeners absent; that later observation does not establish the original cause.
+
+The strict test gate remains unsatisfied. Driver diagnostics and mapping lifetime need investigation before another test attempt; no failure is treated as a supported TLS rejection or a passing security check. Android-to-Node success remains unverified until a new integrated run provides all four named passing cases on each API.

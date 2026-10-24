@@ -74,13 +74,22 @@ The existing instrumented tests exercise identity reopen, challenge/CSR signing 
 
 Both jobs used emulator 37.2.12.0 (build 16428233), reported KVM version 12 usable, and passed the boot-completion and actual API checks before testing. This establishes the tested Android Keystore behavior on those emulator images. Hardware-backed key protection, physical-phone behavior, Android-to-Node mutual TLS, VPN routing, physical USB capture, and cellular WAN acceptance remain separate gates.
 
+[Run 40095225102](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40095225102) extends that evidence at source commit `2ab4d7459c6689e22637ba621441eb901e37185a`. Independent XML audit confirmed exactly seven methods on each of API 26 and API 37, with zero failures, errors, or skips: the three original cases above, plus:
+
+- `AndroidDeviceIdentityStoreTest.freshIdentityAuthorizesPrehashedTlsSigningWithoutExportingItsKey`
+- `AndroidDeviceIdentityStoreTest.legacySha256OnlyIdentityRequiresPairingAgainWithoutReplacement`
+- `AndroidDeviceClientCredentialTest.nonexportableKeyAuthenticatesWithIssuedChainWithoutReplacingItsKeystoreCertificate`
+- `AndroidDeviceClientCredentialTest.deletedOrRecreatedAliasCannotBeSelectedByTheOldCredential`
+
+The real Android-local mutual-TLS case passed after fresh keys authorized prehashed TLS signing and restricted legacy keys were rejected without replacement. The earlier five-case attempts at `d43c526` and `c0ed673` passed four methods but failed this TLS 1.2 handshake; diagnostic XML preserved both client I/O and server peer-close errors. The seven-case result supersedes those failures for the tested source. It does not establish Android-to-Node interoperability or hardware-backed key protection.
+
 ## Preview runtime evidence
 
-The separate [preview runtime workflow and evidence](android-preview-runtime.md) cover the actual sample-only `MainActivity` UI, simulated consent, Stop, and rotation. Its first hosted run passed four tests on API 26 and produced a visually reviewed sample PNG. API 37 booted but failed in Espresso initialization before any test body ran; that compatibility failure remains open. Neither result establishes real Android permissions, VPN service behavior, or capture.
+The separate [preview runtime workflow and evidence](android-preview-runtime.md) cover the actual sample-only `MainActivity` UI, simulated consent, Stop, and rotation. Run 40095028000 at `ed12db3` passed all four named tests on each API after pinning Espresso 3.7.0; both original sample PNGs were visually inspected. A reported API 37 system status-bar contrast issue remains. These results do not establish real Android permissions, VPN service behavior, or capture.
 
 ## Manual Android-to-Node transport workflow
 
-The separate manual [Android-to-Node transport workflow](android-transport-runtime.md) is prepared for A5's isolated Keystore/TLS/Node experiment. Its loopback fixture and ADB reverse mappings do not establish physical USB capture or a production gateway. Runtime evidence remains pending until the integrated experiment executes on both emulator APIs.
+The separate manual [Android-to-Node transport workflow](android-transport-runtime.md) runs A5's isolated Keystore/TLS/Node experiment. Its first attempt failed on both APIs with only one empty failed testcase reported and three required methods absent. Android-to-Node success remains unverified. The loopback fixture and ADB reverse mappings do not establish physical USB capture or a production gateway.
 
 ## Dependency and licence evidence
 
