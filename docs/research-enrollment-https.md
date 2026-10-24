@@ -10,7 +10,7 @@ Root owns this profile, board, new enrollment runtime driver/input helpers and t
 
 Two listeners bind only 127.0.0.1: setup HTTPS without a device certificate, and a separate mTLS credential-admission probe. Both use the same pinned gateway identity, TLS 1.2 or later and DNS-only SNI/name. The probe requires provider validation against the enrollment authority plus current exact-leaf Store authorization on every request. Disable research-probe TLS session caching/tickets and verify the exact presented leaf.
 
-Host is exactly logicalName + ":" + listenerPort. ADB reverse uses equal device/host ports and restores prior mappings. Worker restart must rebind the same two ports; it cannot silently change endpoints.
+Host is exactly logicalName + ":" + listenerPort. Reserve equal explicit device/host ADB reverse ports with --no-rebind, fail collisions without replacing prior mappings, and remove only successful registrations owned by this run. Worker restart must rebind the same two ports; it cannot silently change endpoints.
 
 Setup requires HTTP/1.1 and the exact draft POST paths. pair/status dispatch uses the two public strict decoders, never a raw JSON type peek. Every typed success, including pair_ended, is HTTP 200. Only pair_error selects these statuses:
 
@@ -25,7 +25,7 @@ Setup requires HTTP/1.1 and the exact draft POST paths. pair/status dispatch use
 
 The client requires HTTP status, decoded DTO and response channel to agree. Responses use application/json, exact canonical Content-Length, Connection: close and at most 16384 bytes. The probe is GET /research/enrollment/credential with no body; admission returns exactly {"type":"credential_admitted"}. It grants no stream or management operation.
 
-Check raw headers before normalized lookup. Reject duplicate names, more than 32 headers, Origin/Cookie/Authorization, transfer coding, Expect, upgrade, CONNECT, trailers, queries, absolute-form targets and unknown routes/methods. Setup Content-Type is exactly application/json; Content-Length is canonical decimal in 1..16384. Headers are bounded to 8192 bytes before parsing; body allocation follows length validation. Truncated/aborted/overlong bodies cause no state mutation. Framing rejection may destroy the connection or send one bounded 400/413 then close, without parser/provider detail.
+Check raw headers before normalized lookup. Reject duplicate names, more than 32 headers, Origin/Cookie/Authorization, transfer coding, Expect, upgrade, CONNECT, trailers, queries, absolute-form targets and unknown routes/methods. Setup Content-Type is exactly application/json; Content-Length is canonical decimal in 1..16384. Headers are bounded to 8192 bytes before parsing; body allocation follows length validation. A rejected or incomplete first request causes no state mutation. Never dispatch a second request on that socket. Bytes after a complete valid Content-Length body are a subsequent HTTP message, so rejecting them does not roll back an already-valid first request. Framing rejection may destroy the connection or send one bounded 400/413 then close, without parser/provider detail.
 
 Limits: 16 accepted sockets total, four body readers, five-second TLS/header budgets, ten-second whole-request deadline. Explicitly handle close/drop/client-error/continue; request-count configuration alone does not close sockets. No Android-accessible operator or management route exists.
 
