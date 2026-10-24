@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import https from 'node:https';
+import { ServerResponse } from 'node:http';
 import tls from 'node:tls';
 import net from 'node:net';
 import { createHash, randomBytes, sign, X509Certificate } from 'node:crypto';
@@ -86,6 +87,34 @@ async function emptyTlsResponse(f, material) {
     socket.once('end', () => { ended = true; socket.end(); });
     socket.once('close', () => { clearTimeout(deadline); if (!failed) { assert(written && ended, 'Actual request callback and clean empty TLS EOF'); resolve(); } });
   });
+}
+async function resetDuringEnd(f, material, drop) {
+  const c = connection(f), raw = net.connect({ host: c.host, port: c.port }), socket = tls.connect({ ...c, socket: raw });
+  socket.on('error', () => {}); raw.on('error', () => {});
+  const prototype = drop ? tls.TLSSocket.prototype : ServerResponse.prototype, original = prototype.end;
+  let intercepted = false, bytes = 0, resolveAttempt;
+  const attempted = new Promise(resolve => { resolveAttempt = resolve; });
+  const closed = new Promise(resolve => socket.once('close', resolve));
+  prototype.end = function (...args) {
+    const transport = drop ? this : this.socket;
+    if (!intercepted && transport?.localPort === c.port) {
+      intercepted = true;
+      // Delay only this real end invocation until a real peer RST has closed its
+      // transport. No finish callback is fabricated; Node handles end-on-closed.
+      transport.once('close', () => { try { original.apply(this, args); } catch {} resolveAttempt(); });
+      raw.resetAndDestroy(); return this;
+    }
+    return original.apply(this, args);
+  };
+  let timer;
+  try {
+    socket.on('data', data => { bytes += data.length; });
+    await new Promise((resolve, reject) => { socket.once('secureConnect', resolve); socket.once('error', reject); });
+    const body = Buffer.from(JSON.stringify(material));
+    socket.write(Buffer.concat([Buffer.from(`POST /companion/v1/pair/status HTTP/1.1\r\nHost: ${f.metadata.logicalName}:${c.port}\r\nContent-Type: application/json\r\nContent-Length: ${body.length}\r\nConnection: close\r\n\r\n`), body]));
+    await Promise.race([Promise.all([attempted, closed]), new Promise((_, reject) => { timer = setTimeout(() => reject(Error('Actual reset/end observation deadline')), 5000); })]);
+    assert(intercepted); assert.equal(bytes, 0);
+  } finally { clearTimeout(timer); prototype.end = original; socket.destroy(); raw.destroy(); }
 }
 
 test('real pinned HTTPS approval/drop/fresh-proof recovery and same-port reopen preserve exact result and mTLS key', { timeout: 20000 }, async t => {
@@ -221,4 +250,20 @@ test('global socket admission remains at sixteen across both actual listeners an
   const extra = net.connect({ host: '127.0.0.1', port: f.metadata.setupPort }); extra.on('error', () => {}); sockets.push(extra);
   await new Promise(resolve => extra.once('close', resolve)); assert.equal(f.owner.snapshot().acceptedSockets, 16);
   const closed = await f.owner.close(); assert.equal(closed.activeSockets, 0); assert.equal(closed.pendingTimers, 0); assert(closed.storeClosed);
+});
+test('real peer RST before response/drop completion cancels owners without claiming callback delivery or an approved drop', { timeout: 15000 }, async t => {
+  const f = await fixture(t), device = createCryptoFixture(), invitation = f.owner.createInvitation().material();
+  const registration = (await request(f, '/companion/v1/pair', pair(f, device, invitation))).material; await f.owner.approve(registration.enrollmentId);
+  for (const drop of [false, true]) {
+    if (drop) { await pause(1050); f.owner.dropNextApprovedStatus(); }
+    const signed = proof(f, device, registration, await challenge(f, registration));
+    await resetDuringEnd(f, signed, drop);
+    await waitFor(() => f.owner.snapshot().pendingWriteCallbacks === 0 && f.owner.snapshot().requestTasks === 0);
+    assert.equal((await request(f, '/companion/v1/pair/status', signed)).status, 403);
+    assert.equal(f.owner.snapshot().droppedApprovedResponses, 0); assert.equal(f.owner.snapshot().approvedResponsesDelivered, 0);
+  }
+  // Providers may also deliver a real error callback during close. At least one
+  // owner must exercise the actual-close path; both paths remain failed writes.
+  assert(f.owner.snapshot().writeOwnersCancelledByClose >= 1);
+  const closed = await f.owner.close(); assert.equal(closed.pendingCallbacks, 0); assert.equal(closed.workers, 0); assert.equal(closed.pendingTimers, 0); assert(closed.storeClosed);
 });

@@ -14,7 +14,11 @@ const status = { invalid_message: 400, unsupported_version: 400, unsupported_cap
 const fail = (code = 'pairing_unavailable', joined = true) => { throw new EnrollmentFixtureError(code, joined); };
 const id = value => typeof value === 'string' && /^[A-Za-z0-9_-]{1,128}$/.exec(value)?.[0] === value;
 const key = (role, socket) => `${role}:${socket.remoteAddress}:${socket.remotePort}`;
-function observeClose(socket) { return new Promise(resolve => socket.once('close', resolve)); }
+const closeObservations = new WeakMap();
+function observeClose(socket) {
+  if (!closeObservations.has(socket)) closeObservations.set(socket, new Promise(resolve => socket.once('close', resolve)));
+  return closeObservations.get(socket);
+}
 function listen(server, port) {
   return new Promise((resolve, reject) => {
     const error = () => { clearTimeout(timer); reject(new EnrollmentFixtureError()); };
@@ -43,6 +47,7 @@ function channel(request, body) {
 class EnrollmentHttpsFixture {
   #assets; #issuer; #store; #authority; #servers = new Map(); #listening = new Set();
   #connections = new Map(); #declined = new Map(); #tlsSockets = new Map(); #tasks = new Set(); #writes = new Set(); #jobs = new Map();
+  #requestSockets = new WeakMap(); #cancelledWrites = 0;
   #invitations = new Map(); #registrations = new Map(); #waiters = new Set();
   #closing = false; #closed = false; #unavailable = false; #closeTask; #bodyReaders = 0; #drop = false;
   #dropped = 0; #delivered = 0; #deliveredAfterDrop = 0; #dispatches = 0; #timerCount = 0; #storeClosed = false; #authorityClosed = false;
@@ -98,22 +103,37 @@ class EnrollmentHttpsFixture {
     this.#assets.commitPorts(this.#servers.get('setup').address().port, this.#servers.get('credential').address().port);
     return this;
   }
+  #write(socket, source, write) {
+    if (!socket) return Promise.reject(new EnrollmentFixtureError());
+    const pending = {}; this.#writes.add(pending);
+    return new Promise((resolve, reject) => {
+      let owned = true, failed = false;
+      const release = () => { owned = false; this.#writes.delete(pending); source.off('error', error); };
+      const error = () => { failed = true; reject(new EnrollmentFixtureError()); socket.destroy(); };
+      source.on('error', error);
+      // Actual close cancels the write owner. It never substitutes for a successful
+      // callback, and a requested destroy alone never releases retained ownership.
+      observeClose(socket).then(() => { if (owned) { release(); this.#cancelledWrites++; reject(new EnrollmentFixtureError()); } });
+      const callback = cause => {
+        if (!owned) return;
+        release(); if (cause || failed) reject(new EnrollmentFixtureError()); else resolve();
+      };
+      try { write(callback); } catch { error(); }
+    });
+  }
   async #reply(reply, code, body) {
     if (body.length > 16384) fail();
-    const pending = {}; this.#writes.add(pending);
-    try {
-      await new Promise((resolve, reject) => {
-        reply.on('error', () => {});
-        reply.writeHead(code, { 'content-type': 'application/json', 'content-length': String(body.length), connection: 'close' });
-        reply.end(body, error => { this.#writes.delete(pending); error ? reject(new EnrollmentFixtureError()) : resolve(); });
-      });
-    } catch { if (!reply.headersSent) this.#writes.delete(pending); throw new EnrollmentFixtureError(); }
+    const socket = this.#requestSockets.get(reply);
+    await this.#write(socket, reply, callback => {
+      reply.on('error', () => {});
+      reply.writeHead(code, { 'content-type': 'application/json', 'content-length': String(body.length), connection: 'close' });
+      reply.end(body, callback);
+    });
   }
   #error(reply, code) { return this.#reply(reply, status[code], encodeEnrollment(enrollmentMessage('pair_response', { protocolVersion: 1, type: 'pair_error', code }))); }
   async #dropResponse(socket) {
-    const closed = this.#tlsSockets.get(socket); if (!closed) fail();
-    const pending = {}; this.#writes.add(pending);
-    await new Promise((resolve, reject) => socket.end(error => { this.#writes.delete(pending); error ? reject(new EnrollmentFixtureError()) : resolve(); }));
+    const closed = observeClose(socket);
+    await this.#write(socket, socket, callback => socket.end(callback));
     await closed; this.#dropped++;
   }
   async #body(request, length) {
@@ -133,6 +153,7 @@ class EnrollmentHttpsFixture {
   }
   async #request(role, request, reply) {
     request.on('error', () => {});
+    this.#requestSockets.set(reply, request.socket);
     const record = this.#connections.get(key(role, request.socket)); record?.header?.();
     if (!record || record.served || this.#closing) { request.socket.destroy(); return; }
     record.served = true;
@@ -204,6 +225,7 @@ class EnrollmentHttpsFixture {
     requestTasks: this.#tasks.size, pendingWriteCallbacks: this.#writes.size, timers: this.#timerCount, registrationWaiters: this.#waiters.size,
     issuerJobs: this.#jobs.size, listeners: this.#listening.size, dispatches: this.#dispatches, droppedApprovedResponses: this.#dropped,
     approvedResponsesDelivered: this.#delivered, approvedResponsesDeliveredAfterDrop: this.#deliveredAfterDrop,
+    writeOwnersCancelledByClose: this.#cancelledWrites,
     admissionClosed: this.#closing, listenersClosed: this.#listening.size === 0, issuerChildrenJoined: issuer.closed && issuer.unjoinedChildren === 0 && issuer.commandsStarted === issuer.commandsClosed && issuer.commandsStarted === issuer.processGroupsClosed,
     activeSockets: this.#connections.size + this.#tlsSockets.size + this.#declined.size, pendingCallbacks: this.#writes.size, pendingTimers: this.#timerCount,
     signerGroups: issuer.commandsStarted - issuer.processGroupsClosed, workers: this.#tasks.size + this.#jobs.size + this.#waiters.size,
