@@ -28,7 +28,7 @@ export function readEnrollmentRuntimeFile(file, limit, started) {
 }
 export function verifyEnrollmentRuntimeFiles({ runtime = enrollmentReportPaths.runtime, host = enrollmentReportPaths.host,
   xml = enrollmentReportPaths.xml, html = enrollmentReportPaths.html, source, api, started }) {
-  if (typeof source !== 'string' || !/^[0-9a-f]{40}$/.test(source) || ![26, 37].includes(api) ||
+  if (typeof source !== 'string' || source.length !== 40 || !/^[0-9a-f]{40}$/.test(source) || ![26, 37].includes(api) ||
       !Number.isSafeInteger(started) || started < 946684800 || started > 4102444800) throw new EnrollmentRuntimeError('invalid_runtime_arguments');
   const report = decodeEnrollmentRuntime(readEnrollmentRuntimeFile(runtime, enrollmentRuntimeLimits.runtime, started));
   const cleanup = decodeEnrollmentHostCleanup(readEnrollmentRuntimeFile(host, enrollmentRuntimeLimits.host, started));
@@ -49,7 +49,7 @@ function main(args) {
     if (!names.has(name) || !value || Object.hasOwn(options, name.slice(2))) throw new EnrollmentRuntimeError('invalid_runtime_arguments');
     options[name.slice(2)] = value;
   }
-  if (!/^(?:26|37)$/.test(options.api ?? '') || !/^[1-9][0-9]{8,9}$/.test(options.started ?? '')) throw new EnrollmentRuntimeError('invalid_runtime_arguments');
+  if (!['26', '37'].includes(options.api) || !/^[1-9][0-9]{8,9}$/.test(options.started ?? '') || String(Number(options.started)) !== options.started) throw new EnrollmentRuntimeError('invalid_runtime_arguments');
   options.api = Number(options.api); options.started = Number(options.started);
   const result = verifyEnrollmentRuntimeFiles(options);
   console.log(`A22a verified: ${result.methods} exact methods, ${result.actualStarted} starts, ${result.actualCompleted} completions; API ${result.api}; source ${result.source}; all cleanup joined.`);

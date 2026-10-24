@@ -43,6 +43,15 @@ test('source/API binding refuses wrong, dirty, uppercase or missing implementati
     const value = runtime(); mutate(value); invalid(value);
   }
 });
+test('fixed source/hash/frame tokens consume the whole string including trailing LF or CRLF negatives', () => {
+  for (const suffix of ['\n', '\r\n']) {
+    const report = runtime(); report.source.commit += suffix; invalid(report);
+    const fingerprint = runtime(); fingerprint.restart.continuity.gatewayCertificateSha256Before += suffix; invalid(fingerprint);
+    const frame = clone(runtime()); frame.invocations[0].state = 'failed'; frame.invocations[0].frames = [{
+      className: 'com.httpfreekit.interop.DraftEnrollmentInteropTest', method: 'work' + suffix, file: 'DraftEnrollmentInteropTest.kt', line: 1 }];
+    invalid(frame);
+  }
+});
 test('clock gate derives full second-quantization interval and round trip rather than trusting fields', () => {
   for (const mutate of [value => { value.lowerBoundMillis++; }, value => { value.upperBoundMillis--; }, value => { value.roundTripMillis++; },
     value => { value.hostAfterMillis = value.hostBeforeMillis + 2001; value.lowerBoundMillis = value.deviceEpochSeconds * 1000 - value.hostAfterMillis; value.roundTripMillis = 2001; },

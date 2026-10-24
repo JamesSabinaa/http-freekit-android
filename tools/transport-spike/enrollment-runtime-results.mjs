@@ -47,8 +47,8 @@ const integer = (value, min = 0, max = Number.MAX_SAFE_INTEGER) => {
 };
 const boolean = value => { if (typeof value !== 'boolean') fail('invalid_runtime_report'); };
 const enumeration = (value, allowed) => { if (!allowed.includes(value)) fail('invalid_runtime_report'); };
-const hash = value => { if (typeof value !== 'string' || !/^[0-9a-f]{64}$/.test(value)) fail('invalid_runtime_report'); };
-const commit = value => { if (typeof value !== 'string' || !/^[0-9a-f]{40}$/.test(value)) fail('invalid_runtime_report'); };
+const hash = value => { if (typeof value !== 'string' || value.length !== 64 || !/^[0-9a-f]{64}$/.test(value)) fail('invalid_runtime_report'); };
+const commit = value => { if (typeof value !== 'string' || value.length !== 40 || !/^[0-9a-f]{40}$/.test(value)) fail('invalid_runtime_report'); };
 const codeList = (value, allowed) => {
   if (!Array.isArray(value) || value.length > 16 || new Set(value).size !== value.length || value.some(code => typeof code !== 'string' || !allowed.has(code))) fail('invalid_runtime_report');
 };
@@ -87,7 +87,7 @@ function validateFrames(value) {
   for (const frame of value) {
     exact(frame, ['className', 'method', 'file', 'line']);
     if (typeof frame.className !== 'string' || !/^com\.httpfreekit\.interop\.DraftEnrollment[A-Za-z0-9_$]{0,80}$/.test(frame.className) ||
-        typeof frame.method !== 'string' || !/^[A-Za-z0-9_$<>]{1,80}$/.test(frame.method) ||
+        typeof frame.method !== 'string' || !/^[A-Za-z0-9_$<>]{1,80}$/.test(frame.method) || /[\r\n]/.test(frame.method) ||
         !frameFiles.get(frame.file)?.has(frame.className.slice('com.httpfreekit.interop.'.length).split('$')[0])) fail('invalid_runtime_report');
     integer(frame.line, 1, 999999);
   }
