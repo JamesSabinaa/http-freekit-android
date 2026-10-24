@@ -2,29 +2,34 @@
 
 [Android preview runtime](../.github/workflows/preview-runtime.yml) is a manual-only workflow for the actual `MainActivity` developer preview. It runs on standard public Ubuntu 24.04 runners with independent API 26 and API 37 AOSP x86_64 emulators. It reuses the verified SDK bootstrap, explicit SDK licences, `libpulse0` dependency, and mandatory KVM checks from the [Keystore runtime workflow](../.github/workflows/keystore-runtime.yml). It uses no snapshots or AVD cache, and fails when hardware acceleration or boot is unavailable.
 
-The four [Compose tests](../app/src/androidTest/java/com/httpfreekit/android/preview/PreviewActivityTest.kt) use visible resource text and selection/toggle semantics, with no pixel coordinates or production state injection. They check:
+The original four [sample Compose tests](../app/src/androidTest/java/com/httpfreekit/android/preview/PreviewActivityTest.kt) use visible resource text and selection/toggle semantics, with no pixel coordinates or production state injection. They check:
 
 - The no-capture warning on Home, Apps, Setup, and Diagnostics, including after scrolling.
 - Public sample computer and example-app selections, retained after landscape and portrait rotation.
 - The simulated notification and VPN consent dialogs, ready state, and Stop action, with capture still marked unverified.
 - Notification denial and VPN cancellation, with clear terminal preview states.
 
-These controls never request an Android VPN, network traffic, or certificate installation. The tests use no real invitation, credential, installed-app list, or user data. They exercise the [local preview](android-preview.md); system permission dialogs, actual service lifecycle, process-death persistence, and production capture remain separate work.
+Four additional [installed-catalog tests](../app/src/androidTest/java/com/httpfreekit/android/preview/InstalledAppsActivityTest.kt) exercise real current-profile package discovery through the public UI. They check the unrelated headless fixture's label/package search, Development filter and toggles; refresh/rotation retention; disabled-fixture pruning without reselection; and separate sample/installed choices. The rotation case also checks the packaged `adjustResize` mode, focuses the real search field, observes software-keyboard visibility through `WindowInsetsCompat`, and requires the full no-capture banner before and after landscape/portrait rotation. It does not accept an absent keyboard as a passing keyboard check.
+
+These controls never request an Android VPN, traffic, or certificate installation. The original sample cases use built-in synthetic data. Installed-catalog cases run only in the fresh emulator profile and identify the fixed `com.httpfreekit.fixture.installedapps` package; test reports contain fixed fixture messages and bounded public UI state/geometry, without inventory dumps or installed-mode screenshots. They exercise the [local preview](android-preview.md); system permission dialogs, actual service lifecycle, process-death persistence, and production capture remain separate work.
 
 Compile and lint locally with the [pinned toolchain](development.md):
 
 ```sh
-./gradlew :app:assembleDebugAndroidTest :app:lintDebug
+./gradlew :installed-app-fixture:assembleDebug :installed-app-fixture:lintDebug \
+  :app:assembleDebugAndroidTest :app:lintDebug
 ```
 
-On a compatible booted emulator, execute the suite with:
+The workflow installs the unrelated fixture before testing and checks the merged app APK for `QUERY_ALL_PACKAGES`. Its APK guard requires the fixed label/package, debug flag, minimum API 26/target API 37, no application code, permissions, launcher, or other components. It enables `show_ime_with_hard_keyboard` only on the fresh disposable AVD under a timeout and verifies readback `1`, so the emulated hardware keyboard cannot silently disable the real software-keyboard case.
+
+For direct execution, first prepare a fresh selected emulator with that enabled debug fixture and keyboard setting as in the workflow. Then run:
 
 ```sh
 ./gradlew :app:connectedDebugAndroidTest \
   -Pandroid.injected.androidTest.leaveApksInstalledAfterRun=true
 ```
 
-The manual workflow verifies the booted API, executes all four named tests exactly once, and rejects missing XML, failed tests, errors, or skips. The host workflow also compiles the instrumentation APK; compilation is not runtime evidence.
+The manual workflow verifies the booted API, requires the Gradle command to succeed, and then requires exactly all eight `(class, method)` pairs once each with consistent XML counters and zero failures, errors, or skips. Cleanup enables and uninstalls only the owned fixture before terminating and waiting for the emulator; actual fixture command statuses are reported, and failed cleanup fails an otherwise successful step. Direct execution needs the same fixture cleanup even after a failed test. The host workflow compiles the instrumentation APK and assembles/lints fixture debug/release variants; compilation is not runtime evidence.
 
 The ready-state test captures an actual rendered screen containing only the built-in sample preview into the debug app's private files. The Gradle property above keeps the debug app installed long enough for binary-safe `adb exec-out run-as` retrieval of that single PNG. The workflow checks its PNG header and dimensions, then retains only instrumentation XML/HTML reports and `sample-preview-ready-api-26.png` or `sample-preview-ready-api-37.png` for seven days. It uploads no APKs, keys, emulator logs, snapshots, or userdata. The emulator is shut down even when a check fails.
 
@@ -56,4 +61,12 @@ Latest reviewed PNG checksums from run 40095827316:
 | 26 | `ffd2e0fba61b430c0843f1fafa25f849d36597fdb1728a07b87df55422447730` |
 | 37 | `0f060cd54c52d69551b2e42074f039c4185dcd777f876da1ac3e231d415cfde8` |
 
-[Host run 40093068640](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40093068640) passed at the same source commit, including app instrumentation compilation. Physical-phone layout, accessibility, keyboard behavior, notification Stop, VPN revocation, USB routing, HTTPS interception, and cellular WAN remain unverified.
+[Host run 40093068640](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40093068640) passed at the same source commit, including app instrumentation compilation. Those historical sample frames did not establish keyboard behavior. Physical-phone layout, broad accessibility, notification Stop, VPN revocation, USB routing, HTTPS interception, and cellular WAN remain unverified.
+
+## Installed-catalog checkpoints
+
+[Run 40110867531](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40110867531) at `4b224444ffcced6b22210b13cabe7898d228092d` executed all eight named cases on each API, with zero errors or skips. Discovery/search/filter/toggle, real disabled-fixture refresh/pruning, and the original four sample cases passed on both APIs. The selection-separation case failed during its first installed search on both; API 26 also failed the banner assertion after landscape rotation. The failing Gradle command correctly prevented the success gate and PNG extraction. Both actual fixture enable/uninstall commands returned 0 before emulator teardown completed.
+
+[Corrected run 40112189433](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40112189433) at `96678cdbbb62a62531748dda834e4211cc3130df` again executed exactly eight cases per API with zero errors or skips. Seven passed on each API, including the strengthened real-keyboard rotation/banner case. That passing case required the packaged resize flag, observed IME visibility, retained fixture selection, and the full banner in portrait, landscape, and returned portrait. The fresh-AVD keyboard setting read back `1` on both jobs. The separation case still failed in its readiness helper before the first installed search; that helper combined status scrolling and ready-state waiting at this checkpoint, so this result alone does not identify a provider failure.
+
+Both corrected jobs passed the headless-fixture and merged-permission checks, booted the expected API, and reported fixture enable/uninstall exit 0 before the owned emulator wait returned. Tools were emulator 37.2.12.0 build 16428233, KVM 12, and ADB 37.0.1-15733141; images booted API 26/Android 8.0.0 and API 37/Android 17. No new sample PNG was exported after the failing Gradle command. The full eight-case checkpoint remains open, while the keyboard/banner result is actual evidence within these two fresh AOSP emulator profiles.
