@@ -19,7 +19,7 @@ const pair = (name, index) => bundle(name, 1, '', index + 1) + (name === names[3
 const terminal = 'INSTRUMENTATION_RESULT: stream=\nOK (7 tests)\nINSTRUMENTATION_CODE: -1\n';
 const success = names.map(pair).join('') + terminal;
 const pressure = {
-  draftPressureVersion: '1', draftPressureWaitStartUtcMillis: '1800000012000', draftPressureWaitStartElapsedMillis: '12000',
+  draftPressureVersion: '2', draftPressureWaitStartUtcMillis: '1800000012000', draftPressureWaitStartElapsedMillis: '12000',
   draftPressureFailureUtcMillis: '1800000032010', draftPressureFailureElapsedMillis: '32010', draftPressureExpiresUtcMillis: '1800000030000',
   draftPressureControlPhase: 'failed', draftPressureControlCause: 'session_expired', draftPressureStreamPhase: 'failed',
   draftPressureStreamCause: 'session_expired', draftPressureWriteEntered: '750', draftPressureWriteCompleted: '749',
@@ -77,8 +77,8 @@ test('failure-only pressure facts survive reports without proving successful exp
   const result = parse(pressureFailure());
   assert.equal(result.ok, false); assert.equal(result.started, 7); assert.equal(result.completed, 7);
   assert.equal(result.cases[3].state, 'failed'); assert.equal(Object.keys(result.observations).length, 24);
-  assert.match(xml(result), /name="draftPressureFailureElapsedMillis" value="32010"/);
-  assert.match(html(result), /draftPressureWriteInFlight/);
+  assert.match(xml(result), /name="draftPressureExpiryFailureElapsedMillis" value="32010"/);
+  assert.match(html(result), /draftPressureExpiryWriteInFlight/);
   assert.ok(result.problems.includes('missing_or_duplicate_expiry_observation'));
 });
 test('pressure facts require their exact active case, unique bundle and a failed completion', () => {
@@ -86,11 +86,18 @@ test('pressure facts require their exact active case, unique bundle and a failed
     pressureFailure(pressureBundle() + pressureBundle()), success.replace(progress(), pressureBundle() + progress())]) {
     assert.equal(parse(output).ok, false);
   }
-  const passed = parse(success.replace(progress(), pressureBundle() + progress()));
-  assert.ok(passed.problems.includes('failure_pressure_observation_on_passing_case'));
+  for (const name of names.slice(1, 4)) {
+    const passed = parse(success.replace(bundle(name, 1), bundle(name, 1) + pressureBundle()));
+    assert.ok(passed.problems.includes('failure_pressure_observation_on_passing_case'));
+  }
+  for (const index of [0, 4, 5, 6]) {
+    const invalid = parse(success.replace(bundle(names[index], 1), bundle(names[index], 1) + pressureBundle()));
+    assert.ok(invalid.problems.includes('invalid_pressure_observation'));
+    assert.ok(Object.keys(invalid.observations).every(name => !name.startsWith('draftPressure')));
+  }
 });
 test('pressure facts reject noncanonical, out-of-bound or inconsistent data without retaining secrets', () => {
-  for (const values of [{ ...pressure, PRIVATE_VALUE: 'SECRET' }, { ...pressure, draftPressureControlCause: 'SECRET' },
+  for (const values of [{ ...pressure, PRIVATE_VALUE: 'SECRET' }, { ...pressure, draftPressureVersion: '1' }, { ...pressure, draftPressureControlCause: 'SECRET' },
     { ...pressure, draftPressureStreamPhase: 'SECRET' }, { ...pressure, draftPressureWorkerFailed: 'yes' },
     { ...pressure, draftPressureWriteEntered: '0750' }, { ...pressure, draftPressureWriteEntered: '750.0' },
     { ...pressure, draftPressureWriteCompleted: '751' }, { ...pressure, draftPressureWriteInFlight: '751' },
@@ -103,6 +110,18 @@ test('pressure facts reject noncanonical, out-of-bound or inconsistent data with
     assert.equal(Object.keys(result.observations).length, 0);
     assert.doesNotMatch(xml(result) + html(result), /PRIVATE_VALUE|SECRET/);
   }
+});
+test('all three writer failures retain independent v2 facts without overwriting another case', () => {
+  const output = names.map((name, index) => [1, 2, 3].includes(index)
+    ? bundle(name, 1) + pressureBundle({ ...pressure, draftPressureApplicationWritten: String(1000 + index) }) + bundle(name, -2)
+    : pair(name, index)).join('') + terminal;
+  const result = parse(output);
+  assert.equal(result.ok, false); assert.equal(Object.keys(result.observations).length, 72);
+  for (const [index, scope] of [[1, 'Backpressure'], [2, 'Cancel'], [3, 'Expiry']]) {
+    assert.equal(result.observations[`draftPressure${scope}Version`], '2');
+    assert.equal(result.observations[`draftPressure${scope}ApplicationWritten`], String(1000 + index));
+  }
+  assert.ok(!result.problems.includes('duplicate_pressure_observation'));
 });
 test('pressure facts preserve active/exhausted/partial-predicate states without assuming a cause', () => {
   for (const values of [{ ...pressure, draftPressureControlPhase: 'active', draftPressureControlCause: 'null', draftPressureStreamPhase: 'half_closed',
