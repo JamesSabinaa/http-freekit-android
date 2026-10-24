@@ -1,6 +1,6 @@
 # Installed-app discovery for selected-app debugging
 
-Status: implementation in progress; no VPN routing or capture claim.
+Status: implemented with 33 passing app JVM cases, APK/instrumentation compilation and strict lint; API 26/37 installed-discovery execution pending. No VPN routing or capture claim.
 
 The selected-app workflow must let a developer choose an installed application even if it has no launcher activity. B3 therefore uses `PackageManager.getInstalledApplications` for the current Android user/profile, with `QUERY_ALL_PACKAGES` visibility. A launcher-intent query would omit legitimate development targets. The companion itself and disabled applications are excluded. Other profiles, packages removed with retained data, and arbitrary remote inventories are outside this local list.
 

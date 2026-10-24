@@ -5,7 +5,7 @@ Push-Location $repoRoot
 try {
     npm --prefix tools/transport-spike ci --ignore-scripts --no-fund
     if ($LASTEXITCODE -ne 0) { throw 'Transport peer dependency installation failed' }
-    & ./gradlew.bat :core-protocol:test :app:testDebugUnitTest :core-security:testDebugUnitTest :core-security:assembleDebugAndroidTest :core-security:lintDebug :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug --console=plain
+    & ./gradlew.bat :core-protocol:test :transport-framing:test :app:testDebugUnitTest :core-security:testDebugUnitTest :core-security:assembleDebugAndroidTest :core-security:lintDebug :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug --console=plain
     if ($LASTEXITCODE -ne 0) { throw 'Android validation failed' }
     $outputDir = Join-Path $repoRoot 'dist'
     New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
@@ -26,6 +26,7 @@ try {
         sourceDirty = [bool]$sourceStatus
         protocol = 'v1-draft-not-integrated'
         compatibleDesktopCommit = $null
+        installedAppDiscoveryImplemented = $true
         captureImplemented = $false
         signing = 'local Android debug key; not a release identity'
     } | ConvertTo-Json
