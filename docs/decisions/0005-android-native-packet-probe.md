@@ -1,6 +1,6 @@
 # A4 Android JNI and synthetic packet probe
 
-Status: both hosted API 26/37 attempts failed before packet-bridge readiness. The diagnostic run proves JNI load, the initial not-running check and pre-start Stop on both APIs, but never starts the worker. Packet forwarding remains unverified. This does not select the engine for production, establish VPN capture, or freeze the protocol.
+Status: the latest API 26/37 run reaches packet-bridge readiness and starts the JNI worker, but fails before completing the first packet case. All four forwarding and successful-worker shutdown assertions remain required. This does not select the engine for production, establish VPN capture, or freeze the protocol.
 
 ## Source and ownership
 
@@ -20,7 +20,7 @@ The standalone library builds outside root settings, using the existing version 
 
 ## Packet and stream proof design
 
-Two dynamically allocated ADB reverse mappings connect device-loopback sockets to host-loopback peers: one bounded framed packet bridge and one SOCKS endpoint. API-26-era [ADB documentation supports dynamic reverse TCP ports](https://android.googlesource.com/platform/system/core/+/refs/tags/android-8.0.0_r37/adb/commandline.cpp). Cleanup removes only the mappings allocated by this driver and force-stops only the research package.
+Two distinct explicit ADB reverse mappings connect device-loopback sockets to host-loopback peers: one bounded framed packet bridge and one framed SOCKS carrier. Each device port equals its already-bound host listener port, with `--no-rebind` collision rejection. Cleanup removes only successfully owned mappings and force-stops only the research package.
 
 The unchanged Python packet/proxy peers exercise IPv4 and IPv6, each over port-80 HTTP and port-443 opaque CONNECT. Each case requires original destination IP/port, valid emitted IP/TCP checksums, byte equality, HTTP 100 Continue, upload/download prefix gates, request write EOF before a reply, and native reply FIN. The actual IP-to-stream reconstruction occurs in Android's loaded Hev/lwIP code. Python remains a bounded deterministic packet fixture, not a production TCP stack.
 
@@ -61,3 +61,15 @@ The host-validation run at the same source separately found ShellCheck SC2317 in
 The new manual-only workflow uses free standard Ubuntu 24.04 runners, the established verified SDK bootstrap, JDK 17, NDK `28.2.13676358`, compile/target 37 and API 26/37 AOSP x86_64 images. It installs `libpulse0`, requires accessible KVM and successful acceleration checks, bounds boot/test waits and uses fresh AVD state with snapshots disabled. It uploads only native/JUnit/instrumentation/lint reports, never APKs, signing keys, source caches, emulator logs or AVD data. The coordinator reviews/pushes/dispatches it; no successful hosted A4 runtime result is claimed here.
 
 Even a passing run proves synthetic AF_UNIX datagrams and JNI on those emulator images, not a real TUN/VpnService, selected-app routing, protected sockets/no capture loop, DNS/UDP policy, physical IPv6 networking, actual desktop integration, genuine TLS/HTTPS decryption, real USB traffic or performance. ARM64 is compiled/packaged but this workflow runs x86_64 only. ELF/ZIP 16 KiB alignment is checked; device page size is recorded separately and does not imply a 16 KiB runtime image. Those production/device gates remain open before package C or protocol freeze.
+
+## Explicit ports and independent stream EOF
+
+[Run 40101594170](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40101594170), at exact source `bd7b67627d7382a16a32eeae5482b1fec0742c5a`, fails on both APIs after the explicit-port correction. Both artifacts now show `bridge-connected`, `jni-started` and `hello-sent`, the expected engine identity, a running worker and a 4096-byte device page size. The failing host traceback is the first HTTP 200 response-header read, after the existing 100 Continue, gated upload and request write-EOF steps. Neither completes a packet case or returns successful worker statistics/Stop evidence. The Android EOF exception follows the failed host bridge closing; it does not independently identify the original failure.
+
+Both pre-cleanup device queries succeed with state `device`, and both owned reverse mappings remain present. All owned mapping removals and the research package force-stop succeed. Emulator processes remain alive before teardown with no fixed fatal markers. The previous ADB channel failure is not observed in this run; these observations do not prove the installed binary's earlier failure cause.
+
+The raw SOCKS fixture crossed ADB as an ordinary TCP stream. In the inspected [pinned AOSP socket implementation](https://android.googlesource.com/platform/packages/modules/adb/+/1cf2f017d312f73b3dc53bda85ef2610e35a80e9/sockets.cpp#243), local read EOF calls socket close, whose [peer shutdown/close path](https://android.googlesource.com/platform/packages/modules/adb/+/1cf2f017d312f73b3dc53bda85ef2610e35a80e9/sockets.cpp#344) closes the ADB stream. That provides a source-supported explanation for losing a reply deliberately withheld until request EOF. The exact platform-tools release source correspondence and this individual failure's cause are not established by the artifacts alone.
+
+The replacement research carrier conveys SOCKS bytes in bounded DATA records (type 1, unsigned 32-bit big-endian length 1–16384) and directional END_WRITE records (type 2, zero length). The Android loopback adapter forwards the native socket's EOF as END_WRITE while keeping the reversed TCP carrier open; received END_WRITE shuts down only the native socket's output. The host [framed wrapper](../../tools/engine-spike/framed_stream.py) presents independent read/write EOF to the unchanged SOCKS/proxy peers. It buffers at most one incoming record, splits outgoing records, rejects malformed/oversized records and treats raw carrier EOF before END_WRITE as failure. Only completed bidirectional streams close their carrier normally; errors abort owned sockets.
+
+This is `freekit-native-stream/1` test infrastructure, separate from packet-bridge and companion wire. The original four IP/port, checksum, byte, prefix, EOF-before-reply, native peer FIN and JNI shutdown assertions are retained. HELLO must identify this carrier, and STOPPED must additionally confirm all four carrier sessions completed and their workers stopped. Host tests alone cannot establish the new Android carrier or native packet results; a fresh exact-source emulator run is required after both sides are integrated.

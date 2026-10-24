@@ -13,6 +13,7 @@ from concurrent.futures import ThreadPoolExecutor
 import xml.etree.ElementTree as ET
 
 from android_bridge import HELLO, PacketChannel, read_control
+from framed_stream import FramedListener
 from run_linux import BODY, REPLY, ENGINE_COMMIT, PacketFixture, check, listener, proxy_fixture, socks_fixture
 
 PACKAGE = "com.httpfreekit.engineprobe.test"
@@ -159,17 +160,22 @@ def main():
                 hello = read_control(connection, HELLO)
                 check(hello.get("bridge") == "freekit-native-probe/1" and hello.get("engineCommit") == ENGINE_COMMIT, "Unexpected JNI source/bridge identity")
                 check(hello.get("api") == actual_api and hello.get("jniLoaded") is True and hello.get("running") is True, "JNI did not load/start on the expected Android API")
+                check(hello.get("socksCarrier") == "freekit-native-stream/1", "Unexpected research SOCKS carrier")
                 check(type(hello.get("pageSize")) is int and hello["pageSize"] > 0, "Missing Android page-size evidence")
                 summary["jni"] = hello
                 summary["pageSize"] = hello["pageSize"]
                 channel = PacketChannel(connection)
                 with ThreadPoolExecutor(max_workers=2) as peers:
                     proxy_result = peers.submit(proxy_fixture, proxy, expectations, gates)
-                    socks_result = peers.submit(socks_fixture, socks, proxy.getsockname()[1], expectations)
+                    socks_result = peers.submit(socks_fixture, FramedListener(socks), proxy.getsockname()[1], expectations)
                     summary["cases"] = fixtures(channel, expectations, gates, actual_api)
                     proxy_result.result(timeout=15)
                     socks_result.result(timeout=15)
                     summary["stop"] = channel.stop()
+                    check(summary["stop"].get("socksCarrierCompleted") == 4 and
+                          type(summary["stop"].get("socksCarrierCompleted")) is int and
+                          summary["stop"].get("socksCarrierStopped") is True,
+                          "Research SOCKS carrier did not complete and stop all four streams")
                     summary["bridgePackets"] = {"sent": channel.sent, "received": channel.received}
             process.wait(timeout=30)
             check(process.returncode == 0, "ADB instrumentation command failed")
