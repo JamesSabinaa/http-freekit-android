@@ -67,7 +67,10 @@ class EnrollmentHttpsFixture {
         catch { this.#unavailable = true; fail(); }
       },
     });
-    if (!this.#service || !Number.isInteger(this.#service.port) ||
+    // Retain the owner before it starts auxiliary child/listener work. A failed
+    // initialize can then be closed/joined without releasing the Store first.
+    if (typeof this.#service?.initialize === 'function') await this.#service.initialize();
+    if (!this.#service || !Number.isInteger(this.#service.port) || this.#service.port < 1 || this.#service.port > 65535 ||
         ['invalidateEnrollment', 'inspectEnrollment', 'snapshot', 'close'].some(name => typeof this.#service[name] !== 'function')) fail();
   }
   #timer(action, millis) {
@@ -258,7 +261,7 @@ class EnrollmentHttpsFixture {
     issuerJobs: this.#jobs.size, listeners: this.#listening.size, dispatches: this.#dispatches, droppedApprovedResponses: this.#dropped,
     approvedResponsesDelivered: this.#delivered, approvedResponsesDeliveredAfterDrop: this.#deliveredAfterDrop,
     writeOwnersCancelledByClose: this.#cancelledWrites,
-    admissionClosed: this.#closing, listenersClosed: this.#listening.size === 0 && (!service || service.listeners === 0), issuerChildrenJoined: issuer.closed && issuer.unjoinedChildren === 0 && issuer.commandsStarted === issuer.commandsClosed && issuer.commandsStarted === issuer.processGroupsClosed,
+    admissionClosed: this.#closing, listenersClosed: this.#listening.size === 0 && (!service || service.listeners === 0), issuerChildrenJoined: issuer.closed && issuer.unjoinedChildren === 0 && issuer.commandsStarted === issuer.commandsClosed && issuer.commandsStarted === issuer.processGroupsClosed && service?.childrenJoined !== false,
     activeSockets: this.#connections.size + this.#tlsSockets.size + this.#declined.size + (service?.authenticatedSockets ?? 0) + (service?.proxySockets ?? 0),
     pendingCallbacks: this.#writes.size + (service?.pendingCallbacks ?? 0), pendingTimers: this.#timerCount + (service?.timers ?? 0),
     signerGroups: issuer.commandsStarted - issuer.processGroupsClosed, workers: this.#tasks.size + this.#jobs.size + this.#waiters.size + (service?.workers ?? 0),
