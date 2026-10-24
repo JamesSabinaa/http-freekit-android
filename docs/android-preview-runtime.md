@@ -74,3 +74,23 @@ Both corrected jobs passed the headless-fixture and merged-permission checks, bo
 [Run 40113213789](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40113213789) at `2b307474a9ca65d4f86810dffa3e0a2b0439e896` included a checked test-harness correction: source-chip touches first reset the vertical LazyColumn, require the control to be displayed/enabled, perform a real touch, and assert the requested source is selected. Downloaded XML confirms all eight exact case pairs on each API, with zero errors or skips. API 26 passed all eight and the independent workflow gate; API 37 passed seven, including selection separation, but its rotation case raised `ComposeTimeoutException` during the 15-second IME-visible wait immediately after landscape rotation. The portrait keyboard/banner assertion had passed; the landscape banner assertion was not reached, so this failure alone says nothing about banner geometry. Full passing acceptance on both APIs remains open.
 
 Both jobs again passed their headless-fixture, merged-permission, booted-API and keyboard-readback checks, and fixture enable/uninstall each returned 0 before the owned emulator wait completed. API 26 artifact `12567940545` includes the original sample-only 1080 by 1920 PNG, SHA-256 `94978d56e4d911c93341eee656f5bdd3b18944b947defb4c4807f43380a166a8`. Visual review confirmed the fixed no-capture banner, simulated ready state, public sample computer, two sample selections, Stop button, VPN-inactive text, and dark system icons without overlap. It contains no installed inventory. API 37 artifact `12567153999` contains test reports but no PNG, because the failing Gradle command prevented export. These are fresh-emulator results, not physical-phone, complete theme, accessibility, VPN, or capture acceptance.
+
+## Passing eight-case checkpoint
+
+[Run 40114495276](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40114495276) passed at exact source `0a395e1c01f6156c45df332d703a305385977128`. Independent downloaded XML checks confirm all eight full `(class, method)` pairs exactly once on each API, two suites per report, consistent aggregate/suite counters, and zero failures, errors, or skips. Gradle and the independent workflow gate both passed. This supersedes the open eight-case results above within the tested emulator scope.
+
+The four `InstalledAppsActivityTest` cases passed alongside all four original sample cases:
+
+- `headlessFixtureSupportsSearchDevelopmentFilterAndToggle`
+- `installedSelectionSurvivesRefreshAndRotationWithoutCapture`
+- `successfulRefreshPrunesDisabledFixtureAndDoesNotReselectIt`
+- `sampleAndInstalledSelectionsRemainSeparate`
+
+The passing rotation case required an attached, laid-out, focused activity window with delivered insets and changed viewport geometry after rotation; actual editor focus and IME visibility; retained fixture selection; and the unchanged banner before and after both rotations. The helper retained its 15-second bound and injected at most one real editor touch when the focused-editor/visible-IME state was not already satisfied. The fixture/merged-permission guards, actual API checks, keyboard readback `1`, and fixture enable/uninstall exit `0` passed on both jobs; their owned emulator waits returned. No assertion was skipped or replaced with a mock.
+
+| API | Artifact | XML SHA-256 | Original sample PNG SHA-256 |
+| --- | --- | --- | --- |
+| 26 | `12567004784` | `37cc82f4562fb3979a02e32bad182f408ab06db718df1a261087efd4b45787ec` | `97135fb6dc68a016b54b1f6daa2aec4ce2a69a6f6571eb9fa0cdfeb8727b2092` |
+| 37 | `12568370625` | `2c8f273f9d894a6807e725637ecdd17ef96cd477988d73d8f88e49d4efde34eb` | `ef16c34e9faa1b9996b24e59496d9badc2e08cca6828740bcc11f5385b6c855c` |
+
+Both original 1080 by 1920 PNGs were visually reviewed: the fixed warning, simulated ready state, public sample computer/two sample selections, Stop action, VPN-inactive text, and dark system icons are legible without overlap. Neither contains installed inventory, and neither is a keyboard/installed-mode screenshot. Runtime tools were Temurin 17.0.20+1, emulator 37.2.12.0 build 16428233, KVM 12, ADB 37.0.1-15733141, compile platform 37.0 revision 2, and build tools 36.0.0. The AOSP x86_64 images were API 26/Android 8.0.0 revision 1 and API 37/Android 17 revision 6. This establishes the eight tested UI behaviors on those fresh default profiles; physical phones, other profiles/OEMs, broad accessibility, process-death persistence, real VPN consent/routing, and capture remain separate gates.
