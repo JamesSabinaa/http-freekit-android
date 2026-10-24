@@ -81,27 +81,34 @@ export function verifyRequest(bytes) {
   return key;
 }
 
-export async function startPeer({ openssl = process.env.OPENSSL_BIN ?? 'openssl', nowMillis = Date.now() } = {}) {
+export async function startPeer({ openssl = process.env.OPENSSL_BIN ?? 'openssl', nowMillis = Date.now(), authenticatedServerFactory } = {}) {
+  if (authenticatedServerFactory !== undefined && typeof authenticatedServerFactory !== 'function') throw Error('invalid_authenticated_factory');
   const validity = fixtureValidity(nowMillis);
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'freekit-android-node-'));
   fs.chmodSync(directory, 0o700);
   const sockets = new Set();
   const servers = [];
   let websocket;
-  let closed = false;
+  let authenticatedServer;
+  let closeTask;
   const command = args => execFileSync(openssl, args, { cwd: directory, timeout: 5000, maxBuffer: 16384, stdio: ['ignore', 'pipe', 'pipe'] });
   const cleanDirectory = () => {
     if (path.dirname(fs.realpathSync(directory)) !== fs.realpathSync(os.tmpdir()) || !path.basename(directory).startsWith('freekit-android-node-')) throw Error('Unsafe fixture directory');
     fs.rmSync(directory, { recursive: true, force: true });
   };
-  const close = async () => {
-    if (closed) return;
-    closed = true;
-    websocket?.clients.forEach(client => client.terminate());
-    websocket?.close();
-    sockets.forEach(socket => socket.destroy());
-    await Promise.all(servers.map(server => new Promise(resolve => server.close(resolve))));
-    cleanDirectory();
+  const close = () => {
+    if (closeTask) return closeTask;
+    closeTask = (async () => {
+      let extensionFailure = false;
+      try { await authenticatedServer?.close(); } catch { extensionFailure = true; }
+      websocket?.clients.forEach(client => client.terminate());
+      websocket?.close();
+      sockets.forEach(socket => socket.destroy());
+      await Promise.all(servers.map(server => new Promise(resolve => server.close(resolve))));
+      cleanDirectory();
+      if (extensionFailure) throw Error('authenticated_fixture_cleanup_failed');
+    })();
+    return closeTask;
   };
   try {
     if (!/^OpenSSL 3\./.test(command(['version']).toString())) throw Error('OpenSSL 3 is required');
@@ -198,6 +205,20 @@ export async function startPeer({ openssl = process.env.OPENSSL_BIN ?? 'openssl'
       server.on('connection', socket => { sockets.add(socket); socket.on('close', () => sockets.delete(socket)); });
       server.on('tlsClientError', () => {});
       await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
+    }
+    if (authenticatedServerFactory) {
+      // Trusted in-process research seam only. Key material never enters public metadata.
+      const authorize = socket => {
+        const certificate = socket.getPeerX509Certificate();
+        return socket.authorized === true && !!certificate && enrolled.has(createHash('sha256')
+          .update(certificate.publicKey.export({ format: 'der', type: 'spki' })).digest('hex'));
+      };
+      authenticatedServer = await authenticatedServerFactory({
+        tls: Object.freeze({ ...tls, key: Buffer.from(tls.key), ca: authority.toString(), requestCert: true, rejectUnauthorized: true }),
+        authorize,
+      });
+      if (!authenticatedServer || !Number.isInteger(authenticatedServer.port) || authenticatedServer.port < 1 ||
+          authenticatedServer.port > 65535 || typeof authenticatedServer.close !== 'function') throw Error('invalid_authenticated_factory_result');
     }
     return { directory, close, command, validity, metadata: { enrollmentPort: enrollment.address().port, webSocketPort: echo.address().port,
       gatewayDer: serverCertificate.raw.toString('base64url'), gatewayPin: createHash('sha256').update(serverCertificate.publicKey.export({ format: 'der', type: 'spki' })).digest('base64url') } };
