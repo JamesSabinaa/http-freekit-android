@@ -1,6 +1,6 @@
 # Live enrollment research profile
 
-Status: A22 research against [draft 0.4](protocol-enrollment.md), based on verified 109ae16. A22a proves pinned HTTPS, real Keystore proofs, host approval, lost-result recovery and save/process-reopen. A22b must also prove active WSS revocation and composed credential/session-expiry teardown. Additional Android adversarial cases remain required before complete A22 acceptance. This does not freeze production v1.
+Status: A22 research against [draft 0.4](protocol-enrollment.md). A22a pinned HTTPS/Keystore/approval/recovery/save/reopen, A22b active WSS revocation/credential/session expiry, and A22c adversarial proof/TLS/cancellation are [verified on API 26/37](validation.md#android-enrollment-https-runtime) at source 074fbfa. Production capture, integration and protocol v1 freeze remain open.
 
 ## Ownership
 
@@ -94,7 +94,7 @@ Reopen loads the original key/credential/recovery record, proves status with a n
 
 Status 2 has exactly draftEnrollmentVersion="1" and draftEnrollmentPhase from this ordered list: input-consumed, strict-csr-reserved, pending-proof-observed, awaiting-host-approval, approved-result-validated, credential-persisted, prepare-resources-closed; then reopen-key-and-record-validated, reopen-mtls-authorized, reopen-resources-closed. No IDs/material. Require exact paired method starts/completions, terminal success, actual phases and cleanup; host force-stop is not a fabricated JUnit pass. F commits the final result schema before the driver/report adapter lands.
 
-Separate host tests cover malformed HTTP, unpublished/unknown/revoked exact leaves, issuer races and actual joins. Additional Android adversarial proof/TLS/cancel cases and A22b active WSS revocation/expiry remain required for full A22 acceptance.
+Separate host tests cover malformed HTTP, unpublished/unknown/revoked exact leaves, issuer races and actual joins. A22b active WSS lifetime and the [A22c adversarial suite](android-enrollment-adversarial-runtime.md) supply their separate verified Android evidence; A22a alone does not establish those results.
 
 ## A22b enrolled streaming lifetime
 
@@ -118,7 +118,7 @@ Each method consumes its seed, reserves/proves pending enrollment, waits for hos
 
 A22b private input is at no_backup/draft-enrollment-research/stream-input-v1.bin, delivered through the same bounded owned run-as stdin mechanism. It is at most 16384 bytes: eight magic bytes (ASCII HFKSTR1 plus NUL), a BE16 stream port, one scenario byte (1 revoke, 2 credential expiry, 3 session expiry), a BE16 embedded-seed length and exactly that many bytes of the existing A22a input. All three ports are distinct and nonzero. Reject truncation, invalid scenario/length/ports and trailing data; validate and unlink before key/network use. No secrets enter argv, environment or status output.
 
-The existing private worker gains startStreaming with the existing start fields plus streamPort, credentialLifetimeSeconds and sessionLifetimeMillis; A22b starts fresh create mode. Public metadata adds only webSocketPort. inspectEnrollment accepts only enrollmentId and returns bounded redacted stream observations through IPC. Closing after rejected configuration explicitly records initializationAttempted false and zero resources, then actually joins the worker; an attempted failed initialization cannot claim this state. Existing operations and A22a behavior remain compatible. The checked-source workflow selects a finite A22a or A22b suite and retains only its four sanitized reports; it does not merge partial results across sources. Additional Android adversarial enrollment proof/TLS/cancel checks remain required for full A22, along with the other foundation and production gates.
+The existing private worker gains startStreaming with the existing start fields plus streamPort, credentialLifetimeSeconds and sessionLifetimeMillis; A22b starts fresh create mode. Public metadata adds only webSocketPort. inspectEnrollment accepts only enrollmentId and returns bounded redacted stream observations through IPC. Closing after rejected configuration explicitly records initializationAttempted false and zero resources, then actually joins the worker; an attempted failed initialization cannot claim this state. Existing operations and A22a behavior remain compatible. The checked-source workflow selects finite A22a, A22b or A22c suites and retains only the selected four sanitized reports; it does not merge partial results across sources. The separate A22c contract records its extra wrong-peer port, private start operation and verified adversarial proof/TLS/cancel cases. Other foundation and production gates remain open.
 
 ## Sources
 

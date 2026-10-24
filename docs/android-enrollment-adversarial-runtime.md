@@ -1,6 +1,6 @@
 # Android adversarial enrollment research
 
-A22c extends the [live enrollment profile](research-enrollment-https.md) with four isolated Android/Node cases. It preserves draft 0.4 wire bytes and adds no production enrollment or capture. The already verified A22a and A22b suites remain separate regressions. This profile specifies required evidence; it is not execution evidence.
+A22c extends the [live enrollment profile](research-enrollment-https.md) with four isolated Android/Node cases. It preserves draft 0.4 wire bytes and adds no production enrollment or capture. All four cases have [verified API 26/37 runtime evidence](validation.md#android-enrollment-https-runtime) at source 074fbfa, alongside separate A22a and A22b regressions. The requirements below remain distinct from that execution evidence.
 
 ## Cases
 

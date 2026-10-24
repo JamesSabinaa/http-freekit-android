@@ -1,6 +1,6 @@
 # Draft enrollment contract 0.4
 
-Status: normative for the A21 foundation implementations and shared fixtures only. Protocol v1 is not frozen. This adds the missing enrollment grammar; the control/stream appendix remains revision 0.3. A21 supplies codecs, proof bytes, a headless challenge coordinator and a durable reference authority. A22 must prove the complete HTTPS/Android Keystore/approval/save/reopen path before production integration. Renewal, active-session credential-expiry composition, capture policy and physical-network gates remain open.
+Status: normative for the A21 foundation implementations and shared fixtures only. Protocol v1 is not frozen. This adds the missing enrollment grammar; the control/stream appendix remains revision 0.3. A21 supplies codecs, proof bytes, a headless challenge coordinator and a durable reference authority. A22 has [verified research evidence](validation.md#android-enrollment-https-runtime) for HTTPS/Android Keystore/approval/save/reopen, adversarial proofs/TLS/cancellation and active-session revocation/credential expiry. Renewal/rotation decisions, capture policy, production integration and physical-network gates remain open.
 
 ## Trust and encoding
 
@@ -80,7 +80,7 @@ Publication is one conditional transaction: recheck owner health, current clock,
 
 Reject/cancel/revoke while issuing invalidates the job generation. If publication already won, an explicit rejection or cancellation of this enrollment revokes its exact newly published grant atomically; it cannot affect a later enrollment sharing the key. The first terminal decision wins and cannot be approved again. Cancellation requires a fresh cancel-purpose proof; status-purpose signatures cannot mutate state. A valid cancel is idempotent and returns the current pair_ended state, with pairing_cancelled when cancellation won. Local revoke returns device_revoked on subsequent status. Expired pending/issuing reservations return invitation_expired. An expired active credential denies traffic and returns credential_expired. Status after the result deadline returns result_expired without certificate material; it does not extend or implicitly renew an otherwise active credential.
 
-Authorization always checks the exact current leaf DER hash, SPKI, device/grant binding, active/revoked state, current validity and configured authority identity. A CA-valid certificate or matching SPKI alone is insufficient. Old/orphan/unknown/revoked leaves fail even when another leaf with the same key is current. A21 proves the headless authorization result; real WSS revocation and credential-expiry teardown remain A22 integration requirements.
+Authorization always checks the exact current leaf DER hash, SPKI, device/grant binding, active/revoked state, current validity and configured authority identity. A CA-valid certificate or matching SPKI alone is insufficient. Old/orphan/unknown/revoked leaves fail even when another leaf with the same key is current. A21 proves the headless authorization result; A22 supplies separate verified real WSS revocation and credential-expiry teardown evidence. Production integration remains gated.
 
 ## Challenges and clocks
 
