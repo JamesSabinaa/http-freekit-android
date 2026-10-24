@@ -1,0 +1,18 @@
+# Android and IDE working state
+.gradle/
+.kotlin/
+.idea/
+**/build/
+local.properties
+*.iml
+.cxx/
+.externalNativeBuild/
+
+# Deliverables and secrets
+dist/
+*.jks
+*.keystore
+keystore.properties
+.env
+.env.*
+!.env.example
