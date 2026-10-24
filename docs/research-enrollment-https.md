@@ -35,13 +35,27 @@ The driver owns a private temporary directory of research software gateway/autho
 
 D exports startEnrollmentHttpsFixture({directory,mode,openssl,setupPort,credentialPort}); mode is create/open, with zero ports allowed only on initial create. metadata() returns a redacted copied snapshot with desktopId,logicalName,gatewayCertificateDer,gatewaySpkiSha256,enrollmentAuthorityDer,interceptionCaCertificateSha256,setupPort,credentialPort. DER/hashes are canonical base64url.
 
-Trusted methods: createInvitation() returns the Store snapshot; waitForRegistered(invitationId,{timeoutMillis}) returns the immutable pair_registered snapshot scoped to this run's invitation; approve(enrollmentId), reject(enrollmentId), revoke(enrollmentId), dropNextApprovedStatus(), snapshot(), close(). Registration waits are bounded. The drop command suppresses exactly one already-read approved status response, without changing publication or restoring its consumed nonce.
+Trusted methods: createInvitation() returns the Store snapshot; waitForRegistered(invitationId,{timeoutMillis}) returns the immutable pair_registered snapshot scoped to this run's invitation; approve(enrollmentId), reject(enrollmentId), revoke(enrollmentId), readResult(enrollmentId), dropNextApprovedStatus(), snapshot(), close(). Registration waits are bounded. readResult is host-only and permits exact-result hashing after reopen without another approval. The drop command suppresses exactly one already-read approved status response, without changing publication or restoring its consumed nonce.
 
 approve owns an asynchronous real issuer child through actual process/stdio closure before publish/abandon. Each OpenSSL ca job has its own private work directory/index/serial file, exact Store serial in hexadecimal, exact dates, fixed UTF8String subject/profile/extensions, SHA256 and copy_extensions=none. No random/automatic serial fallback. The A21 strict validator checks the final candidate.
 
 Close admission first. stop/reject remain processable while signing; do not queue shutdown behind approval. Abort and join all signer groups, sockets, callbacks and timers, abandon joined handles, then close coordinator/Store last. Timeout is failure, never a join; failed teardown retains the lease and denies authorization. Detached signers can survive a killed worker. A22a uses actual graceful worker stop/join/reopen; any forced restart requires a verified no-live-signer barrier. A21 remains separate forced-crash evidence.
 
-Private IPC envelopes are exactly {revision:1,id,op,args}, {revision:1,id,ok:true,result} or {revision:1,id,ok:false,code}; positive safe-integer IDs, 16384 serialized bytes/message, four outstanding commands maximum, fixed operation/argument schemas and static errors. Private invitation/registration data is never printed. Root/D settle exact worker operation/result schemas before that adapter lands; the direct fixture API can implement first.
+Private IPC envelopes are exactly {revision:1,id,op,args}, {revision:1,id,ok:true,result} or {revision:1,id,ok:false,code}; positive safe-integer IDs, 16384 serialized bytes/message, four outstanding commands maximum and static errors. Private invitation/registration data is never printed. Exact operations are:
+
+| op | args | successful result |
+| --- | --- | --- |
+| start | directory,mode,openssl,setupPort,credentialPort | eight-field public metadata material above |
+| metadata | empty object | same metadata material |
+| createInvitation | empty object | Store invitation material |
+| waitForRegistered | invitationId,timeoutMillis (1..10000) | pair_registered material |
+| approve | enrollmentId | pair_approved material |
+| reject,revoke | enrollmentId | pair_ended material |
+| readResult | enrollmentId | current typed status material |
+| dropNextApprovedStatus | empty object | {armed:true} |
+| snapshot,close | empty object | fixture resource/counter snapshot |
+
+Each args/result is an object with the exact fields for its operation; rows naming several operations are separate op strings. start is accepted once before other operations; mode is create/open and zero ports only apply to create. Paths/executable values are bounded host configuration with no NUL/newline. Reserve an outstanding-command slot for close while approval runs. close responds after actual fixture cleanup, disconnects only after its IPC send callback, and exits naturally. Parent independently joins its process/stdio/group; an IPC acknowledgement alone is insufficient. Preserve the first worker's actual drop/delivery-after-drop counters and separately require an approved delivery from the reopened worker; counters are never silently carried across workers or rearmed.
 
 ## Private Android input and recovery
 
