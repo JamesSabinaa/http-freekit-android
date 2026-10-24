@@ -14,4 +14,10 @@ Sample apps remain a separate catalog with separate selections. Existing sample 
 
 F's independent non-launcher fixture APK will test actual visibility, filtering, selection and refresh on API 26 and 37. The fixture must not be the app's instrumentation package: instrumentation-target visibility could otherwise mask a missing manifest declaration. Test output must avoid app inventory and retain only fixed fixture assertions. Unit checks cover asynchronous request ordering, filtering and selection transitions; compiled instrumentation alone does not prove device behavior.
 
-This decision changes Android package visibility only. It does not change protocol revision 0.3, TLS identity, desktop authorization, selected-app VPN routing policy or the production integration gate.
+Discovery does not change protocol revision 0.3, TLS identity, desktop authorization, selected-app VPN routing policy or the production integration gate.
+
+## First hosted execution and keyboard correction
+
+[Preview run 40110867531](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40110867531) at `4b224444` executes all eight methods on each API 26 and 37 with zero errors/skips. The four original sample cases, real headless discovery/filter/toggle and disabled-package refresh/pruning pass on both. Sample/installed isolation fails at its first search after changing source on both APIs, and the landscape banner assertion fails on API 26. That run does not satisfy B3 acceptance. The matching [host run 40110833431](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40110833431) passes all jobs, including 163 JVM cases and strict lint.
+
+The search path must wait for the asynchronous catalog's ready state before operating on its remeasured lazy layout. The activity also lacked `windowSoftInputMode="adjustResize"`, which [Android's Compose setup](https://developer.android.com/develop/ui/compose/system/setup-e2e) requires for receiving IME insets on older versions. The manifest now requests resizing while preserving edge-to-edge and the existing safe-drawing insets. F retains the banner/selection assertions and adds fixed, operation-specific diagnostics without installed-app inventory. A fresh API 26/37 run is required to establish the correction; a manifest flag or successful compilation alone is insufficient.
