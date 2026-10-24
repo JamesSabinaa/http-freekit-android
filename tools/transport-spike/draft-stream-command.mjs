@@ -2,13 +2,20 @@ import { spawn, execFileSync } from 'node:child_process';
 
 /** One owned command; captured bytes are explicit, bounded, non-enumerable access only. */
 export async function runDraftCommand(command, args, { cwd, env = process.env, timeoutMillis = 10000,
-  maxOutputBytes = 256 * 1024, abortSignal } = {}) {
+  maxOutputBytes = 256 * 1024, abortSignal, stdinBytes, onStdoutChunk } = {}) {
   if (typeof command !== 'string' || !command || !Array.isArray(args) || args.some(value => typeof value !== 'string') ||
       !Number.isInteger(timeoutMillis) || timeoutMillis < 1 || timeoutMillis > 900000 ||
-      !Number.isInteger(maxOutputBytes) || maxOutputBytes < 1 || maxOutputBytes > 256 * 1024) throw Error('invalid_command_configuration');
+      !Number.isInteger(maxOutputBytes) || maxOutputBytes < 1 || maxOutputBytes > 256 * 1024 ||
+      (stdinBytes !== undefined && (!(stdinBytes instanceof Uint8Array) || stdinBytes.byteLength > 16384)) ||
+      (onStdoutChunk !== undefined && typeof onStdoutChunk !== 'function')) throw Error('invalid_command_configuration');
   if (abortSignal?.aborted) throw Error('research_run_cancelled');
-  const child = spawn(command, args, { cwd, env, windowsHide: true, detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'pipe'] });
+  // Copy bounded private input before any await; it never enters argv/env/default diagnostics.
+  const input = stdinBytes === undefined ? null : Buffer.from(stdinBytes);
+  const child = spawn(command, args, { cwd, env, windowsHide: true, detached: process.platform !== 'win32',
+    stdio: [input === null ? 'ignore' : 'pipe', 'pipe', 'pipe'] });
   let reason = null, spawnError = null, closedObserved = false, processGroupClosed = process.platform === 'win32', stopPromise, timer;
+  let inputFinished = input === null, inputClosed = input === null, inputError = false, resolveInputClosed;
+  const inputClose = input === null ? Promise.resolve(true) : new Promise(resolve => { resolveInputClosed = resolve; });
   let outputBytes = 0, retained = 0, stderrBytes = 0;
   const stdout = [], stderr = [];
   let resolveClosed, resolveStopFailure;
@@ -67,9 +74,25 @@ export async function runDraftCommand(command, args, { cwd, env = process.env, t
       const keep = data.subarray(0, 16 * 1024 + 1 - stderrBytes); stderr.push(keep); stderrBytes += keep.length;
     }
     if (outputBytes > maxOutputBytes) void stop('instrumentation_output_limit');
+    if (isStdout && reason === null && onStdoutChunk) {
+      try {
+        // Observers must synchronously parse bounded chunks; asynchronous owners belong to the driver.
+        const returned = onStdoutChunk(Buffer.from(data));
+        if (returned !== undefined) {
+          if (returned && typeof returned.then === 'function') Promise.resolve(returned).catch(() => {});
+          throw Error();
+        }
+      } catch { void stop('owned_child_observer_failed'); }
+    }
   };
   child.stdout.on('data', data => capture(data, true));
   child.stderr.on('data', data => capture(data, false));
+  if (input !== null) {
+    child.stdin.once('finish', () => { inputFinished = true; });
+    child.stdin.once('close', () => { inputClosed = true; resolveInputClosed(true); });
+    child.stdin.on('error', () => { inputError = true; void stop('owned_child_input_failed'); });
+    child.stdin.end(input);
+  }
   const abort = () => { void stop('research_run_cancelled'); };
   abortSignal?.addEventListener('abort', abort, { once: true });
   timer = setTimeout(() => { void stop('owned_child_timeout'); }, timeoutMillis);
@@ -82,10 +105,21 @@ export async function runDraftCommand(command, args, { cwd, env = process.env, t
     }
   } finally {
     clearTimeout(timer); abortSignal?.removeEventListener('abort', abort);
+    if (input !== null) {
+      let inputTimer;
+      child.stdin.destroy();
+      try {
+        await Promise.race([inputClose,
+          new Promise(resolve => { inputTimer = setTimeout(() => resolve(false), 1000); })]);
+      } finally { clearTimeout(inputTimer); input.fill(0); }
+      if (!inputClosed) reason = 'owned_child_cleanup_failed';
+      else if (inputError || !inputFinished) reason ??= 'owned_child_input_failed';
+    }
   }
   if (spawnError !== null) reason ??= 'owned_child_spawn_failed';
   return Object.freeze(Object.defineProperties({ code: child.exitCode, signal: child.signalCode, reason, spawnError,
-    closeObserved: closedObserved, processGroupClosed, outputBytes, stderrBytes }, {
+    closeObserved: closedObserved, processGroupClosed, outputBytes, stderrBytes,
+    ...(input === null ? {} : { inputBytes: input.length, inputFinished, inputClosed }) }, {
     output: { value: Buffer.concat(stdout).toString('utf8') }, stderr: { value: Buffer.concat(stderr) },
   }));
 }
