@@ -32,6 +32,11 @@ jobs:
           node scripts/check-doc-links.mjs
       - name: Test exact Keystore report verification
         run: python3 -m unittest discover -s scripts/tests -p 'test_keystore_results.py'
+      - name: Validate draft protocol corpus and guard regressions
+        run: |
+          python3 -m unittest discover -s scripts/tests -p 'test_protocol_corpus.py'
+          python3 -m unittest discover -s scripts/tests -p 'test_protocol_conformance.py'
+          python3 scripts/check-protocol-corpus.py --corpus protocol/fixtures/a19-draft-0.3
       - name: Check committed whitespace
         run: git diff --check --no-renames "$(git hash-object -t tree --stdin </dev/null)" HEAD
       - name: Validate workflow syntax
@@ -105,6 +110,12 @@ jobs:
         run: node --test tools/transport-spike/android-peer.test.mjs
       - name: Test strict instrumentation result parsing
         run: node --test tools/transport-spike/instrumentation-results.test.mjs
+      - name: Test independent draft protocol codec and lifecycle
+        run: |
+          node --test tools/transport-spike/companion-protocol-codec.test.mjs \
+            tools/transport-spike/companion-protocol-lifecycle.test.mjs \
+            tools/transport-spike/companion-protocol-conformance.test.mjs
+          node tools/transport-spike/companion-protocol-conformance.mjs
       - name: Compile, test, and lint
         run: >-
           ./gradlew --no-daemon --console=plain
@@ -112,6 +123,12 @@ jobs:
           :core-security:testDebugUnitTest :core-security:assembleDebugAndroidTest :core-security:lintDebug
           :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug
           :transport-interop:assembleDebugAndroidTest :transport-interop:lintDebug
+      - name: Compare complete independent protocol outcomes
+        run: >-
+          python3 scripts/compare-protocol-conformance.py
+          --corpus protocol/fixtures/a19-draft-0.3
+          --kotlin build/reports/draft-protocol/kotlin-conformance.json
+          --node build/reports/draft-protocol/node-conformance.json
       - name: Record resolved dependency inventories
         run: |
           mkdir -p build/reports/dependencies
@@ -142,6 +159,7 @@ jobs:
             core-security/build/reports/lint-results-debug.*
             core-security/build/test-results/testDebugUnitTest/
             tools/transport-spike/android/build/reports/lint-results-debug.*
+            build/reports/draft-protocol/*-conformance.json
             build/reports/dependencies/
 
   native-engine:

@@ -62,6 +62,30 @@ The same hosted run passed 27 Python fixture regressions and the actual native w
 
 [Host run 40103175226](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40103175226) passed at `7e9b1c8c03b4bb925fd894e37cd53c5dc522eff4`. Independent XML/log audit confirmed 91 JVM cases (19 app, 10 protocol, 62 security), 34 Node cases (five peer, twenty-nine parser/ownership), 38 native Python regressions, all fifteen strict-verifier regressions, nine documentation-checker cases, and 103 checked local links. All four real Linux packet flows retained the byte counts, checksum, gated streaming, and half-close checks above. All three lint reports and hosted actionlint passed, with zero test failures, errors, or skips. The actual Ubuntu OpenSSL 3.0.13 executable passed all five peer cases, including future/expired certificate rejection; this is the hosted compatibility evidence for the bounded certificate-time fixture.
 
+## Draft protocol conformance
+
+[Draft appendix 0.3](protocol-streams.md) has independent Kotlin and Node codecs/lifecycle models against the [shared adapter and corpus](../protocol/fixtures/a19-draft-0.3/README.md). The committed set contains 142 codec cases and 73 lifecycle traces covering 704 operations. It covers strict UTF-8/JSON and schema limits, duplicate/escaped members, integer/date/version precedence, capability negotiation, directional byte ordering and deferred EOF, cancellation, deadlines, bounded history, and cross-owner slot/byte accounting. Accepted/in-flight bytes stay charged until actual local-writer acknowledgement or confirmed resource closure; a close observation alone cannot complete a stream or free its lease.
+
+The [corpus validator](../scripts/check-protocol-corpus.py) checks fixed envelopes/IDs, descriptors, references, counts, snapshot accounting and EOF/resource invariants before implementations execute. Sixteen regressions cover its depth/file/rendered-input bounds, duplicate keys, type substitutions, non-executable operations, premature release, local oversize-text causes and static errors even for huge integer tokens. The independent [comparator](../scripts/compare-protocol-conformance.py) has thirteen regressions and requires both complete actual reports to match every expected outcome and each other, including exact ordered IDs, types and the committed-file digest. Neither implementation supplies the expected data.
+
+Run from the repository root:
+
+```sh
+python3 -m unittest discover -s scripts/tests -p 'test_protocol_corpus.py'
+python3 -m unittest discover -s scripts/tests -p 'test_protocol_conformance.py'
+python3 scripts/check-protocol-corpus.py --corpus protocol/fixtures/a19-draft-0.3
+./gradlew --no-daemon --console=plain :core-protocol:test
+node --test tools/transport-spike/companion-protocol-codec.test.mjs \
+  tools/transport-spike/companion-protocol-lifecycle.test.mjs \
+  tools/transport-spike/companion-protocol-conformance.test.mjs
+node tools/transport-spike/companion-protocol-conformance.mjs
+python3 scripts/compare-protocol-conformance.py --corpus protocol/fixtures/a19-draft-0.3 \
+  --kotlin build/reports/draft-protocol/kotlin-conformance.json \
+  --node build/reports/draft-protocol/node-conformance.json
+```
+
+Gradle declares the Kotlin report as an output, so deleting it causes ordinary test execution to regenerate it. CI runs the bounded checks in the documentation job, executes both model suites in the Android host job, and compares reports before recording dependency inventories. Only synthetic actual-result JSON joins the existing retained reports. The expanded corpus digest is `2cfd77c90074facfc1a33c362da46ae3d88d9629a7196f239b4b1814b0b7fab3`; local independent Kotlin/Node reports match all 142/73/704 outcomes. These new checks were added after the hosted checkpoints above. Model interleavings do not prove real concurrency, total-process-memory bounds, authenticated WSS streaming/backpressure/cancellation, registry authorization or actual socket closure. The older research transport proof did not exercise this new session grammar, and full v1 freeze remains open.
+
 ## Manual Android native packet runtime
 
 [Native run 40103179435](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40103179435) at `7e9b1c8c03b4bb925fd894e37cd53c5dc522eff4` passed all four IPv4/IPv6 HTTP/opaque-CONNECT cases on each API 26/37 emulator. Each transferred 16,421 upload bytes and 32,787 download bytes with the expected reply checksum above, gated streaming, half-close, native peer EOF, and unchanged original-address checks. Each job also passed fourteen standalone JVM cases (nine carrier, five Stop-gate), strict lint, and the APK source/pin/ABI/manifest/alignment checks.
