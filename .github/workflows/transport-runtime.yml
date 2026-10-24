@@ -124,6 +124,59 @@ jobs:
             exit "$status"
           }
           trap cleanup EXIT
+          report_host_diagnostic() {
+            local driver_status="$1" emulator_state=pid_present emulator_exit=null
+            local probe="$RUNNER_TEMP/transport-adb-state.txt" adb_status
+            if ! kill -0 "$emulator_pid" 2>/dev/null; then
+              emulator_state=terminated
+              if wait "$emulator_pid" 2>/dev/null; then emulator_exit=0; else emulator_exit=$?; fi
+            fi
+            # Discard stderr; UI's driver owns its classification. Capture at most 256 stdout bytes.
+            if timeout --kill-after=1s 5s adb -s emulator-5554 get-state 2>/dev/null | head -c 256 > "$probe"; then
+              adb_status=${PIPESTATUS[0]}
+            else
+              adb_status=${PIPESTATUS[0]}
+            fi
+            python3 - "$driver_status" "$emulator_pid" "$emulator_state" "$emulator_exit" "$adb_status" "$probe" "$emulator_log" <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import re
+          import sys
+
+          driver, pid, state, emulator_exit, adb_exit, probe, emulator_log = sys.argv[1:]
+          adb_exit = int(adb_exit)
+          response = Path(probe).read_bytes()[:256].decode("ascii", errors="replace").strip()
+          adb_category = "timeout" if adb_exit in (124, 137) else "command_failed" if adb_exit else response if response in ("device", "offline", "unknown") else "unrecognized_response"
+          fatal_category = "none_observed"
+          try:
+              with Path(emulator_log).open("rb") as stream:
+                  stream.seek(0, 2)
+                  stream.seek(max(0, stream.tell() - 65536))
+                  tail = stream.read(65536).decode("utf-8", errors="replace")
+              patterns = (
+                  ("emulator_panic", r"(?im)^\s*(?:emulator\s*:\s*)?PANIC:"),
+                  ("shared_library_load_failure", r"error while loading shared libraries"),
+                  ("kvm_initialization_failure", r"(?i)failed to initialize kvm"),
+                  ("host_signal_termination", r"qemu-system[-\w]*:\s*terminating on signal \d+"),
+                  ("host_segmentation_fault", r"(?im)^.*(?:qemu-system[-\w]*|emulator)[^\n]*[Ss]egmentation fault"),
+              )
+              fatal_category = next((category for category, pattern in patterns if re.search(pattern, tail)), "none_observed")
+          except OSError:
+              fatal_category = "log_unavailable"
+          report = {
+              "api": os.environ["API_LEVEL"], "phase": "after_driver_before_emulator_cleanup",
+              "driverExitCode": int(driver),
+              "emulator": {"pid": int(pid), "liveness": state, "exitCode": None if emulator_exit == "null" else int(emulator_exit)},
+              "adbGetState": {"category": adb_category, "exitCode": adb_exit},
+              "qemuFatalCategory": fatal_category,
+          }
+          target = Path("build/reports/transport-host-diagnostic.json")
+          target.parent.mkdir(parents=True, exist_ok=True)
+          target.write_text(json.dumps(report, sort_keys=True) + "\n", encoding="utf-8")
+          print(json.dumps(report, sort_keys=True))
+          PY
+          }
           deadline=$((SECONDS + 600))
           while true; do
             if ! kill -0 "$emulator_pid" 2>/dev/null; then
@@ -148,7 +201,15 @@ jobs:
           fi
           export ANDROID_SERIAL=emulator-5554
           printf 'Booted emulator API=%s Android=%s\n' "$actual_api" "$(adb -s emulator-5554 shell getprop ro.build.version.release | tr -d '\r')"
-          node tools/transport-spike/run-android-interop.mjs --serial emulator-5554
+          if node tools/transport-spike/run-android-interop.mjs --serial emulator-5554; then
+            driver_status=0
+          else
+            driver_status=$?
+            if ! report_host_diagnostic "$driver_status" 2>/dev/null; then
+              echo '::warning::Bounded host diagnostic collection failed.'
+            fi
+            exit "$driver_status"
+          fi
           python3 - <<'PY'
           import json
           import os
@@ -183,7 +244,7 @@ jobs:
               raise SystemExit("A transport testcase failed or was skipped")
           print(json.dumps({"api": os.environ["API_LEVEL"], **totals}, sort_keys=True))
           PY
-      # Retain public test results only: no APKs, peer keys/logs, keystores, AVDs, or userdata.
+      # Retain sanitized reports only: no APKs, peer keys/logs, keystores, AVDs, or userdata.
       - name: Retain instrumentation reports
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -194,3 +255,4 @@ jobs:
           path: |
             tools/transport-spike/android/build/outputs/androidTest-results/connected/**/*.xml
             tools/transport-spike/android/build/reports/androidTests/connected/
+            build/reports/transport-host-diagnostic.json
