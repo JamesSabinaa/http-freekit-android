@@ -9,6 +9,7 @@ dependencies {
 tasks.test {
     inputs.dir(rootProject.layout.projectDirectory.dir("protocol/fixtures"))
     outputs.file(rootProject.layout.projectDirectory.file("build/reports/draft-protocol/kotlin-conformance.json"))
+    outputs.file(rootProject.layout.projectDirectory.file("build/reports/draft-enrollment/kotlin-conformance.json"))
     useJUnit()
     workingDir = rootProject.projectDir
     testLogging { events("passed", "skipped", "failed") }
