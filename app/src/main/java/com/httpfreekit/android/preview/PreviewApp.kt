@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -51,6 +52,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -94,6 +96,7 @@ fun PreviewApp(state: PreviewState, apps: AppSelectionState, onAction: (PreviewA
     var page by rememberSaveable { mutableStateOf(PreviewPage.HOME.name) }
     var addingComputer by remember { mutableStateOf(false) }
     var forgettingComputer by remember { mutableStateOf<PreviewComputer?>(null) }
+    val keyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
 
     LaunchedEffect(state.phase, state.attempt, state.gatewayAvailable) {
         if (state.phase == PreviewPhase.CONNECTING || state.phase == PreviewPhase.RECONNECTING) {
@@ -107,15 +110,17 @@ fun PreviewApp(state: PreviewState, apps: AppSelectionState, onAction: (PreviewA
             contentWindowInsets = WindowInsets.safeDrawing,
             topBar = {
                 Column(Modifier.statusBarsPadding().fillMaxWidth()) {
-                    Row(
-                        Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Column(Modifier.weight(1f)) {
-                            Text(stringResource(R.string.brand_eyebrow), style = MaterialTheme.typography.labelMedium)
-                            Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineMedium)
+                    if (!keyboardVisible) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(stringResource(R.string.brand_eyebrow), style = MaterialTheme.typography.labelMedium)
+                                Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineMedium)
+                            }
+                            AssistChip(onClick = { page = PreviewPage.SETUP.name }, label = { Text(stringResource(R.string.preview_badge)) })
                         }
-                        AssistChip(onClick = { page = PreviewPage.SETUP.name }, label = { Text(stringResource(R.string.preview_badge)) })
                     }
                     Row(
                         Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 24.dp),

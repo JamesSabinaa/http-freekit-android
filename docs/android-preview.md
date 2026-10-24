@@ -28,6 +28,14 @@ The activity ViewModel retains both catalogues' choices through rotation, not pr
 
 Full discovery on Android 11+ uses the coordinator-owned `QUERY_ALL_PACKAGES` manifest declaration, with the explicitly approved permission-scoped lint exception recorded in [the discovery decision](decisions/0010-installed-app-discovery.md). No broader lint rule is disabled. See [Android package visibility](https://developer.android.com/training/package-visibility) and the [PackageManager API](https://developer.android.com/reference/android/content/pm/PackageManager). The provider uses the typed API 33 overload and the integer overload on API 26–32.
 
+## Keyboard and the capture disclosure
+
+Search uses the real software keyboard. MainActivity declares `adjustResize` for backward-compatible keyboard insets, as described in [Android's edge-to-edge setup](https://developer.android.com/develop/ui/compose/system/setup-e2e). While the IME bottom inset is positive, the header omits only its branding/title/badge row. Navigation and the full no-capture banner remain pinned above the list, leaving more space for focused input in landscape. Focus is not cleared and the keyboard is not hidden by this layout change. The existing Scaffold handles IME insets through `safeDrawing`; no additional IME padding is applied.
+
+The first installed-app run, [40110867531](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40110867531) at `4b22444`, executed all eight methods on each API. Actual headless discovery/search/filter/toggle, disabled-fixture pruning and all four original sample cases passed on both. Sample/installed separation failed at its first installed search on both APIs; API 26 additionally failed the landscape no-capture-banner assertion. Those safe errors did not retain enough layout/IME detail to prove the exact cause. The resize/header follow-up and F's explicit keyboard-visible rotation regression require a new device run; host compilation alone cannot establish that the banner remains visible with the keyboard.
+
+Local follow-up checks pass all 33 app JVM cases, debug assembly, compilation of the eight-method instrumentation APK, and strict lint with `No issues found.` No keyboard-only unit test substitutes for that pending runtime assertion.
+
 ## Validation and limits
 
 Host validation uses:
