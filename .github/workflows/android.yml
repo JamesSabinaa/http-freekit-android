@@ -118,6 +118,8 @@ jobs:
         run: node --test tools/transport-spike/draft-stream-results.test.mjs
       - name: Test owned draft-stream processes and driver CLI
         run: node --test tools/transport-spike/draft-stream-command.test.mjs tools/transport-spike/run-draft-streaming.test.mjs
+      - name: Test private enrollment commands, input, worker and phase parsing
+        run: node --test tools/transport-spike/enrollment-runtime-*.test.mjs
       - name: Test bounded research WebSocket framing
         run: node --test tools/transport-spike/research-websocket*.test.mjs
       - name: Test the authenticated draft-stream peer and owned cleanup
@@ -145,7 +147,7 @@ jobs:
           :transport-framing:test
           :core-security:testDebugUnitTest :core-security:assembleDebugAndroidTest :core-security:lintDebug
           :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug
-          :transport-interop:assembleDebugAndroidTest :transport-interop:lintDebug
+          :transport-interop:testDebugUnitTest :transport-interop:assembleDebugAndroidTest :transport-interop:lintDebug
           :installed-app-fixture:assembleDebug :installed-app-fixture:assembleRelease
           :installed-app-fixture:lintDebug :installed-app-fixture:lintRelease
       - name: Compare complete independent protocol outcomes
@@ -186,6 +188,8 @@ jobs:
             core-security/build/reports/lint-results-debug.*
             core-security/build/test-results/testDebugUnitTest/
             tools/transport-spike/android/build/reports/lint-results-debug.*
+            tools/transport-spike/android/build/reports/tests/
+            tools/transport-spike/android/build/test-results/testDebugUnitTest/
             tools/transport-spike/framing/build/reports/tests/
             tools/transport-spike/framing/build/test-results/test/
             tools/installed-app-fixture/build/reports/lint-results-*
