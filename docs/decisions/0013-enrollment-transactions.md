@@ -1,0 +1,17 @@
+# Enrollment transactions and key-bound recovery
+
+Status: A21 implementation assigned against draft enrollment revision 0.4. No production listener, app enrollment flow or v1 freeze is established by this decision.
+
+The verified A20 checkpoint establishes authenticated streaming, not enrollment. The next foundation package must connect explicit operator approval to a durable exact credential result and key-bound recovery. The canonical grammar is [the enrollment appendix](../protocol-enrollment.md).
+
+Use a typed, client-constructed, domain-separated server-nonce proof with the existing P-256/SHA256withECDSA Keystore primitive. This avoids introducing a temporary pending certificate role into the active credential store and avoids dependence on fresh certificate authentication during TLS resumption. It still requires a precise bounded challenge protocol, independent byte fixtures, single-use consumption and real Keystore interoperability. TLS pinning remains mandatory. A signature authorizes one status read or an explicitly distinct cancel operation, never approval or traffic.
+
+Keep certificate issuance outside the database transaction, then conditionally publish approval result, active exact leaf and invitation consumption together. Reserve by canonical validated SPKI, retaining the first review snapshot. Use a new strict fixed-subject CSR profile: the previous research helper proves key possession but does not fully validate the subject. Do not change the verified A20 issuer to conceal that difference.
+
+The Node builtin SQLite API at pinned version 24.22.1 is a release candidate. It is a research storage choice, with explicit initialization, single-owner lifetime, strict schema/identity checks and closed failure behavior. A temporary Windows/NTFS experiment showed that setting EXCLUSIVE mode alone did not exclude a second reader; an actual exclusive bootstrap transaction and retained handle did. Forced process termination released the owner lock, rolled back uncommitted disk-spilled state and preserved committed publication. Those preliminary observations do not establish the implementation, Linux behavior, malicious-storage resistance or power-loss durability.
+
+Reject the temporary-client-certificate alternative for this package: Android binding can use it, but pending material could accidentally enter the generic active store, TLS resumption complicates fresh key proof, and approval just before pending expiry creates another recovery boundary. This decision does not adopt a new encryption scheme, signing algorithm, private-key storage format or production database library.
+
+A21 ends with implemented codecs/proof bytes, challenge/state logic, strict public profiles, durable authority tests and independent cross-language fixtures. A22 must prove their complete live HTTPS/Keystore/approval/save/recovery path. Production registry integration, real session revocation, renewal/credential lifetime composition, capture policy and full v1 freeze remain subsequent gates.
+
+Sources: [pinned Node SQLite API](https://raw.githubusercontent.com/nodejs/node/v24.22.1/doc/api/sqlite.md), [SQLite locking mode](https://www.sqlite.org/pragma.html#pragma_locking_mode), [SQLite synchronization](https://www.sqlite.org/pragma.html#pragma_synchronous), [atomic-commit assumptions](https://www.sqlite.org/atomiccommit.html), [pinned Node signature encodings](https://raw.githubusercontent.com/nodejs/node/v24.22.1/doc/api/crypto.md).

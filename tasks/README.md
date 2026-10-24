@@ -2,6 +2,8 @@
 
 Codex coordinates package A in `../http-freekit-android-a`, with uniquely assigned parallel packages B, D, and F below. Package C production integration and package E remain gated. Use separate branches and worktrees. Update this board through the coordinator to avoid agents racing to edit the same rows.
 
+A21 enrollment is assigned from 4ca2fea against [draft 0.4](../docs/protocol-enrollment.md) and [decision 0013](../docs/decisions/0013-enrollment-transactions.md). The coordinator owns the normative contract, new Node modules/tests prefixed companion-enrollment-codec and companion-enrollment-authority, and integration in plan/a-foundation. UI owns only new DraftEnrollment-prefixed Kotlin implementation/test files in core-protocol on feat/a21-kotlin-enrollment in its isolated runtime worktree. D owns only new Node crypto/store modules/tests/helpers prefixed companion-enrollment-crypto or companion-enrollment-store on feat/a21-enrollment-store in its isolated carrier worktree. F owns protocol/fixtures/a21-draft-0.4/, new enrollment corpus/comparison scripts/tests, host workflow wiring and current validation documentation on test/f-a21-enrollment in its isolated worktree. The root grammar commit precedes implementation; F's fixture/adapter contract commit precedes corpus adapter coding. Preserve the verified A19/A20 sources, existing invitation parser, core security, app and production desktop files. No new listener or app pairing flow is assigned yet. A21 must deliver actual codec/proof/state/store implementations and real owned-process crash evidence; A22 then integrates live HTTPS/Keystore/approval/save/recovery before production and v1 freeze.
+
 ## Assignments
 
 | Package | Owner | Branch | Status | Dependencies |

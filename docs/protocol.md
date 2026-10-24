@@ -6,6 +6,8 @@ Draft revision 0.2 adds an optional `gatewayCertificateDer` invitation field for
 
 Draft revision 0.3 specifies the [control/stream grammar and conformance contract](protocol-streams.md), including exact messages, independent END_WRITE, session negotiation, bounded queues/leases, deadlines and error precedence. That appendix is normative for the new A19 draft implementations; it does not freeze v1 or change the existing pairing/enrollment fields. `unsupported_capability`, `session_limit`, `session_expired` and local `message_too_large` decoding results are made explicit there. No production integration depends on these fields yet.
 
+Draft revision 0.4 adds the [bounded enrollment/approval/recovery contract](protocol-enrollment.md): exact request/reply schemas, canonical key-bound status/cancel proof bytes, strict CSR/certificate profiles and durable publication/replay rules. It is normative for A21 foundation implementations and independent fixtures; the revision-0.3 control/stream grammar is unchanged. A22 live HTTPS/Keystore/recovery proof and the remaining foundation gates precede production integration and v1 freeze.
+
 ## Encoding and identity
 
 Use UTF-8 JSON for bounded control messages and binary WebSocket frames for proxy bytes. JSON timestamps use UTC RFC 3339. IDs are opaque strings; do not trust display names as identities. Unknown required capabilities or unsupported protocol versions produce explicit errors. Ignore unknown optional fields only where the schema permits them. Validate field types, lengths, endpoint syntax, and total payload size before acting.
@@ -50,12 +52,15 @@ Invitations expire after five minutes by default, are single-use, and are bounde
 
 Package A must specify certificate algorithms, validity, renewal, status credential binding, recovery, and crash-safe enrollment persistence before freeze. Renewal requires an authenticated active device and proof of the new key when rotating. Expired or revoked credentials require pairing again. Avoid having Android credentials signed by the interception CA.
 
+The revision-0.4 appendix defines the exact foundation behavior of these enrollment steps, including a typed domain-separated nonce proof, immutable same-SPKI retries, explicit local decisions, cancellation and atomic exact-result recovery. A21 implements the headless parts first; it does not expose an automatic approval route or publish a production listener.
+
 ## Authenticated endpoints
 
 | Endpoint | Purpose | Authorization |
 | --- | --- | --- |
 | POST /companion/v1/pair | Start enrollment | Valid invitation and CSR; no traffic access |
 | POST /companion/v1/pair/status | Resume enrollment result | Bound pending credential and key proof |
+| POST /companion/v1/pair/cancel | Cancel this setup/grant | Fresh cancel-purpose key proof bound to that enrollment |
 | WSS /companion/v1/control | Session readiness, heartbeat, state, disconnect | Active device client certificate |
 | GET /companion/v1/ca | Public interception CA and fingerprint | Active device client certificate |
 | WSS /companion/v1/streams | One ordered explicit-proxy byte stream | Active device client certificate and current session |
@@ -77,6 +82,8 @@ Revocation invalidates sessions and immediately closes their streams. Desktop st
 Use stable codes: unsupported_version, invitation_expired, invitation_used, pairing_pending, pairing_rejected, authentication_failed, device_revoked, proxy_unavailable, stream_limit, invalid_message, and network_unreachable. Local diagnostics may add safe detail; public authentication errors must not expose secrets or internal paths. Gateway identity mismatch is a local TLS failure and must never trigger an automatic trust reset.
 
 Protocol fixtures must include success, rejection, malformed JSON, oversize payloads, expiry, duplicate enrollment, concurrent claim, version mismatch, and stream cancellation. Store them under protocol/fixtures when implementation begins. Both repositories run the same committed fixture set or a pinned copy with its source commit recorded. Compatible application versions negotiate capabilities rather than infer features from release names.
+
+The enrollment appendix separates exact pair_error and pair_ended codes, including pairing_cancelled, credential_expired, result_expired, pairing_limit and pairing_unavailable. These draft additions do not change the existing control/stream error grammar.
 
 ## Relay gate
 
