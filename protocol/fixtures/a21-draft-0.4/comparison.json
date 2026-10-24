@@ -1,0 +1,286 @@
+{
+  "format": "http-freekit-a21",
+  "revision": "0.4",
+  "kind": "comparison",
+  "cases": [
+    {
+      "id": "comparison-ordered",
+      "gatewayPin": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+      "deviceHash": "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8",
+      "expect": {
+        "ok": true,
+        "value": "066b1e3f-b05b19e6-5e07c965-80a7aee9-e0fb9c8d-6779a388-8856838c-6292af50"
+      }
+    },
+    {
+      "id": "comparison-swapped",
+      "gatewayPin": "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8",
+      "deviceHash": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+      "expect": {
+        "ok": true,
+        "value": "247ffedc-43e3f90d-e2f399e4-0b8d0f63-c2ed2306-fe344e97-852e7dfb-95968dd9"
+      }
+    },
+    {
+      "id": "comparison-zeros",
+      "gatewayPin": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "deviceHash": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "expect": {
+        "ok": true,
+        "value": "f6feec86-7ecdc631-3c2b67a8-027d53f5-064c5592-16262109-8845ae7f-03e8ee56"
+      }
+    },
+    {
+      "id": "comparison-all-ff",
+      "gatewayPin": "__________________________________________8",
+      "deviceHash": "__________________________________________8",
+      "expect": {
+        "ok": true,
+        "value": "00e2fbc7-5ff27682-a2bd6686-a1377d77-dbf5d435-f013c98f-123d67fb-4946f37c"
+      }
+    },
+    {
+      "id": "comparison-one-bit",
+      "gatewayPin": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "deviceHash": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "expect": {
+        "ok": true,
+        "value": "e9684a70-c7008046-993e33ac-f592f519-a7f2de3d-1a1b979d-8bcd3538-919502ba"
+      }
+    },
+    {
+      "id": "comparison-gateway-empty",
+      "gatewayPin": "",
+      "deviceHash": "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8",
+      "expect": {
+        "ok": false,
+        "code": "invalid_message"
+      }
+    },
+    {
+      "id": "comparison-gateway-short",
+      "gatewayPin": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "deviceHash": "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8",
+      "expect": {
+        "ok": false,
+        "code": "invalid_message"
+      }
+    },
+    {
+      "id": "comparison-gateway-long",
+      "gatewayPin": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "deviceHash": "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8",
+      "expect": {
+        "ok": false,
+        "code": "invalid_message"
+      }
+    },
+    {
+      "id": "comparison-gateway-padding",
+      "gatewayPin": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+      "deviceHash": "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8",
+      "expect": {
+        "ok": false,
+        "code": "invalid_message"
+      }
+    },
+    {
+      "id": "comparison-gateway-bits",
+      "gatewayPin": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHhB",
+      "deviceHash": "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8",
+      "expect": {
+        "ok": false,
+        "code": "invalid_message"
+      }
+    },
+    {
+      "id": "comparison-gateway-newline",
+      "gatewayPin": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8\n",
+      "deviceHash": "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8",
+      "expect": {
+        "ok": false,
+        "code": "invalid_message"
+      }
+    },
+    {
+      "id": "comparison-gateway-plus",
+      "gatewayPin": "+++++++++++++++++++++++++++++++++++++++++++",
+      "deviceHash": "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8",
+      "expect": {
+        "ok": false,
+        "code": "invalid_message"
+      }
+    },
+    {
+      "id": "comparison-gateway-slash",
+      "gatewayPin": "///////////////////////////////////////////",
+      "deviceHash": "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8",
+      "expect": {
+        "ok": false,
+        "code": "invalid_message"
+      }
+    },
+    {
+      "id": "comparison-gateway-null",
+      "gatewayPin": null,
+      "deviceHash": "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8",
+      "expect": {
+        "ok": false,
+        "code": "invalid_message"
+      }
+    },
+    {
+      "id": "comparison-gateway-boolean",
+      "gatewayPin": false,
+      "deviceHash": "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8",
+      "expect": {
+        "ok": false,
+        "code": "invalid_message"
+      }
+    },
+    {
+      "id": "comparison-gateway-number",
+      "gatewayPin": 0,
+      "deviceHash": "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8",
+      "expect": {
+        "ok": false,
+        "code": "invalid_message"
+      }
+    },
+    {
+      "id": "comparison-gateway-array",
+      "gatewayPin": [],
+      "deviceHash": "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8",
+      "expect": {
+        "ok": false,
+        "code": "invalid_message"
+      }
+    },
+    {
+      "id": "comparison-gateway-object",
+      "gatewayPin": {},
+      "deviceHash": "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8",
+      "expect": {
+        "ok": false,
+        "code": "invalid_message"
+      }
+    },
+    {
+      "id": "comparison-device-empty",
+      "gatewayPin": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+      "deviceHash": "",
+      "expect": {
+        "ok": false,
+        "code": "invalid_message"
+      }
+    },
+    {
+      "id": "comparison-device-short",
+      "gatewayPin": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+      "deviceHash": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "expect": {
+        "ok": false,
+        "code": "invalid_message"
+      }
+    },
+    {
+      "id": "comparison-device-long",
+      "gatewayPin": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+      "deviceHash": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "expect": {
+        "ok": false,
+        "code": "invalid_message"
+      }
+    },
+    {
+      "id": "comparison-device-padding",
+      "gatewayPin": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+      "deviceHash": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+      "expect": {
+        "ok": false,
+        "code": "invalid_message"
+      }
+    },
+    {
+      "id": "comparison-device-bits",
+      "gatewayPin": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+      "deviceHash": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHhB",
+      "expect": {
+        "ok": false,
+        "code": "invalid_message"
+      }
+    },
+    {
+      "id": "comparison-device-newline",
+      "gatewayPin": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+      "deviceHash": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8\n",
+      "expect": {
+        "ok": false,
+        "code": "invalid_message"
+      }
+    },
+    {
+      "id": "comparison-device-plus",
+      "gatewayPin": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+      "deviceHash": "+++++++++++++++++++++++++++++++++++++++++++",
+      "expect": {
+        "ok": false,
+        "code": "invalid_message"
+      }
+    },
+    {
+      "id": "comparison-device-slash",
+      "gatewayPin": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+      "deviceHash": "///////////////////////////////////////////",
+      "expect": {
+        "ok": false,
+        "code": "invalid_message"
+      }
+    },
+    {
+      "id": "comparison-device-null",
+      "gatewayPin": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+      "deviceHash": null,
+      "expect": {
+        "ok": false,
+        "code": "invalid_message"
+      }
+    },
+    {
+      "id": "comparison-device-boolean",
+      "gatewayPin": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+      "deviceHash": false,
+      "expect": {
+        "ok": false,
+        "code": "invalid_message"
+      }
+    },
+    {
+      "id": "comparison-device-number",
+      "gatewayPin": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+      "deviceHash": 0,
+      "expect": {
+        "ok": false,
+        "code": "invalid_message"
+      }
+    },
+    {
+      "id": "comparison-device-array",
+      "gatewayPin": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+      "deviceHash": [],
+      "expect": {
+        "ok": false,
+        "code": "invalid_message"
+      }
+    },
+    {
+      "id": "comparison-device-object",
+      "gatewayPin": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+      "deviceHash": {},
+      "expect": {
+        "ok": false,
+        "code": "invalid_message"
+      }
+    }
+  ]
+}
