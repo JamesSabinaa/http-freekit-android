@@ -103,3 +103,29 @@ At `61ced0e`, run 40124837895 passes all seven methods on API 37 and five on API
 The existing framing writer emits separate header, mask and payload writes before its synchronous flush. Only the draft stream adapter will wrap that output in a fixed `FRAME + 14` (4110-byte) `BufferedOutputStream`; each negotiated binary frame of at most 4096 bytes encodes to at most 4104 bytes and fits before the existing flush. This is one bounded underlying bulk-write claim, not a TLS-record or packet guarantee. Completion and model drain must remain after the real write and flush return. No extra mailbox, model credit, raw socket change or teardown flush is permitted. Raw-socket interruption remains independent of writer/buffer locks, and successful worker joins precede discarding the writer/buffer reference and resource confirmation. Actual-writer regressions must gate both underlying write and flush, decode ordered binary/text/close bytes, and verify permanent failure after either I/O failure. Full seven-case API 26/37 execution is required after checked integration.
 
 The bounded comparison is integrated in `be900ee` and UI `7f0975b` as `1b5d148`, independently reviewed by F `4464c33` as `27bb24e`. Root and F each pass all twenty framing cases, including the real Kotlin/Node TCP exchange; combined research APK assembly and strict lint pass in 1m38s. Nine documentation regressions and 147 links pass. Publish this checked source for one complete seven-case API 26/37 run. All previous failed evidence remains, and the host checks do not establish the Android outcome or underlying cause.
+
+## Complete pressure-wait failure coverage
+
+At checked `eb5cd10`, run 40125879375 passes all seven methods on API 37 but fails the earlier proxy-pressure observation in all three API 26 pressure cases. No Android-wait bundle is emitted because that wait is not reached. This does not establish the batching experiment's cause or resolution. Retain the checked buffer unchanged while closing this demonstrated diagnostic gap.
+
+Diagnostic revision 3 uses exactly 45 status-3 `draftPressure` fields. It retains the original 24 suffixes, changes `Version` to `3`, and adds:
+
+```text
+WaitKind
+PeerSampleElapsedMillis PeerProbeElapsedMillis
+PeerProxyWriteEntered PeerProxyWriteCompleted PeerProxyWritePending
+PeerPendingIngressBytes PeerBackpressureCount
+PeerControlPhase PeerControlCause PeerStreamPhase PeerStreamCause
+PeerChargedBytes PeerProxyReadPaused PeerUploadBytesRead
+RawSendBufferBytes RawReceiveBufferBytes
+ApplicationSendBufferBytes ApplicationReceiveBufferBytes
+BridgeSendBufferBytes BridgeReceiveBufferBytes
+```
+
+`WaitKind` is `proxy` or `android`. Each pressure scenario emits at most one failure-only bundle, for whichever actual wait fails first, before outer cleanup. Wait/failure times describe that wait; `LongestCandidateMillis` measures its unchanged full predicate for the same actual write ID. Mask bits 1/2/4 record ever-seen unfinished writes, bounded pending ingress and bounded model charge for that wait's owner, not simultaneous proof. Proxy flags such as read-paused and positive backpressure count remain part of its existing full predicate, without changing the mask into a success proof.
+
+The peer values come only from the last already completed, validated HTTPS probe, cached as selected immutable primitive values. `PeerSampleElapsedMillis` records its local receive time since accepted readiness; `PeerProbeElapsedMillis` records that existing request's monotonic duration. Capture makes no fresh request. The cached sample may predate the failing wait; its age remains visible. If no probe completed, both times are `-1`, peer phases are `unobserved`, causes are `null`, all peer counts are zero and flags false. Otherwise both times are canonical nonnegative integers bounded by 120000, sample time cannot exceed failure time, phases/causes use only the existing finite enums (nullable stream phase is represented by `unobserved`), and peer completion cannot exceed entry. Peer pending ingress is at most 4096, control charge at most 16384, and other peer counts at most 33562624.
+
+The six actual socket-buffer getters are read without a model lock, outside the original predicate; they never configure a socket or send data. Retain a value in 1..16777216 bytes, or `0` when unavailable/closed/outside that diagnostic bound. Final local atomics remain sequential observations, not a cross-thread trace. Reporting follows lock release, preserves the original failure even if reporting fails, and serializes no raw probe JSON, identities, payload, key, route or error text.
+
+Keep the same three case namespaces and broad passing-report pressure-prefix rejection. Bound pending status metadata at 48 fields so the exact 45-field bundle fits; keep the existing 256 KiB raw instrumentation limit. Reject legacy versions, missing/extra/misplaced/duplicate/noncanonical fields, invalid sentinel combinations and failure facts on a passing case. The positive fourteen-field expiry schema and every production/draft wire field, predicate, wait/profile/data limit, raw socket setting and actual cleanup requirement stay unchanged.
