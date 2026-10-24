@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { decodeEnrollmentRuntime, decodeEnrollmentHostCleanup, enrollmentReportPaths, enrollmentRuntimeLimits,
-  verifyEnrollmentRuntime, verifyEnrollmentHostCleanup, EnrollmentRuntimeError } from '../tools/transport-spike/enrollment-runtime-results.mjs';
+  verifyEnrollmentRuntime, verifyEnrollmentHostCleanup, enrollmentRuntimeXml, enrollmentRuntimeHtml, EnrollmentRuntimeError } from '../tools/transport-spike/enrollment-runtime-results.mjs';
 
 export function readEnrollmentRuntimeFile(file, limit, started) {
   let descriptor;
@@ -26,20 +26,24 @@ export function readEnrollmentRuntimeFile(file, limit, started) {
   } catch { throw new EnrollmentRuntimeError('runtime_file_unavailable_or_stale'); }
   finally { if (descriptor !== undefined) fs.closeSync(descriptor); }
 }
-export function verifyEnrollmentRuntimeFiles({ runtime = enrollmentReportPaths.runtime, host = enrollmentReportPaths.host, source, api, started }) {
+export function verifyEnrollmentRuntimeFiles({ runtime = enrollmentReportPaths.runtime, host = enrollmentReportPaths.host,
+  xml = enrollmentReportPaths.xml, html = enrollmentReportPaths.html, source, api, started }) {
   if (typeof source !== 'string' || !/^[0-9a-f]{40}$/.test(source) || ![26, 37].includes(api) ||
       !Number.isSafeInteger(started) || started < 946684800 || started > 4102444800) throw new EnrollmentRuntimeError('invalid_runtime_arguments');
   const report = decodeEnrollmentRuntime(readEnrollmentRuntimeFile(runtime, enrollmentRuntimeLimits.runtime, started));
   const cleanup = decodeEnrollmentHostCleanup(readEnrollmentRuntimeFile(host, enrollmentRuntimeLimits.host, started));
   const result = verifyEnrollmentRuntime(report, { source, api });
   verifyEnrollmentHostCleanup(cleanup, { source, api });
+  for (const [file, expected] of [[xml, enrollmentRuntimeXml(report)], [html, enrollmentRuntimeHtml(report)]]) {
+    if (!readEnrollmentRuntimeFile(file, enrollmentRuntimeLimits.rendered, started).equals(Buffer.from(expected))) throw new EnrollmentRuntimeError('runtime_projection_mismatch');
+  }
   return result;
 }
 function main(args) {
   if (args.length === 1 && args[0] === '--help') {
-    console.log('Usage: node scripts/verify-enrollment-runtime.mjs --source COMMIT --api 26|37 --started EPOCH_SECONDS [--runtime FILE] [--host FILE]'); return;
+    console.log('Usage: node scripts/verify-enrollment-runtime.mjs --source COMMIT --api 26|37 --started EPOCH_SECONDS [--runtime FILE] [--host FILE] [--xml FILE] [--html FILE]'); return;
   }
-  const options = {}, names = new Set(['--runtime', '--host', '--source', '--api', '--started']);
+  const options = {}, names = new Set(['--runtime', '--host', '--xml', '--html', '--source', '--api', '--started']);
   for (let index = 0; index < args.length; index += 2) {
     const name = args[index], value = args[index + 1];
     if (!names.has(name) || !value || Object.hasOwn(options, name.slice(2))) throw new EnrollmentRuntimeError('invalid_runtime_arguments');

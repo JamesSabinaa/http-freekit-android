@@ -89,11 +89,12 @@ test('failed stack retains bounded own call sites and finite type, never message
     '\tat com.httpfreekit.interop.DraftEnrollmentInteropTest.prepareApprovedCredentialForRestart(DraftEnrollmentInteropTest.kt:25)\n' +
     '\tat com.vendor.Private.userId(Secret.kt:1)\nCaused by: java.io.IOException: PRIVATE_CAUSE\n' +
     '\tat com.httpfreekit.interop.DraftEnrollmentClient.work(Foreign.kt:1)\n' +
-    '\tat com.httpfreekit.interop.DraftEnrollmentClient.work(DraftEnrollmentClient.kt:30)';
+    '\tat com.httpfreekit.interop.DraftEnrollmentHttpsClient.work(DraftEnrollmentHttpsClient.kt:30)\n' +
+    '\tat com.httpfreekit.interop.DraftEnrollmentResponseLost.<init>(DraftEnrollmentHttpsClient.kt:20)';
   const result = parse(transcript(method).replace(status(method, 0), status(method, -2, 'INSTRUMENTATION_STATUS: stack=' + stack + '\n')));
-  assert.equal(result.state, 'failed'); assert.equal(result.failureType, 'AssertionError'); assert.equal(result.frames.length, 2);
+  assert.equal(result.state, 'failed'); assert.equal(result.failureType, 'AssertionError'); assert.equal(result.frames.length, 3);
   for (const canary of ['PRIVATE_CANARY', 'PRIVATE_CAUSE', 'Secret.kt', 'Foreign.kt', 'com.vendor']) assert.ok(!JSON.stringify(result).includes(canary));
-  const many = stack + '\n' + '\tat com.httpfreekit.interop.DraftEnrollmentClient.work(DraftEnrollmentClient.kt:1)\n'.repeat(30);
+  const many = stack + '\n' + '\tat com.httpfreekit.interop.DraftEnrollmentHttpsClient.work(DraftEnrollmentHttpsClient.kt:1)\n'.repeat(30);
   assert.equal(parse(transcript(method).replace(status(method, 0), status(method, -2, 'INSTRUMENTATION_STATUS: stack=' + many + '\n'))).frames.length, 16);
 });
 test('successful status with failure stack and unknown status cannot become green', () => {

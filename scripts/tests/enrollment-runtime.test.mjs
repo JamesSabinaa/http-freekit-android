@@ -6,7 +6,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { decodeEnrollmentRuntime, decodeEnrollmentHostCleanup, verifyEnrollmentRuntime, verifyEnrollmentHostCleanup,
-  createEnrollmentRuntimeReport, EnrollmentRuntimeError } from '../../tools/transport-spike/enrollment-runtime-results.mjs';
+  createEnrollmentRuntimeReport, enrollmentRuntimeXml, enrollmentRuntimeHtml, EnrollmentRuntimeError } from '../../tools/transport-spike/enrollment-runtime-results.mjs';
 import { verifyEnrollmentRuntimeFiles } from '../verify-enrollment-runtime.mjs';
 import { runtime, host, source, clone } from '../../tools/transport-spike/enrollment-runtime-test-fixtures.mjs';
 const options = { source, api: 26 };
@@ -109,12 +109,14 @@ test('emulator evidence preserves actual stop/termination/join and original driv
 test('CLI independently reads bounded fresh files and emits only fixed errors for malformed/stale/private inputs', () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'freekit-enrollment-gate-'));
   const runtimePath = path.join(directory, 'runtime.json'), hostPath = path.join(directory, 'host.json');
+  const xml = path.join(directory, 'results.xml'), html = path.join(directory, 'index.html');
   const cli = fileURLToPath(new URL('../verify-enrollment-runtime.mjs', import.meta.url));
   const started = Math.floor(Date.now() / 1000) - 1;
   try {
     fs.writeFileSync(runtimePath, encode(runtime())); fs.writeFileSync(hostPath, encode(host()));
-    assert.equal(verifyEnrollmentRuntimeFiles({ runtime: runtimePath, host: hostPath, source, api: 26, started }).methods, 2);
-    const args = ['--runtime', runtimePath, '--host', hostPath, '--source', source, '--api', '26', '--started', String(started)];
+    fs.writeFileSync(xml, enrollmentRuntimeXml(runtime())); fs.writeFileSync(html, enrollmentRuntimeHtml(runtime()));
+    assert.equal(verifyEnrollmentRuntimeFiles({ runtime: runtimePath, host: hostPath, xml, html, source, api: 26, started }).methods, 2);
+    const args = ['--runtime', runtimePath, '--host', hostPath, '--xml', xml, '--html', html, '--source', source, '--api', '26', '--started', String(started)];
     const good = spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8' }); assert.equal(good.status, 0); assert.match(good.stdout, /2 exact methods/);
     fs.utimesSync(runtimePath, started - 1, started - 1);
     const stale = spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8' }); assert.equal(stale.status, 1); assert.match(stale.stderr, /runtime_file_unavailable_or_stale/);
@@ -126,6 +128,25 @@ test('CLI independently reads bounded fresh files and emits only fixed errors fo
     const malformed = spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8' }); assert.equal(malformed.status, 1); assert.ok(!malformed.stderr.includes('PRIVATE_CANARY'));
     fs.writeFileSync(runtimePath, Buffer.alloc(65537));
     assert.throws(() => verifyEnrollmentRuntimeFiles({ runtime: runtimePath, host: hostPath, source, api: 26, started }), /runtime_file_unavailable_or_stale/);
+  } finally { fs.rmSync(directory, { recursive: true, force: true }); }
+});
+test('fresh XML and HTML must be exact sanitized projections, with no missing or appended material', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'freekit-enrollment-projections-'));
+  const files = { runtime: path.join(directory, 'runtime.json'), host: path.join(directory, 'host.json'), xml: path.join(directory, 'results.xml'), html: path.join(directory, 'index.html') };
+  const started = Math.floor(Date.now() / 1000) - 1;
+  try {
+    fs.writeFileSync(files.runtime, encode(runtime())); fs.writeFileSync(files.host, encode(host()));
+    fs.writeFileSync(files.xml, enrollmentRuntimeXml(runtime())); fs.writeFileSync(files.html, enrollmentRuntimeHtml(runtime()));
+    for (const field of ['xml', 'html']) {
+      const bytes = fs.readFileSync(files[field]);
+      fs.appendFileSync(files[field], 'PRIVATE_PROJECTION_CANARY');
+      assert.throws(() => verifyEnrollmentRuntimeFiles({ ...files, ...options, started }), /runtime_projection_mismatch/);
+      fs.writeFileSync(files[field], bytes); fs.utimesSync(files[field], started - 1, started - 1);
+      assert.throws(() => verifyEnrollmentRuntimeFiles({ ...files, ...options, started }), /runtime_file_unavailable_or_stale/);
+      fs.unlinkSync(files[field]); assert.throws(() => verifyEnrollmentRuntimeFiles({ ...files, ...options, started }), /runtime_file_unavailable_or_stale/);
+      fs.writeFileSync(files[field], bytes);
+    }
+    assert.equal(verifyEnrollmentRuntimeFiles({ ...files, ...options, started }).methods, 2);
   } finally { fs.rmSync(directory, { recursive: true, force: true }); }
 });
 test('failed setup can retain truthful null/unstarted evidence without producing a passing result', () => {

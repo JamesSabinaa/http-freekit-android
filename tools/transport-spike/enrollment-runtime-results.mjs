@@ -29,6 +29,12 @@ const driverCodes = new Set(['host_setup_failed', 'selected_device_unavailable',
 const failures = new Set(['AssertionError', 'IllegalStateException', 'IllegalArgumentException', 'IOException', 'EOFException',
   'SocketException', 'SocketTimeoutException', 'SSLException', 'SSLHandshakeException', 'SSLPeerUnverifiedException',
   'InterruptedException', 'CertificateException', 'JSONException', 'other_exception']);
+const frameFiles = new Map([
+  ['DraftEnrollmentInteropTest.kt', new Set(['DraftEnrollmentInteropTest'])],
+  ['DraftEnrollmentHttpsClient.kt', new Set(['DraftEnrollmentHttpsClient', 'DraftEnrollmentResponseLost', 'DraftEnrollmentTransportFailure'])],
+  ['DraftEnrollmentResearchFiles.kt', new Set(['DraftEnrollmentResearchFiles'])],
+  ['DraftEnrollmentStateCodec.kt', new Set(['DraftEnrollmentStateCodec', 'DraftEnrollmentStateChecks', 'DraftEnrollmentStateException', 'DraftEnrollmentSeed', 'DraftEnrollmentRecovery'])],
+]);
 export class EnrollmentRuntimeError extends Error { constructor(code = 'invalid_runtime_report') { super(code); this.name = 'EnrollmentRuntimeError'; this.code = code; } }
 const fail = code => { throw new EnrollmentRuntimeError(code); };
 export const enrollmentRuntimeProblem = code => driverCodes.has(code) ? code : 'host_setup_failed';
@@ -72,7 +78,7 @@ function sanitizeFailure(raw) {
     const type = /^(?:java\.lang\.|java\.io\.|java\.net\.|javax\.net\.ssl\.|java\.security\.cert\.|org\.json\.|org\.junit\.)?([A-Za-z]+)(?::|$)/.exec(line);
     if (failureType === null && type) failureType = failures.has(type[1]) ? type[1] : 'other_exception';
     const frame = /^\s*at (com\.httpfreekit\.interop\.(DraftEnrollment[A-Za-z0-9_$]{0,80}))\.([A-Za-z0-9_$<>]{1,80})\((DraftEnrollment[A-Za-z0-9_]{0,80}\.kt):([1-9][0-9]{0,5})\)$/.exec(line.replace(/\r$/, ''));
-    if (frame && frame[2].split('$')[0] + '.kt' === frame[4] && frames.length < 16) frames.push({ className: frame[1], method: frame[3], file: frame[4], line: Number(frame[5]) });
+    if (frame && frameFiles.get(frame[4])?.has(frame[2].split('$')[0]) && frames.length < 16) frames.push({ className: frame[1], method: frame[3], file: frame[4], line: Number(frame[5]) });
   }
   return { failureType, frames };
 }
@@ -82,7 +88,7 @@ function validateFrames(value) {
     exact(frame, ['className', 'method', 'file', 'line']);
     if (typeof frame.className !== 'string' || !/^com\.httpfreekit\.interop\.DraftEnrollment[A-Za-z0-9_$]{0,80}$/.test(frame.className) ||
         typeof frame.method !== 'string' || !/^[A-Za-z0-9_$<>]{1,80}$/.test(frame.method) ||
-        frame.file !== frame.className.slice('com.httpfreekit.interop.'.length).split('$')[0] + '.kt') fail('invalid_runtime_report');
+        !frameFiles.get(frame.file)?.has(frame.className.slice('com.httpfreekit.interop.'.length).split('$')[0])) fail('invalid_runtime_report');
     integer(frame.line, 1, 999999);
   }
 }
