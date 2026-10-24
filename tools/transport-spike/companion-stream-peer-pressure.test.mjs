@@ -7,9 +7,10 @@ import { runPressureProbe, pressureProfiles } from './companion-stream-peer-pres
 const javaHome = process.env.PRESSURE_JAVA_HOME || process.env.JAVA_HOME;
 const executable = name => javaHome ? path.join(javaHome, 'bin', `${name}${process.platform === 'win32' ? '.exe' : ''}`) : name;
 for (const profile of pressureProfiles) {
-  test(`software JSSE pressure: ${profile.requestedBufferBytes} bytes, ${profile.packetization} writes, localPair=${profile.localPair === true}`, { timeout: 35000 }, async () => {
+  test(`software JSSE pressure: ${profile.requestedBufferBytes} bytes, ${profile.packetization} writes, localPair=${profile.localPair === true}, localBuffer=${profile.localBufferBytes}`, { timeout: 35000 }, async () => {
     const result = await runPressureProbe({ ...profile, java: executable('java'), javac: executable('javac') });
     assert.equal(result.observationBudgetMillis, 15000);
+    assert.equal(result.localBufferBytes, profile.localBufferBytes);
     assert.ok(result.samples > 0 && result.samples <= 128);
     assert.ok(result.maxCompletedBytes <= 32 * 1024 * 1024 + 8192);
     assert.equal(result.shutdown.writerJoined, true); assert.equal(result.shutdown.processJoined, true);
@@ -31,10 +32,13 @@ for (const profile of pressureProfiles) {
     console.log(`PRESSURE ${rendered}`);
   });
 }
-test('pressure CLI help and invalid input are bounded and never echo supplied values', () => {
+test('pressure CLI help and invalid input are bounded and never echo supplied values', async () => {
   const cli = path.resolve('tools/transport-spike/companion-stream-peer-pressure.mjs');
   const help = spawnSync(process.execPath, [cli, '--help'], { timeout: 5000, encoding: 'utf8', maxBuffer: 4096 });
   assert.equal(help.status, 0); assert.match(help.stdout, /Usage:/);
   const invalid = spawnSync(process.execPath, [cli, 'PRIVATE_VALUE'], { timeout: 5000, encoding: 'utf8', maxBuffer: 4096 });
   assert.equal(invalid.status, 1); assert.equal(invalid.stdout, ''); assert.equal(invalid.stderr.trim(), 'pressure_probe_failed');
+  for (const localBufferBytes of [0, 1, 2048, 65537, NaN, '65536']) {
+    await assert.rejects(runPressureProbe({ java: 'unused', javac: 'unused', localBufferBytes }), { code: 'pressure_probe_failed' });
+  }
 });

@@ -13,20 +13,22 @@ import { logicalName } from './android-peer.mjs';
 import { bounded, safeError } from './companion-stream-peer-io.mjs';
 
 export const pressureProfiles = Object.freeze([
-  Object.freeze({ requestedBufferBytes: 1024, packetization: 'split', localPair: false }),
-  Object.freeze({ requestedBufferBytes: 1024, packetization: 'combined', localPair: false }),
-  Object.freeze({ requestedBufferBytes: 65536, packetization: 'split', localPair: false }),
-  Object.freeze({ requestedBufferBytes: 1024, packetization: 'split', localPair: true }),
+  Object.freeze({ requestedBufferBytes: 1024, packetization: 'split', localPair: false, localBufferBytes: 1024 }),
+  Object.freeze({ requestedBufferBytes: 1024, packetization: 'combined', localPair: false, localBufferBytes: 1024 }),
+  Object.freeze({ requestedBufferBytes: 65536, packetization: 'split', localPair: false, localBufferBytes: 1024 }),
+  Object.freeze({ requestedBufferBytes: 1024, packetization: 'split', localPair: true, localBufferBytes: 1024 }),
+  // Controlled comparison: only the application/bridge buffer hint changes from profile four.
+  Object.freeze({ requestedBufferBytes: 1024, packetization: 'split', localPair: true, localBufferBytes: 65536 }),
 ]);
 export const pressureReportPath = 'build/reports/draft-stream-pressure/pressure.json';
 const source = fileURLToPath(new URL('./companion-stream-peer-pressure-client.java', import.meta.url));
 const pause = () => new Promise(done => setTimeout(done, 150));
 const fail = () => { throw safeError('pressure_probe_failed'); };
 const number = value => { const n = Number(value); if (!Number.isSafeInteger(n) || n < 0 || n > 32 * 1024 * 1024 + 8192) fail(); return n; };
-function config(peer, credential, session, requestedBufferBytes, combined, localPair) {
+function config(peer, credential, session, requestedBufferBytes, combined, localPair, localBufferBytes) {
   const integers = (...values) => { const bytes = Buffer.alloc(values.length * 4); values.forEach((v, i) => bytes.writeUInt32BE(v, i * 4)); return bytes; };
   const blob = value => Buffer.concat([integers(value.length), value]);
-  return Buffer.concat([integers(1, peer.metadata.webSocketPort, requestedBufferBytes, combined ? 1 : 0, localPair ? 1 : 0),
+  return Buffer.concat([integers(1, peer.metadata.webSocketPort, requestedBufferBytes, combined ? 1 : 0, localPair ? 1 : 0, localBufferBytes),
     ...[Buffer.from(logicalName), Buffer.from(peer.metadata.gatewayDer, 'base64url'), new X509Certificate(credential.cert).raw,
       createPrivateKey(credential.key).export({ format: 'der', type: 'pkcs8' }), Buffer.from(session.token)].map(blob)]);
 }
@@ -93,8 +95,9 @@ function peerState(value) {
     backpressureCount: io.backpressureCount, chargedBytes: value.control.chargedBytes,
     proxyReadPaused: value.fixture.proxyReadPaused, uploadBytesRead: value.fixture.uploadBytesRead };
 }
-export async function runPressureProbe({ java, javac, requestedBufferBytes = 1024, packetization = 'split', localPair = false } = {}) {
-  if (!java || !javac || ![1024, 65536].includes(requestedBufferBytes) || !['split', 'combined'].includes(packetization) || typeof localPair !== 'boolean') fail();
+export async function runPressureProbe({ java, javac, requestedBufferBytes = 1024, packetization = 'split', localPair = false, localBufferBytes = 1024 } = {}) {
+  if (!java || !javac || ![1024, 65536].includes(requestedBufferBytes) || !['split', 'combined'].includes(packetization) ||
+      typeof localPair !== 'boolean' || ![1024, 65536].includes(localBufferBytes)) fail();
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'freekit-pressure-'));
   if (path.dirname(directory) !== path.resolve(os.tmpdir()) || !path.basename(directory).startsWith('freekit-pressure-')) fail();
   let peer, session, process, stopped;
@@ -105,7 +108,7 @@ export async function runPressureProbe({ java, javac, requestedBufferBytes = 102
     const credential = await enrollHost(peer, 'pressure');
     session = await control(peer, credential, 'backpressure');
     process = ownedJava(java, directory);
-    const actualBuffers = await process.start(config(peer, credential, session, requestedBufferBytes, packetization === 'combined', localPair));
+    const actualBuffers = await process.start(config(peer, credential, session, requestedBufferBytes, packetization === 'combined', localPair, localBufferBytes));
     const origin = performance.now(), end = origin + 15000;
     let candidate = 0, candidateSince = 0, javaCandidate = 0, javaSince = 0;
     let observed = false, javaWriterObserved = false, samples = 0, latestJava, latestPeer;
@@ -130,7 +133,7 @@ export async function runPressureProbe({ java, javac, requestedBufferBytes = 102
     stopped = await process.stop();
     await session.cancel();
     const cleanup = await until(session.probe, value => value.cleanup.complete);
-    const result = { requestedBufferBytes, packetization, localPair, ...actualBuffers, observedWithinBudget: observed, javaWriterObserved,
+    const result = { requestedBufferBytes, packetization, localPair, localBufferBytes, ...actualBuffers, observedWithinBudget: observed, javaWriterObserved,
       observationBudgetMillis: 15000, elapsedMillis, samples, maxCompletedBytes, maxProxyWriteEntries,
       java: latestJava, shutdown: stopped, peer: latestPeer,
       cleanup: { complete: cleanup.cleanup.complete, workers: cleanup.cleanup.workers, timers: cleanup.cleanup.timers,

@@ -99,8 +99,9 @@ class CompanionStreamPressure {
         try {
             DataInputStream input = new DataInputStream(System.in);
             check(input.readInt() == 1);
-            int port = input.readInt(), buffer = input.readInt(), mode = input.readInt(), seam = input.readInt();
-            check(port > 0 && port <= 65535 && (buffer == 1024 || buffer == 65536) && (mode == 0 || mode == 1) && (seam == 0 || seam == 1));
+            int port = input.readInt(), buffer = input.readInt(), mode = input.readInt(), seam = input.readInt(), localBuffer = input.readInt();
+            check(port > 0 && port <= 65535 && (buffer == 1024 || buffer == 65536) && (mode == 0 || mode == 1) &&
+                (seam == 0 || seam == 1) && (localBuffer == 1024 || localBuffer == 65536));
             String name = new String(blob(input, 128), StandardCharsets.US_ASCII);
             byte[] gatewayDer = blob(input, 4096), leafDer = blob(input, 4096), keyDer = blob(input, 4096);
             String token = new String(blob(input, 64), StandardCharsets.US_ASCII);
@@ -144,11 +145,11 @@ class CompanionStreamPressure {
             ready(network); tls.setSoTimeout(0);
             phase = "local";
             if (seam == 1) {
-                application = new Socket(); application.setSendBufferSize(1024); application.setReceiveBufferSize(1024); application.setTcpNoDelay(true);
+                application = new Socket(); application.setSendBufferSize(localBuffer); application.setReceiveBufferSize(localBuffer); application.setTcpNoDelay(true);
                 try (ServerSocket listener = new ServerSocket()) {
                     listener.setReuseAddress(false); listener.bind(new InetSocketAddress("127.0.0.1", 0), 1); listener.setSoTimeout(5000);
                     application.connect(listener.getLocalSocketAddress(), 5000);
-                    bridge = listener.accept(); bridge.setSendBufferSize(1024); bridge.setReceiveBufferSize(1024); bridge.setTcpNoDelay(true);
+                    bridge = listener.accept(); bridge.setSendBufferSize(localBuffer); bridge.setReceiveBufferSize(localBuffer); bridge.setTcpNoDelay(true);
                     check(bridge.getRemoteSocketAddress().equals(application.getLocalSocketAddress()) &&
                         bridge.getLocalSocketAddress().equals(application.getRemoteSocketAddress()));
                 }
