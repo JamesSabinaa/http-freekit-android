@@ -30,6 +30,7 @@ npm --prefix tools/transport-spike ci --ignore-scripts --no-fund
 openssl version # The research fixture requires OpenSSL 3.
 node --test tools/transport-spike/android-peer.test.mjs
 node --test tools/transport-spike/instrumentation-results.test.mjs
+node --test tools/transport-spike/draft-stream-results.test.mjs
 node --test tools/transport-spike/research-websocket*.test.mjs
 ./gradlew --no-daemon --console=plain \
   :core-protocol:test \
@@ -46,6 +47,8 @@ Assembling the app and security module's Android instrumentation APKs checks com
 The host job checks OpenSSL 3 explicitly and runs five loopback Node fixture tests for bounded CSR validation, certificate issuance, authenticated WebSocket echo, missing-client rejection, temporary-file cleanup, bounded research certificate times and clock probes, and normal TLS rejection of future or expired gateway certificates. Twenty-nine parser/ownership regressions separately cover exact start/end pairs, terminal status, crashes, missing/duplicate/skipped cases, bounded input, sanitized ADB/server-log diagnostics, explicit reverse-port collisions, and selective cleanup. It also compiles and strictly lints the isolated transport module, retaining its lint reports. It does not run connected Android tests. A local Windows research check can select an installed OpenSSL 3 executable through `OPENSSL_BIN`; no system OpenSSL setting is changed.
 
 The documentation job also runs fifteen stdlib Python regressions for the [exact Keystore result verifier](../scripts/verify-keystore-results.py). They cover the actual AGP wrapper/per-class formats, missing/duplicate/unexpected cases or suites, interrupted XML, skipped/crashed results, inconsistent counters, bounded reports, and CLI failures without dumping report messages.
+
+The host job also runs fifteen [draft-stream result/clock regressions](../tools/transport-spike/draft-stream-results.test.mjs) for the separate [authenticated streaming proof](decisions/0012-authenticated-draft-streaming.md). They require seven actual paired instrumentation starts/completions and terminal success, reject skipped/crashed/duplicate/missing results, sanitize reports, and enforce the measured two-second clock-probe/skew profile. These parser checks do not execute the seven Android streaming methods or establish streaming runtime acceptance.
 
 The separate [research WebSocket framing module](../tools/transport-spike/framing/README.md) and Node framing tests exercise bounded RFC 6455 frame reading, serialized writes, backpressure, cancellation, and resource closure with real loopback sockets. CI runs `:transport-framing:test` and retains its XML/HTML reports. This research layer does not establish HTTP upgrade, TLS, authentication, the draft session grammar over a live connection, or Android transport integration.
 

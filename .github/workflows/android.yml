@@ -110,6 +110,8 @@ jobs:
         run: node --test tools/transport-spike/android-peer.test.mjs
       - name: Test strict instrumentation result parsing
         run: node --test tools/transport-spike/instrumentation-results.test.mjs
+      - name: Test strict draft-stream instrumentation result parsing
+        run: node --test tools/transport-spike/draft-stream-results.test.mjs
       - name: Test bounded research WebSocket framing
         run: node --test tools/transport-spike/research-websocket*.test.mjs
       - name: Test independent draft protocol codec and lifecycle
