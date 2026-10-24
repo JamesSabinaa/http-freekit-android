@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { spawnSync } from 'node:child_process';
+import { spawnSync, execFileSync } from 'node:child_process';
 import test from 'node:test';
 import { enrollmentRuntimeOptions } from './run-enrollment-runtime.mjs';
 import { decodeEnrollmentRuntime, expectedEnrollmentMethods, enrollmentReportPaths } from './enrollment-runtime-results.mjs';
@@ -17,7 +17,8 @@ test('driver requires one explicit serial and rejects duplicate/malformed execut
   assert.equal(enrollmentRuntimeOptions(['--serial', 'emulator-5554']).serial, 'emulator-5554');
 });
 
-test('an actual unavailable-device run retains two truthful unstarted methods after selective cleanup', () => {
+test('an actual failed preflight retains truthful unstarted methods and enforces its earliest current-state gate', () => {
+  const dirty = execFileSync('git', ['status', '--porcelain', '--untracked-files=no'], { cwd: ROOT, encoding: 'utf8' }).trim() !== '';
   const result = spawnSync(process.execPath, [fileURLToPath(new URL('./run-enrollment-runtime.mjs', import.meta.url)),
     '--serial', 'PRIVATE_SERIAL_CANARY', '--adb', process.execPath], {
     cwd: ROOT, timeout: 15000, maxBuffer: 32768, encoding: 'utf8', windowsHide: true,
@@ -26,7 +27,8 @@ test('an actual unavailable-device run retains two truthful unstarted methods af
   const report = decodeEnrollmentRuntime(fs.readFileSync(path.join(ROOT, enrollmentReportPaths.runtime)));
   assert.deepEqual(report.invocations.map(value => value.method), expectedEnrollmentMethods);
   assert.equal(report.invocations.every(value => value.state === 'not_started' && value.actualStarted === 0 && value.actualCompleted === 0), true);
-  assert.equal(report.problems.includes('selected_device_unavailable'), true);
+  assert.equal(report.source.trackedDirty, dirty);
+  assert.equal(report.problems.includes(dirty ? 'source_not_clean' : 'selected_device_unavailable'), true);
   assert.equal(report.api, null);
   assert.equal(report.input, null);
   assert.equal(report.approval, null);

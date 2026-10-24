@@ -80,10 +80,17 @@ export async function runEnrollmentRuntime(options) {
     return (await owner.request('start', { directory, mode, openssl: options.openssl, setupPort, credentialPort }, { timeoutMillis: 60000 })).material();
   };
   async function invoke(method, onPhase) {
-    const parser = createEnrollmentInvocationParser(method, { onPhase });
-    const result = await adb(['shell', 'am', 'instrument', '-w', '-r', '-e', 'class',
-      enrollmentRuntimeClass + '#' + method, COMPONENT], method === expectedEnrollmentMethods[0] ? 240000 : 120000,
-    { onStdoutChunk(chunk) { parser.push(chunk); } });
+    let live = true;
+    const parser = createEnrollmentInvocationParser(method, { onPhase(phase) {
+      if (!live) throw Error('phase_after_command_close');
+      if (onPhase) onPhase(phase);
+    } });
+    let result;
+    try {
+      result = await adb(['shell', 'am', 'instrument', '-w', '-r', '-e', 'class',
+        enrollmentRuntimeClass + '#' + method, COMPONENT], method === expectedEnrollmentMethods[0] ? 240000 : 120000,
+      { onStdoutChunk(chunk) { parser.push(chunk); } });
+    } finally { live = false; }
     const parsed = parser.finish(result);
     report.invocations[expectedEnrollmentMethods.indexOf(method)] = parsed;
     if (parsed.state !== 'passed') throw Error('enrollment_invocation_failed');
@@ -252,6 +259,7 @@ export async function runEnrollmentRuntime(options) {
       } catch { problem('enrollment_cleanup_failed'); }
     }
     report.cleanup = cleanup;
+    if (controller.signal.aborted) problem('research_run_cancelled');
     for (const signal of ['SIGINT', 'SIGTERM']) process.off(signal, abort);
   }
   const final = createEnrollmentRuntimeReport(report);
