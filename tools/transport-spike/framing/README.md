@@ -10,6 +10,8 @@ Payload lengths and cumulative fragments are checked before reading/allocating t
 
 `ResearchWebSocketWriter` uses one synchronous lock and no asynchronous mailbox. Each accepted call snapshots bounded bytes and completes only after output write/flush returns. That is local writer completion, not proof of remote consumption. It generates fresh client masks and rejects invalid outgoing messages before writing headers. An I/O failure permanently closes the writer to subsequent calls. A successful close frame prevents further writes.
 
+The draft Android stream experiment adds a fixed 4110-byte output buffer outside this writer. Its negotiated 4096-byte binary frame fits as one underlying bulk write at the existing flush. Gated regressions verify that the call waits for both the underlying write and flush, preserves binary/text/close ordering, and fails permanently after either I/O failure. This adds bounded transport storage without changing model credit; it does not guarantee one TLS record or packet or establish Android pressure behavior.
+
 The later adapter must own sockets, interrupt actual blocked I/O by closing them, enforce deadlines and ping/pong responses, serialize protocol/model operations, account for bytes until real delivery or confirmed resource teardown, and join its workers before calling `resources_closed()`. These classes do none of that work on its behalf. InputStream/TLS/kernel buffering and threads waiting to enter the writer are outside their memory bound. Unit tests using gated streams do not prove Android socket cancellation or authenticated streaming.
 
 See [the research decision](../../../docs/decisions/0011-bounded-websocket-research.md) and [the draft lifecycle](../../../docs/protocol-streams.md).

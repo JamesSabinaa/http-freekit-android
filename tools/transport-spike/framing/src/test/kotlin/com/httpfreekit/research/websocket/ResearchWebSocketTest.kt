@@ -2,12 +2,14 @@ package com.httpfreekit.research.websocket
 
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.BufferedOutputStream
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -250,6 +252,82 @@ class ResearchWebSocketTest {
             output.proceed.countDown()
             executor.shutdownNow()
             assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS))
+        }
+    }
+
+    @Test fun boundedFrameBufferWaitsForUnderlyingWriteAndFlushAndPreservesOrdering() {
+        val writeEntered = CountDownLatch(1)
+        val allowWrite = CountDownLatch(1)
+        val flushEntered = CountDownLatch(1)
+        val allowFlush = CountDownLatch(1)
+        val bulkWrites = AtomicInteger()
+        val wire = ByteArrayOutputStream()
+        val output = object : OutputStream() {
+            override fun write(value: Int) { throw AssertionError("Unexpected single-byte delegate write") }
+            override fun write(bytes: ByteArray, offset: Int, length: Int) {
+                bulkWrites.incrementAndGet()
+                writeEntered.countDown()
+                check(allowWrite.await(5, TimeUnit.SECONDS))
+                wire.write(bytes, offset, length)
+            }
+            override fun flush() {
+                flushEntered.countDown()
+                check(allowFlush.await(5, TimeUnit.SECONDS))
+            }
+        }
+        val payload = ByteArray(4096) { (it % 251).toByte() }
+        val writer = ResearchWebSocketWriter(BufferedOutputStream(output, 4096 + 14), EndpointRole.CLIENT, 4096)
+        val executor = Executors.newSingleThreadExecutor()
+        try {
+            val pending = executor.submit { writer.binary(payload) }
+            assertTrue(writeEntered.await(5, TimeUnit.SECONDS))
+            assertFalse(pending.isDone)
+            assertEquals(0, wire.size())
+            allowWrite.countDown()
+            assertTrue(flushEntered.await(5, TimeUnit.SECONDS))
+            assertFalse(pending.isDone)
+            assertEquals(1, bulkWrites.get())
+            assertEquals(4104, wire.size())
+            allowFlush.countDown()
+            pending.get(5, TimeUnit.SECONDS)
+            writer.text("end_write".toByteArray())
+            writer.close(close(1000))
+            assertEquals(3, bulkWrites.get())
+            val reader = ResearchWebSocketReader(ByteArrayInputStream(wire.toByteArray()), EndpointRole.SERVER, 4096)
+            val binary = reader.read() as ResearchWebSocketEvent.Binary
+            assertArrayEquals(payload, binary.copyBytes())
+            assertArrayEquals(ByteArray(4096) { (it % 251).toByte() }, payload)
+            binary.release()
+            val text = reader.read() as ResearchWebSocketEvent.Text
+            assertEquals("end_write", text.copyBytes().toString(Charsets.UTF_8))
+            text.release()
+            val closed = reader.read() as ResearchWebSocketEvent.Close
+            assertEquals(1000, closed.code)
+            closed.release()
+        } finally {
+            allowWrite.countDown()
+            allowFlush.countDown()
+            executor.shutdownNow()
+            assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS))
+        }
+    }
+
+    @Test fun bufferedWriteOrFlushFailurePermanentlyFailsWriter() {
+        for (failurePoint in listOf("write", "flush")) {
+            val output = object : OutputStream() {
+                override fun write(value: Int) { throw AssertionError("Unexpected single-byte delegate write") }
+                override fun write(bytes: ByteArray, offset: Int, length: Int) {
+                    if (failurePoint == "write") throw IOException("private-buffered-write-detail")
+                }
+                override fun flush() {
+                    if (failurePoint == "flush") throw IOException("private-buffered-flush-detail")
+                }
+            }
+            val writer = ResearchWebSocketWriter(BufferedOutputStream(output, 4096 + 14), EndpointRole.CLIENT, 4096)
+            val failure = rejected(FramingFailure.IO) { writer.binary(ByteArray(4096)) }
+            assertNull(failure.cause)
+            assertFalse(failure.toString().contains("private-buffered"))
+            rejected(FramingFailure.CLOSED) { writer.binary(byteArrayOf(1)) }
         }
     }
 
