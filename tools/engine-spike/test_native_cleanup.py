@@ -4,6 +4,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import textwrap
 import unittest
@@ -39,9 +40,12 @@ class NativeCleanupTest(unittest.TestCase):
     def execute_cleanup(self, requested, explicit):
         with tempfile.TemporaryDirectory(prefix="freekit-cleanup-") as directory:
             script, audit = Path(directory) / "check.bash", Path(directory) / "audit.txt"
+            ready = Path(directory) / "child-ready.txt"
             prefix = '''set -e
 record=$1
 requested=$2
+fixture_python=$3
+ready=$4
 adb() { printf 'adb\n' >> "$record"; return 1; }
 kill() {
   local result
@@ -59,15 +63,26 @@ wait() {
   fi
   return "$result"
 }
-sleep 30 >/dev/null 2>&1 &
+"$fixture_python" -c 'from pathlib import Path; import sys, time; Path(sys.argv[1]).write_text("ready"); time.sleep(30)' "$ready" >/dev/null 2>&1 &
 emulator_pid=$!
 printf 'pid:%s\n' "$emulator_pid" >> "$record"
 builtin kill -0 "$emulator_pid"
 '''
+            # Match a running emulator, not a shell child still being created by MSYS.
+            # Install the real trap before this bounded readiness check as the workflow does.
+            readiness = '''for attempt in {1..300}; do
+  if [[ -f "$ready" ]]; then break; fi
+  builtin kill -0 "$emulator_pid"
+  sleep 0.01
+done
+[[ -f "$ready" ]]
+'''
             ending = 'cleanup "$requested"\nexit "$requested"\n' if explicit else 'exit "$requested"\n'
-            script.write_text(prefix + self.cleanup + "\n" + self.trap + "\n" + ending)
+            script.write_text(prefix + self.cleanup + "\n" + self.trap + "\n" + readiness + ending,
+                              encoding="utf-8", newline="\n")
             try:
-                result = subprocess.run([self.bash, "--noprofile", "--norc", script.as_posix(), audit.as_posix(), str(requested)],
+                result = subprocess.run([self.bash, "--noprofile", "--norc", script.as_posix(), audit.as_posix(), str(requested),
+                                         Path(sys.executable).as_posix(), ready.as_posix()],
                                         capture_output=True, text=True, timeout=10)
                 lines = audit.read_text().splitlines()
                 self.assertEqual(result.returncode, requested, result.stderr)
