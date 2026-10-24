@@ -27,6 +27,39 @@ const closedProjection = snapshot => snapshot === null ? null :
   Object.fromEntries(CLOSED_KEYS.map(key => [key, snapshot[key]]));
 function requirePass(value, code) { if (!passed(value)) throw Error(code); return value; }
 
+export async function registerEnrollmentReverses(adb, metadata, owned) {
+  const ports = [metadata.setupPort, metadata.credentialPort];
+  if (ports.some(port => !Number.isInteger(port) || port < 1 || port > 65535) || ports[0] === ports[1]) throw Error('enrollment_fixture_failed');
+  for (const port of ports) {
+    const result = await adb(['reverse', '--no-rebind', 'tcp:' + port, 'tcp:' + port]);
+    // An observed exit0 already owns the registration even if a later pipe/group check fails.
+    if (result.code === 0) owned.push({ devicePort: port, hostPort: port });
+    requirePass(result, 'enrollment_fixture_failed');
+    if (!['', String(port)].includes(result.output.trim())) throw Error('enrollment_fixture_failed');
+  }
+}
+export function enrollmentOwnedReversesAbsent(result, owned) {
+  if (!passed(result) || result.stderrBytes !== 0 || typeof result.output !== 'string') return false;
+  const text = result.output.trim();
+  if (!text) return true;
+  const lines = text.split(/\r?\n/);
+  if (lines.length > 128) return false;
+  const socketName = value => {
+    if (/^tcp:[1-9][0-9]{0,4}$/.exec(value)?.[0] === value) return Number(value.slice(4)) <= 65535;
+    return /^(?:localabstract|localreserved|localfilesystem):[!-~]{1,1024}$/.exec(value)?.[0] === value;
+  };
+  const deviceSockets = [];
+  for (const line of lines) {
+    const fields = line.trim().split(/[ \t]+/);
+    if (fields.length !== 2 && fields.length !== 3) return false;
+    if (fields.length === 3 && /^[A-Za-z0-9_.:-]{1,128}$/.exec(fields[0])?.[0] !== fields[0]) return false;
+    const [device, host] = fields.slice(-2);
+    if (!socketName(device) || !socketName(host)) return false;
+    deviceSockets.push(device);
+  }
+  return owned.every(mapping => !deviceSockets.includes('tcp:' + mapping.devicePort));
+}
+
 export function enrollmentRuntimeOptions(args, env = process.env) {
   const options = { adb: env.ANDROID_HOME ? path.join(env.ANDROID_HOME, 'platform-tools', process.platform === 'win32' ? 'adb.exe' : 'adb') : 'adb',
     openssl: env.OPENSSL_BIN ?? 'openssl' };
@@ -138,13 +171,7 @@ export async function runEnrollmentRuntime(options) {
     directory = fs.mkdtempSync(path.join(temporary, 'freekit-enrollment-runtime-')); fs.chmodSync(directory, 0o700);
     initialMetadata = await spawnWorker('create');
     const invitation = (await worker.request('createInvitation')).material();
-    // Asynchronous --no-rebind registrations own only successful requested mappings.
-    for (const port of [initialMetadata.setupPort, initialMetadata.credentialPort]) {
-      if (!Number.isInteger(port) || port < 1 || port > 65535) throw Error(stage);
-      const result = requirePass(await adb(['reverse', '--no-rebind', 'tcp:' + port, 'tcp:' + port]), stage);
-      mappings.push({ devicePort: port, hostPort: port });
-      if (!['', String(port)].includes(result.output.trim())) throw Error(stage);
-    }
+    await registerEnrollmentReverses(adb, initialMetadata, mappings);
     stage = 'enrollment_input_failed';
     const input = encodeEnrollmentRuntimeInput(initialMetadata, invitation);
     const script = 'umask 077; mkdir -p no_backup/draft-enrollment-research && chmod 700 no_backup/draft-enrollment-research && ' +
@@ -234,8 +261,7 @@ export async function runEnrollmentRuntime(options) {
     if (mappings.length) {
       try {
         const result = await adb(['reverse', '--list'], 10000, {}, true);
-        const rows = result.output.split(/\r?\n/).map(line => line.trim().split(/\s+/).slice(-2));
-        cleanup.ownedReversesAbsent = passed(result) && mappings.every(mapping => !rows.some(([device]) => device === 'tcp:' + mapping.devicePort));
+        cleanup.ownedReversesAbsent = enrollmentOwnedReversesAbsent(result, mappings);
         if (!cleanup.ownedReversesAbsent) problem('enrollment_cleanup_failed');
       } catch { problem('enrollment_cleanup_failed'); }
     }
