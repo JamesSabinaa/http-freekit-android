@@ -49,4 +49,5 @@ dependencies {
     androidTestImplementation(libs.compose.test.junit4)
     androidTestImplementation(libs.android.test.runner)
     androidTestImplementation(libs.android.test.junit)
+    androidTestImplementation(libs.android.test.espresso.core)
 }
