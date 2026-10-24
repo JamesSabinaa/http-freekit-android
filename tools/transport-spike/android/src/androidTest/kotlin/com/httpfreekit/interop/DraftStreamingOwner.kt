@@ -23,15 +23,21 @@ import kotlin.concurrent.withLock
 
 /** Real research I/O adapter. Its lock protects model events, never a blocking socket operation. */
 internal class DraftStreamingOwner(
-    private val fixture: DraftStreamingFixture,
+    private val connector: DraftStreamingConnector,
     val credential: DraftStreamingFixture.Credential,
     scenario: String,
+    private val context: DraftStreamingSessionContext,
 ) : AutoCloseable {
+    constructor(fixture: DraftStreamingFixture, credential: DraftStreamingFixture.Credential, scenario: String) : this(
+        DraftStreamingConnector { selected, route, session, selectedScenario, rawSend ->
+            fixture.upgrade(selected, route, session, selectedScenario, rawSendBufferBytes = rawSend)
+        }, credential, scenario, DraftStreamingSessionContext("research-desktop", CAPABILITIES))
+
     private val lock = ReentrantLock()
     private val changed = lock.newCondition()
     private val clock = DraftStreamingClock()
     private val pool = DraftBudgetPool(4, 8, 65536)
-    private val model = DraftSession(credential.deviceId, "research-desktop", CAPABILITIES, pool, clock.now())
+    private val model = DraftSession(credential.deviceId, context.desktopId, context.capabilities, pool, clock.now())
     private val streams = ArrayList<Stream>()
     private val tls: DraftStreamingTls
     private val reader: ResearchWebSocketReader
@@ -51,13 +57,13 @@ internal class DraftStreamingOwner(
 
     init {
         check(scenario in setOf("gated", "backpressure", "cancel", "expiry", "binding", "malformed", "premature"))
-        val upgraded = fixture.upgrade(credential, "/companion/v1/control", scenario = scenario)
+        val upgraded = connector.upgrade(credential, "/companion/v1/control", null, scenario, 1024)
         tls = upgraded.first
         try {
             check(upgraded.second == 101) { "Control upgrade refused" }
             reader = ResearchWebSocketReader(tls.socket.inputStream, EndpointRole.CLIENT, FRAME)
             writer = ResearchWebSocketWriter(tls.socket.outputStream, EndpointRole.CLIENT, FRAME)
-            val hello = DraftWireCodec.encode(DraftMessage.Hello(CAPABILITIES, CAPABILITIES))
+            val hello = DraftWireCodec.encode(DraftMessage.Hello(context.capabilities, context.capabilities))
             accepted(lock.withLock { model.text(DraftDirection.CLIENT, hello, clock.now()) })
             writer.text(hello)
             tls.socket.soTimeout = 5000
@@ -68,9 +74,11 @@ internal class DraftStreamingOwner(
                 val decoded = DraftWireCodec.decode(DraftChannel.CONTROL, bytes)
                 check(decoded is DraftDecodeResult.Accepted && decoded.message is DraftMessage.SessionReady) { "Invalid control readiness" }
                 val ready = decoded.message as DraftMessage.SessionReady
-                check(ready.limits == LIMITS && ready.capabilities.toSet() == CAPABILITIES.toSet()) { "Unexpected research limits" }
+                check(ready.limits == LIMITS && ready.capabilities.toSet() == context.capabilities.toSet()) { "Unexpected research limits" }
+                val readyClock = clock.now()
+                context.requireReady(ready.expiresAt.toEpochMilli(), readyClock.utcMillis)
                 expiresAtMillis = ready.expiresAt.toEpochMilli()
-                accepted(lock.withLock { model.text(DraftDirection.GATEWAY, bytes, clock.now()) })
+                accepted(lock.withLock { model.text(DraftDirection.GATEWAY, bytes, readyClock) })
                 readyAtUtcMillis = System.currentTimeMillis()
                 readyAtNanos = System.nanoTime()
             } finally { event.release() }
@@ -250,7 +258,7 @@ internal class DraftStreamingOwner(
         internal fun terminalLocked() = stream.snapshot().phase in TERMINAL
 
         internal fun start() {
-            val upgrade = fixture.upgrade(credential, "/companion/v1/streams", token(), rawSendBufferBytes = 65536)
+            val upgrade = connector.upgrade(credential, "/companion/v1/streams", token(), null, 65536)
             connection = upgrade.first
             check(upgrade.second == 101) { "Stream upgrade refused" }
             wsReader = ResearchWebSocketReader(upgrade.first.socket.inputStream, EndpointRole.CLIENT, FRAME)

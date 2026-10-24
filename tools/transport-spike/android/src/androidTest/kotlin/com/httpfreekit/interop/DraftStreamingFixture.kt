@@ -3,17 +3,13 @@ package com.httpfreekit.interop
 import androidx.test.platform.app.InstrumentationRegistry
 import com.httpfreekit.protocol.DraftClock
 import com.httpfreekit.security.AndroidDeviceIdentityStore
-import com.httpfreekit.security.GatewayTlsConnectionFactory
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.DataInputStream
 import java.io.EOFException
-import java.net.InetAddress
-import java.net.InetSocketAddress
 import java.net.Socket
 import java.security.KeyStore
 import java.security.MessageDigest
-import java.security.SecureRandom
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 import java.util.Base64
@@ -21,7 +17,6 @@ import java.util.Collections
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
-import javax.net.SocketFactory
 import javax.net.ssl.SSLSocket
 import javax.net.ssl.X509ExtendedKeyManager
 
@@ -74,33 +69,8 @@ internal class DraftStreamingFixture : AutoCloseable {
         override fun toString() = "ResearchCredential([NONEXPORTABLE])"
     }
 
-    fun connect(credential: Credential?, port: Int = streamPort, rawSendBufferBytes: Int = 1024): DraftStreamingTls {
-        require(rawSendBufferBytes == 1024 || rawSendBufferBytes == 65536) { "Invalid research send buffer" }
-        val raw = AtomicReference<Socket?>()
-        val rawFactory = object : SocketFactory() {
-            override fun createSocket(): Socket = Socket().also {
-                // Compare only the accepted stream's send hint; effective kernel values remain observable.
-                it.sendBufferSize = rawSendBufferBytes
-                it.receiveBufferSize = 1024
-                it.tcpNoDelay = true
-                raw.set(it)
-            }
-            override fun createSocket(host: String?, port: Int): Socket = error("Unowned socket overload")
-            override fun createSocket(host: String?, port: Int, local: InetAddress?, localPort: Int): Socket = error("Unowned socket overload")
-            override fun createSocket(host: InetAddress?, port: Int): Socket = error("Unowned socket overload")
-            override fun createSocket(host: InetAddress?, port: Int, local: InetAddress?, localPort: Int): Socket = error("Unowned socket overload")
-        }
-        try {
-            val tls = GatewayTlsConnectionFactory(gateway, pin, NAME, 5000, 5000,
-                rawSocketFactory = rawFactory, clientKeyManager = credential?.manager)
-                .connect(InetSocketAddress(InetAddress.getByName("127.0.0.1"), port))
-            check(tls.session.protocol in setOf("TLSv1.2", "TLSv1.3")) { "Unsupported research TLS" }
-            return DraftStreamingTls(checkNotNull(raw.get()), tls)
-        } catch (failure: Exception) {
-            raw.get()?.close()
-            throw failure
-        }
-    }
+    fun connect(credential: Credential?, port: Int = streamPort, rawSendBufferBytes: Int = 1024): DraftStreamingTls =
+        draftStreamingConnect(gateway, pin, NAME, port, credential?.manager, rawSendBufferBytes)
 
     data class Reply(val status: Int, val headers: Map<String, String>, val body: ByteArray) {
         override fun toString() = "ResearchReply(status=$status, body=[REDACTED])"
@@ -141,35 +111,7 @@ internal class DraftStreamingFixture : AutoCloseable {
     fun upgrade(credential: Credential, route: String, session: String? = null, scenario: String? = null,
         extraHeaders: List<Pair<String, String>> = emptyList(), rawSendBufferBytes: Int = 1024): Pair<DraftStreamingTls, Int> {
         check(route in setOf("/companion/v1/control", "/companion/v1/streams"))
-        val tls = connect(credential, rawSendBufferBytes = rawSendBufferBytes)
-        try {
-            tls.socket.soTimeout = 5000
-            val key = Base64.getEncoder().encodeToString(ByteArray(16).also { SecureRandom().nextBytes(it) })
-            val head = buildString {
-                append("GET $route HTTP/1.1\r\nHost: $NAME\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n")
-                append("Sec-WebSocket-Version: 13\r\nSec-WebSocket-Key: $key\r\n")
-                session?.let { append("X-FreeKit-Session: $it\r\n") }
-                scenario?.let { append("X-FreeKit-Research-Scenario: $it\r\n") }
-                extraHeaders.forEach { (name, value) ->
-                    check(name.length <= 64 && value.length <= 256 && (name + value).all { it.code in 32..126 })
-                    append("$name: $value\r\n")
-                }
-                append("\r\n")
-            }
-            tls.socket.outputStream.write(head.toByteArray(Charsets.US_ASCII))
-            tls.socket.outputStream.flush()
-            val response = readHeaders(tls.socket)
-            if (response.first == 101) {
-                check(response.second["upgrade"]?.lowercase() == "websocket" &&
-                    response.second["connection"]?.lowercase()?.split(',')?.any { it.trim() == "upgrade" } == true)
-                val expected = Base64.getEncoder().encodeToString(MessageDigest.getInstance("SHA-1")
-                    .digest((key + GUID).toByteArray(Charsets.US_ASCII)))
-                check(response.second["sec-websocket-accept"] == expected &&
-                    "sec-websocket-extensions" !in response.second && "sec-websocket-protocol" !in response.second)
-            }
-            tls.socket.soTimeout = 0
-            return tls to response.first
-        } catch (failure: Exception) { tls.close(); throw failure }
+        return draftStreamingUpgrade(connect(credential, rawSendBufferBytes = rawSendBufferBytes), NAME, route, session, scenario, extraHeaders)
     }
 
     override fun close() {
@@ -184,7 +126,6 @@ internal class DraftStreamingFixture : AutoCloseable {
 
     companion object {
         const val NAME = "android-node-research.invalid"
-        private const val GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
         private fun certificate(bytes: ByteArray): X509Certificate {
             check(bytes.size in 1..4096)
             val input = ByteArrayInputStream(bytes)
