@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { startPeer } from './android-peer.mjs';
-import { MAX_INSTRUMENTATION_BYTES, parseInstrumentation, researchClass, resultHtml, resultXml } from './instrumentation-results.mjs';
+import { MAX_ADB_DIAGNOSTIC_BYTES, MAX_INSTRUMENTATION_BYTES, adbPublicVersion, commandDiagnostic, parseInstrumentation, researchClass, resultHtml, resultXml } from './instrumentation-results.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const moduleBuild = path.join(root, 'tools/transport-spike/android/build');
@@ -22,6 +22,17 @@ if (!options.serial || !/^[A-Za-z0-9_.:-]{1,128}$/.test(options.serial)) throw E
 const adb = (args, timeout = 10000) => execFileSync(options.adb, ['-s', options.serial, ...args], {
   timeout, maxBuffer: 65536, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true,
 }).trim();
+const diagnostics = {};
+function recordDiagnostic(prefix, value) {
+  for (const [key, item] of Object.entries(value)) diagnostics[prefix + key[0].toUpperCase() + key.slice(1)] = item;
+}
+function probe(args) {
+  try { return { ok: true, output: adb(args), diagnostic: commandDiagnostic({ code: 0 }) }; }
+  catch (failure) {
+    return { ok: false, output: '', diagnostic: commandDiagnostic({ code: failure.status, signal: failure.signal,
+      stderr: failure.stderr, spawnError: typeof failure.code === 'string' ? failure.code : null }) };
+  }
+}
 let child;
 let childStopped;
 let peerPromise;
@@ -54,22 +65,28 @@ function run(command, args, timeout, capture = false) {
   childStopped = undefined;
   return new Promise(resolve => {
     const chunks = [];
+    const stderrChunks = [];
     let bytes = 0;
+    let stderrBytes = 0;
     let reason;
     child = spawn(command, args, { cwd: root, env: { ...process.env, ANDROID_SERIAL: options.serial },
       stdio: capture ? ['ignore', 'pipe', 'pipe'] : 'inherit', detached: process.platform !== 'win32', windowsHide: true });
     const endAfterStop = () => stopChild().then(
-      () => resolve({ code: 1, output: Buffer.concat(chunks).toString('utf8'), reason }),
-      () => resolve({ code: 1, output: Buffer.concat(chunks).toString('utf8'), reason: 'owned_child_cleanup_failed' }),
+      () => resolve({ code: child.exitCode, signal: child.signalCode, output: Buffer.concat(chunks).toString('utf8'), stderr: Buffer.concat(stderrChunks), reason }),
+      () => resolve({ code: child.exitCode, signal: child.signalCode, output: Buffer.concat(chunks).toString('utf8'), stderr: Buffer.concat(stderrChunks), reason: 'owned_child_cleanup_failed' }),
     );
     const deadline = setTimeout(() => { reason = 'owned_child_timeout'; endAfterStop(); }, timeout);
     if (capture) for (const [stream, retain] of [[child.stdout, true], [child.stderr, false]]) stream.on('data', data => {
       bytes += data.length;
+      if (!retain && stderrBytes < MAX_ADB_DIAGNOSTIC_BYTES + 1) {
+        const kept = data.subarray(0, MAX_ADB_DIAGNOSTIC_BYTES + 1 - stderrBytes);
+        stderrChunks.push(kept); stderrBytes += kept.length;
+      }
       if (bytes > MAX_INSTRUMENTATION_BYTES) { reason = 'instrumentation_output_limit'; endAfterStop(); }
       else if (retain) chunks.push(data);
     });
-    child.once('error', () => { clearTimeout(deadline); resolve({ code: 1, output: '', reason: 'owned_child_start_failed' }); });
-    child.once('close', code => { clearTimeout(deadline); resolve({ code, output: Buffer.concat(chunks).toString('utf8'), reason }); });
+    child.once('error', failure => { clearTimeout(deadline); resolve({ code: null, signal: null, output: '', stderr: '', spawnError: failure.code, reason: 'owned_child_start_failed' }); });
+    child.once('close', (code, signal) => { clearTimeout(deadline); resolve({ code, signal, output: Buffer.concat(chunks).toString('utf8'), stderr: Buffer.concat(stderrChunks), reason }); });
   });
 }
 function cleanup() {
@@ -95,6 +112,7 @@ for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => {
 });
 function ensureRunning() { if (stopping) throw Error('research_run_cancelled'); }
 function writeReports(result) {
+  result.diagnostics = diagnostics;
   for (const directory of [xmlDirectory, htmlDirectory]) fs.mkdirSync(directory, { recursive: true });
   fs.writeFileSync(path.join(xmlDirectory, 'TEST-android-node-research.xml'), resultXml(result));
   fs.writeFileSync(path.join(htmlDirectory, 'index.html'), resultHtml(result));
@@ -106,7 +124,15 @@ for (const directory of [xmlDirectory, htmlDirectory]) {
 }
 let result;
 try {
-  if (adb(['get-state']) !== 'device') throw Error('selected_device_unavailable');
+  const version = probe(['version']);
+  recordDiagnostic('versionQuery', version.diagnostic);
+  Object.assign(diagnostics, adbPublicVersion(version.output));
+  const daemonStatus = probe(['server-status']);
+  recordDiagnostic('daemonStatusQuery', daemonStatus.diagnostic);
+  diagnostics.adbDaemonVersion = adbPublicVersion(daemonStatus.output).adbDaemonVersion;
+  const initialState = probe(['get-state']);
+  recordDiagnostic('initialDeviceQuery', initialState.diagnostic);
+  if (!initialState.ok || initialState.output !== 'device') throw Error('selected_device_unavailable');
   const buildArgs = ['--no-daemon', '--console=plain', ':transport-interop:assembleDebugAndroidTest'];
   const build = await run(process.platform === 'win32' ? process.env.ComSpec ?? 'cmd.exe' : './gradlew',
     process.platform === 'win32' ? ['/d', '/s', '/c', `gradlew.bat ${buildArgs.join(' ')}`] : buildArgs, 15 * 60 * 1000);
@@ -138,13 +164,21 @@ try {
   args.push(component);
   console.log('Running explicit research instrumentation; waiting for four exact start/end pairs.');
   const instrument = await run(options.adb, args, 180000, true);
-  result = parseInstrumentation(instrument.output, { exitCode: instrument.code, transportError: instrument.reason });
-  try {
-    const remaining = adb(['reverse', '--list']).split(/\r?\n/).map(line => line.trim().split(/\s+/).slice(-2));
+  recordDiagnostic('instrumentation', commandDiagnostic(instrument));
+  result = parseInstrumentation(instrument.output, { exitCode: instrument.code, signal: instrument.signal, transportError: instrument.reason });
+  const selectedState = probe(['get-state']);
+  recordDiagnostic('selectedDeviceQuery', selectedState.diagnostic);
+  diagnostics.selectedDeviceState = selectedState.ok ? ['device', 'offline', 'unauthorized', 'unknown'].includes(selectedState.output) ? selectedState.output : 'unexpected_state' : 'query_failed';
+  if (!selectedState.ok || selectedState.output !== 'device') { result.problems.push('selected_device_unavailable_after_instrumentation'); result.ok = false; }
+  const reverseState = probe(['reverse', '--list']);
+  recordDiagnostic('reverseQuery', reverseState.diagnostic);
+  if (reverseState.ok) {
+    const remaining = reverseState.output.split(/\r?\n/).map(line => line.trim().split(/\s+/).slice(-2));
     if (mappings.some(mapping => !remaining.some(([device, host]) => device === `tcp:${mapping.devicePort}` && host === `tcp:${mapping.hostPort}`))) {
       result.problems.push('owned_reverse_mapping_lost_during_instrumentation'); result.ok = false;
     }
-  } catch { result.problems.push('reverse_mapping_state_unavailable'); result.ok = false; }
+  } else { result.problems.push('reverse_mapping_state_unavailable'); result.ok = false; }
+  console.log(`ADB channel diagnostics: ${JSON.stringify(diagnostics)}`);
   writeReports(result);
   console.log(`Research instrumentation: ${result.started} started, ${result.completed} completed; ${result.ok ? 'passed' : 'failed'}.`);
   for (const value of result.cases) if (value.state !== 'passed') console.error(`${value.name}: ${value.state}\n${value.detail}`);

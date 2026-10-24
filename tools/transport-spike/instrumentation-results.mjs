@@ -2,6 +2,53 @@ import { expectedTests } from './android-peer.mjs';
 
 export const researchClass = 'com.httpfreekit.interop.AndroidNodeInteropTest';
 export const MAX_INSTRUMENTATION_BYTES = 256 * 1024;
+export const MAX_ADB_DIAGNOSTIC_BYTES = 16 * 1024;
+const signalNames = new Set(['SIGHUP', 'SIGINT', 'SIGQUIT', 'SIGILL', 'SIGTRAP', 'SIGABRT', 'SIGBUS', 'SIGFPE', 'SIGKILL', 'SIGSEGV', 'SIGPIPE', 'SIGALRM', 'SIGTERM']);
+
+export function adbStderrCategories(value) {
+  const text = Buffer.isBuffer(value) ? null : String(value ?? '');
+  const length = text === null ? value.length : Buffer.byteLength(text);
+  const bytes = text === null ? value : Buffer.from(text.slice(0, MAX_ADB_DIAGNOSTIC_BYTES));
+  const bounded = bytes.subarray(0, MAX_ADB_DIAGNOSTIC_BYTES).toString('utf8');
+  const categories = [];
+  const patterns = [
+    ['adb_channel_closed', /(?:^|\n)(?:adb: )?error: closed(?:\r?\n|$)/i],
+    ['adb_device_not_found', /device ['"][^\r\n]{1,128}['"] not found|no devices\/emulators found/i],
+    ['adb_device_offline', /device (?:is )?offline/i],
+    ['adb_device_unauthorized', /device (?:is )?unauthorized/i],
+    ['adb_protocol_fault', /protocol fault/i],
+    ['adb_connection_reset', /connection reset by peer/i],
+    ['adb_connection_refused', /connection refused/i],
+    ['adb_broken_pipe', /broken pipe/i],
+    ['adb_transport_closing', /transport (?:is )?closing/i],
+    ['adb_daemon_unreachable', /cannot connect to daemon|failed to start daemon|cannot connect to (?:adb )?server/i],
+    ['adb_daemon_starting', /daemon not running|daemon started successfully/i],
+    ['adb_version_mismatch', /server version[^\r\n]{0,100}doesn.t match/i],
+    ['adb_reverse_listener_missing', /listener ['"]tcp:[0-9]+['"] not found/i],
+    ['adb_bind_failed', /cannot bind (?:listener|to)|address already in use/i],
+    ['adb_response_read_failed', /failed to read (?:response|status)|couldn.t read status/i],
+  ];
+  for (const [category, pattern] of patterns) if (pattern.test(bounded)) categories.push(category);
+  if (length > MAX_ADB_DIAGNOSTIC_BYTES) categories.push('adb_stderr_diagnostic_limit');
+  if (!categories.length) categories.push(length ? 'adb_stderr_unclassified' : 'adb_stderr_empty');
+  return categories;
+}
+export function commandDiagnostic({ code = null, signal = null, stderr = '', spawnError = null } = {}) {
+  return {
+    exitCode: Number.isInteger(code) && code >= 0 && code <= 0xffffffff ? code : 'none',
+    signal: signal === null ? 'none' : signalNames.has(signal) ? signal : 'unrecognized_signal',
+    stderr: adbStderrCategories(stderr).join(', '),
+    spawnError: spawnError === null ? 'none' : ['ENOENT', 'EACCES', 'ETIMEDOUT', 'ENOBUFS'].includes(spawnError) ? spawnError : 'unclassified_spawn_error',
+  };
+}
+export function adbPublicVersion(value) {
+  const text = String(value).slice(0, 4096);
+  return {
+    adbProtocolVersion: /Android Debug Bridge version ([0-9.]{1,32})/.exec(text)?.[1] ?? 'unavailable',
+    adbBuildVersion: /(?:^|\n)Version ([0-9.]{1,32}-[0-9]{1,32})/.exec(text)?.[1] ?? 'unavailable',
+    adbDaemonVersion: /(?:^|\n)\s*version:\s*"([0-9.]{1,32})"/.exec(text)?.[1] ?? 'unavailable',
+  };
+}
 
 // Only exception types and platform/research call sites are retained. Messages can contain key data.
 export function safeStack(value) {
@@ -16,12 +63,12 @@ export function safeStack(value) {
   return selected.join('\n') || 'No permitted exception type or call site was reported.';
 }
 
-export function parseInstrumentation(output, { exitCode = 0, transportError = null } = {}) {
+export function parseInstrumentation(output, { exitCode = 0, signal = null, transportError = null } = {}) {
   const cases = expectedTests.map(name => ({ name, state: 'not_started', detail: 'Case was not executed.' }));
   const problems = [];
   const problem = value => { if (problems.length < 16 && !problems.includes(value)) problems.push(value); };
   if (Buffer.byteLength(output, 'utf8') > MAX_INSTRUMENTATION_BYTES) { output = ''; problem('instrumentation_output_limit'); }
-  if (exitCode !== 0) problem('adb_instrumentation_process_failed');
+  if (exitCode !== 0 || signal !== null) problem('adb_instrumentation_process_failed');
   if (transportError) problem(transportError);
   let pending = {};
   let lastKey;
@@ -92,12 +139,13 @@ export function resultXml(result) {
   });
   const failures = rows.filter(value => value.includes('<failure ')).length;
   const errors = rows.filter(value => value.includes('<error ')).length;
+  const diagnostics = Object.entries(result.diagnostics ?? {}).map(([name, value]) => `<property name="${escape(name)}" value="${escape(value)}"/>`).join('');
   return `<?xml version="1.0" encoding="UTF-8"?>\n<testsuite name="${researchClass}" tests="4" failures="${failures}" errors="${errors}" skipped="0">\n` +
-    `  <properties><property name="actualStarted" value="${result.started}"/><property name="actualCompleted" value="${result.completed}"/></properties>\n` +
+    `  <properties><property name="actualStarted" value="${result.started}"/><property name="actualCompleted" value="${result.completed}"/>${diagnostics}</properties>\n` +
     rows.join('\n') + `\n  <system-out>${escape(runFailure || 'All four exact start/end pairs and the terminal success result were verified.')}</system-out>\n</testsuite>\n`;
 }
 export function resultHtml(result) {
   return '<!doctype html><html lang="en"><meta charset="utf-8"><title>Research instrumentation results</title><body>' +
     `<h1>Android to Node research: ${result.ok ? 'passed' : 'failed'}</h1><p>Actual starts: ${result.started}; actual completions: ${result.completed}.</p>` +
-    `<p>${escape(result.problems.join(', '))}</p><ul>` + result.cases.map(value => `<li>${value.name}: ${value.state}<pre>${escape(value.detail)}</pre></li>`).join('') + '</ul></body></html>';
+    `<p>${escape(result.problems.join(', '))}</p><pre>${escape(JSON.stringify(result.diagnostics ?? {}, null, 2))}</pre><ul>` + result.cases.map(value => `<li>${value.name}: ${value.state}<pre>${escape(value.detail)}</pre></li>`).join('') + '</ul></body></html>';
 }
