@@ -77,7 +77,8 @@ public final class NativePacketTest {
         phase("jni-load-start");
         NativeEngine engine = new NativeEngine(); // JNI_OnLoad must register this class.
         phase("jni-loaded");
-        try (NativeStopGate stopGate = new NativeStopGate(engine::TProxyStopService)) {
+        try (NativeStopGate stopGate = new NativeStopGate(engine::TProxyStopService);
+             ResearchSocksCarrier socksCarrier = new ResearchSocksCarrier(socksPort, 4)) {
             phase("jni-running-check-start");
             assertFalse(engine.TProxyIsRunning());
             phase("jni-running-check-done");
@@ -86,7 +87,7 @@ public final class NativePacketTest {
             phase("jni-prestop-done");
             File configuration = new File(context.getCacheDir(), "native-engine-research.yaml");
             String yaml = "tunnel:\n  mtu: 1500\n  ipv4: 10.0.0.1\n  ipv6: 'fd00::1'\n"
-                    + "socks5:\n  address: 127.0.0.1\n  port: " + socksPort + "\n  udp: 'udp'\n"
+                    + "socks5:\n  address: 127.0.0.1\n  port: " + socksCarrier.localPort() + "\n  udp: 'udp'\n"
                     + "misc:\n  log-file: null\n  log-level: error\n  max-session-count: 8\n"
                     + "  connect-timeout: 5000\n  tcp-read-write-timeout: 15000\n";
             Files.write(configuration.toPath(), yaml.getBytes(StandardCharsets.UTF_8));
@@ -141,7 +142,7 @@ public final class NativePacketTest {
                 frame(output, HELLO, json(new JSONObject()
                         .put("bridge", "freekit-native-probe/1").put("engineCommit", source.getString("engineCommit"))
                         .put("api", Build.VERSION.SDK_INT).put("abi", Build.SUPPORTED_ABIS[0])
-                        .put("pageSize", Os.sysconf(OsConstants._SC_PAGESIZE))
+                        .put("pageSize", Os.sysconf(OsConstants._SC_PAGESIZE)).put("socksCarrier", ResearchSocksCarrier.IDENTITY)
                         .put("jniLoaded", true).put("running", engine.TProxyIsRunning())));
                 // The control greeting must precede any unsolicited native packets.
                 phase("hello-sent");
@@ -157,7 +158,9 @@ public final class NativePacketTest {
                     input.readFully(packet);
                     assertEquals("A packet must remain one datagram", length, Os.write(packetEnd, packet, 0, length));
                     if (pumpFailure.get() != null) throw new AssertionError("Packet output failed", pumpFailure.get());
+                    socksCarrier.checkHealthy();
                 }
+                socksCarrier.awaitCompleted(4, 10, TimeUnit.SECONDS);
                 assertTrue("Engine exited before Stop", engine.TProxyIsRunning());
                 phase("jni-statistics-start");
                 long[] stats = engine.TProxyGetStats();
@@ -180,9 +183,13 @@ public final class NativePacketTest {
                 nativeDescriptor = null;
                 pairCreated = false;
                 phase("descriptors-closed");
+                socksCarrier.close();
+                assertTrue("Research SOCKS carrier threads did not stop", socksCarrier.isStopped());
+                assertEquals(4, socksCarrier.completedCount());
                 frame(output, STOPPED, json(new JSONObject().put("stopped", true)
                         .put("running", engine.TProxyIsRunning()).put("packetPumpStopped", true)
-                        .put("descriptorsClosed", true).put("statisticsBeforeStop", counters)));
+                        .put("descriptorsClosed", true).put("statisticsBeforeStop", counters)
+                        .put("socksCarrierCompleted", socksCarrier.completedCount()).put("socksCarrierStopped", socksCarrier.isStopped())));
             } finally {
                 shuttingDown.set(true);
                 try {
