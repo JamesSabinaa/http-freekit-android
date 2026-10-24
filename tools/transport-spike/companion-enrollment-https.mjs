@@ -202,6 +202,9 @@ class EnrollmentHttpsFixture {
       if (!this.#registrations.has(material.invitationId)) this.#registrations.set(material.invitationId, response);
       for (const waiter of [...this.#waiters]) if (waiter.invitationId === material.invitationId) waiter.complete(response);
     }
+    if (selected === 'cancel_request' && material.type === 'pair_ended' && material.code === 'pairing_cancelled') {
+      this.#service?.invalidateEnrollment(material.enrollmentId, 'device_revoked');
+    }
     if (selected === 'status_request' && material.type === 'pair_approved' && this.#drop) { this.#drop = false; await this.#dropResponse(request.socket); return; }
     await this.#reply(reply, material.type === 'pair_error' ? status[material.code] : 200, encodeEnrollment(response));
     if (selected === 'status_request' && material.type === 'pair_approved') { this.#delivered++; if (this.#dropped > 0) this.#deliveredAfterDrop++; }

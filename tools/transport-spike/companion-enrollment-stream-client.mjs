@@ -19,23 +19,33 @@ export function tlsOptions(fixture, credential, port) {
     ca: new X509Certificate(Buffer.from(m.gatewayCertificateDer, 'base64url')).toString(),
     ...(credential ? { key: credential.key, cert: credential.cert } : {}) }, 'EnrolledHostTlsOptions');
 }
-export async function enroll(fixture, crypto) {
-  const m = fixture.metadata().material(), invitation = fixture.createInvitation().material();
-  const body = Buffer.from(JSON.stringify({ protocolVersion: 1, type: 'pair', desktopId: m.desktopId,
-    invitationId: invitation.invitationId, invitationSecret: invitation.invitationSecret, csrDer: crypto.csr().toString('base64url'),
-    deviceName: 'Enrolled stream software research', capabilities: ['tcp-http', 'tcp-https-connect'] }));
-  const registration = await bounded(new Promise((resolve, reject) => {
-    const request = https.request({ ...tlsOptions(fixture, null, m.setupPort), agent: false, method: 'POST', path: '/companion/v1/pair',
+export async function enrollmentRequest(fixture, route, material) {
+  if (!['/companion/v1/pair', '/companion/v1/pair/status', '/companion/v1/pair/cancel'].includes(route)) throw safeError('enrollment_client_failed');
+  const m = fixture.metadata().material(), body = Buffer.from(JSON.stringify(material));
+  if (body.length < 1 || body.length > 16384) throw safeError('enrollment_client_failed');
+  return bounded(new Promise((resolve, reject) => {
+    const request = https.request({ ...tlsOptions(fixture, null, m.setupPort), agent: false, method: 'POST', path: route,
       headers: { host: `${m.logicalName}:${m.setupPort}`, 'content-type': 'application/json', 'content-length': body.length, connection: 'close' } }, reply => {
       const chunks = []; let count = 0;
       reply.on('data', chunk => { count += chunk.length; if (count > 16384) reply.destroy(); else chunks.push(chunk); });
       reply.on('error', () => reject(safeError('enrollment_client_failed')));
-      reply.on('end', () => { if (reply.statusCode === 200) resolve(JSON.parse(Buffer.concat(chunks))); else reject(safeError('enrollment_client_failed')); });
+      reply.on('end', () => {
+        try { resolve(redacted({ status: reply.statusCode, material: JSON.parse(Buffer.concat(chunks)) }, 'EnrolledHostResponse')); }
+        catch { reject(safeError('enrollment_client_failed')); }
+      });
     });
     request.on('error', () => reject(safeError('enrollment_client_failed'))); request.setTimeout(5000, () => request.destroy()); request.end(body);
   }), 6000);
+}
+export async function enroll(fixture, crypto) {
+  const m = fixture.metadata().material(), invitation = fixture.createInvitation().material();
+  const response = await enrollmentRequest(fixture, '/companion/v1/pair', { protocolVersion: 1, type: 'pair', desktopId: m.desktopId,
+    invitationId: invitation.invitationId, invitationSecret: invitation.invitationSecret, csrDer: crypto.csr().toString('base64url'),
+    deviceName: 'Enrolled stream software research', capabilities: ['tcp-http', 'tcp-https-connect'] });
+  if (response.status !== 200 || response.material.type !== 'pair_registered') throw safeError('enrollment_client_failed');
+  const registration = response.material;
   const approved = (await fixture.approve(registration.enrollmentId)).material();
-  return redacted({ approved, enrollmentId: registration.enrollmentId, key: crypto.device.privateKey.export({ type: 'pkcs8', format: 'pem' }),
+  return redacted({ approved, enrollmentId: registration.enrollmentId, invitationId: invitation.invitationId, key: crypto.device.privateKey.export({ type: 'pkcs8', format: 'pem' }),
     cert: new X509Certificate(Buffer.from(approved.clientCertificateDer, 'base64url')).toString() }, 'EnrolledHostCredential');
 }
 export async function upgradeEnrolled(fixture, credential, path, { token, scenario = path.endsWith('/control') ? 'cancel' : undefined, ...extraTls } = {}) {

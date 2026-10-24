@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { randomBytes, createHash, X509Certificate } from 'node:crypto';
+import { randomBytes, createHash, sign, X509Certificate } from 'node:crypto';
+import { ServerResponse } from 'node:http';
 import { inspect } from 'node:util';
 import { performance } from 'node:perf_hooks';
 import { setTimeout as pause } from 'node:timers/promises';
@@ -14,7 +15,8 @@ import { startEnrollmentHttpsFixture } from './companion-enrollment-https.mjs';
 import { startEnrollmentIssuer } from './companion-enrollment-issuer.mjs';
 import { createCompanionStreamServer } from './companion-stream-peer.mjs';
 import { createCryptoFixture } from './companion-enrollment-crypto-fixtures.mjs';
-import { enroll, enrolledControl, enrolledStream, upgradeEnrolled, tlsOptions } from './companion-enrollment-stream-client.mjs';
+import { enroll, enrolledControl, enrolledStream, upgradeEnrolled, tlsOptions, enrollmentRequest } from './companion-enrollment-stream-client.mjs';
+import { enrollmentProofPayload, enrollmentMessage } from './companion-enrollment-codec.mjs';
 import { until } from './companion-stream-peer-client.mjs';
 import { bounded } from './companion-stream-peer-io.mjs';
 import { requestHeader, pattern, uploadLength } from './companion-stream-peer-schema.mjs';
@@ -72,7 +74,7 @@ test('enrolled adapter keeps A22a metadata plus only stream port and redacts ine
   const flow = f.track(await enrolledStream(f.owner, credential, control)), options = tlsOptions(f.owner, credential, metadata.webSocketPort);
   const holders = { credential, control, flow, options };
   const diagnostics = inspect(holders, { depth: Infinity }) + JSON.stringify(holders);
-  for (const secret of [credential.key, credential.cert, credential.enrollmentId, credential.approved.deviceId, metadata.desktopId,
+  for (const secret of [credential.key, credential.cert, credential.enrollmentId, credential.invitationId, credential.approved.deviceId, metadata.desktopId,
     metadata.logicalName, control.token, control.ready.sessionId, 'BEGIN PRIVATE KEY', 'BEGIN CERTIFICATE']) assert(!diagnostics.includes(secret));
   assert.deepEqual(JSON.parse(JSON.stringify(holders)), { credential: { kind: 'EnrolledHostCredential' },
     control: { kind: 'EnrolledHostConnection' }, flow: { kind: 'EnrolledHostConnection' }, options: { kind: 'EnrolledHostTlsOptions' } });
@@ -81,6 +83,63 @@ test('enrolled adapter keeps A22a metadata plus only stream port and redacts ine
   for (const bad of [{ logicalName: 'host.invalid\n' }, { credentialAuthority: null }]) {
     await assert.rejects(createCompanionStreamServer({ tls: {}, authorize: () => true, ...bad }), e => e.code === 'stream_fixture_configuration');
   }
+});
+
+test('signed published cancellation invalidates its active exact owner before HTTP ACK and cannot revoke a later same-key grant', { timeout: 30000 }, async t => {
+  const f = await fixture(t), crypto = createCryptoFixture(), a = await enroll(f.owner, crypto), b = await enroll(f.owner, createCryptoFixture());
+  const ca = f.track(await enrolledControl(f.owner, a)), fa = f.track(await enrolledStream(f.owner, a, ca));
+  const cb = f.track(await enrolledControl(f.owner, b)), fb = f.track(await enrolledStream(f.owner, b, cb));
+  const held = await blocked(f.owner, a, fa), metadata = f.owner.metadata().material();
+  const cancellation = async credential => {
+    const challenge = await enrollmentRequest(f.owner, '/companion/v1/pair/status', { protocolVersion: 1, type: 'pair_challenge',
+      desktopId: metadata.desktopId, invitationId: credential.invitationId, enrollmentId: credential.enrollmentId, purpose: 'cancel' });
+    assert.equal(challenge.status, 200); assert.equal(challenge.material.type, 'pair_challenge');
+    const context = { desktopId: metadata.desktopId, gatewaySpkiSha256: metadata.gatewaySpkiSha256,
+      invitationId: credential.invitationId, enrollmentId: credential.enrollmentId,
+      deviceSpkiSha256: createHash('sha256').update(crypto.deviceSpkiDer).digest('base64url'), purpose: 'cancel' };
+    const bytes = enrollmentProofPayload(context, enrollmentMessage('challenge_response', challenge.material));
+    return { protocolVersion: 1, type: 'pair_cancel', desktopId: metadata.desktopId, invitationId: credential.invitationId,
+      enrollmentId: credential.enrollmentId, challengeId: challenge.material.challengeId, signature: sign('sha256', bytes, crypto.device.privateKey).toString('base64url') };
+  };
+  const signed = await cancellation(a), issuerBefore = f.owner.snapshot().issuer.commandsStarted;
+  const wrong = { ...signed, signature: sign('sha256', Buffer.from('wrong typed proof'), crypto.device.privateKey).toString('base64url') };
+  const denied = await enrollmentRequest(f.owner, '/companion/v1/pair/cancel', wrong);
+  assert.equal(denied.status, 403); assert.equal(f.owner.inspectEnrollment(a.enrollmentId).probe.control.phase, 'active');
+  let beforeAck = null;
+  const original = ServerResponse.prototype.writeHead;
+  ServerResponse.prototype.writeHead = function (...args) {
+    if (beforeAck === null && this.req?.url === '/companion/v1/pair/cancel' && this.socket?.localPort === metadata.setupPort && args[0] === 200) {
+      beforeAck = f.owner.inspectEnrollment(a.enrollmentId);
+    }
+    return original.apply(this, args);
+  };
+  let cancelled;
+  try { cancelled = await enrollmentRequest(f.owner, '/companion/v1/pair/cancel', signed); }
+  finally { ServerResponse.prototype.writeHead = original; }
+  assert.equal(cancelled.status, 200); assert.equal(cancelled.material.code, 'pairing_cancelled');
+  assert.equal(beforeAck.probe.control.cause, 'device_revoked'); assert.equal(beforeAck.grantValid, false);
+  assert(beforeAck.probe.control.sessionLease && beforeAck.probe.control.chargedBytes > 0);
+  await held.sending; const clean = await closed(f.owner, a.enrollmentId); await ca.pump;
+  assert.equal(ca.disconnect, 'device_revoked'); assert.equal(clean.applicationWriteAdmissions, beforeAck.applicationWriteAdmissions);
+  assert.equal(clean.writesAfterInvalidation, 0); assert.equal(clean.probe.io.retainedBytesAtAbort, 8192);
+  assert.equal((await upgradeEnrolled(f.owner, a, '/companion/v1/control')).status, 403);
+  assert.equal((await upgradeEnrolled(f.owner, a, '/companion/v1/streams', { token: ca.token })).status, 403);
+  assert.equal((await enrollmentRequest(f.owner, '/companion/v1/pair/cancel', signed)).status, 403);
+  assert.equal(f.owner.readResult(a.enrollmentId).material().code, 'pairing_cancelled');
+  assert.equal(f.owner.snapshot().issuer.commandsStarted, issuerBefore);
+  assert.equal(f.owner.inspectEnrollment(b.enrollmentId).probe.control.phase, 'active');
+  await fb.ws.send('binary', requestHeader('cancel'));
+  await until(() => f.owner.inspectEnrollment(b.enrollmentId), v => v.probe.io.proxyWriteCompletions > 0);
+  const later = await enroll(f.owner, crypto), cc = f.track(await enrolledControl(f.owner, later)), fc = f.track(await enrolledStream(f.owner, later, cc));
+  assert(a.approved.deviceId !== later.approved.deviceId);
+  await pause(1050);
+  const commands = f.owner.snapshot().issuer.commandsStarted;
+  const repeated = await enrollmentRequest(f.owner, '/companion/v1/pair/cancel', await cancellation(a));
+  assert.equal(repeated.status, 200); assert.equal(repeated.material.code, 'pairing_cancelled');
+  assert.equal(f.owner.snapshot().issuer.commandsStarted, commands);
+  assert.equal(f.owner.inspectEnrollment(later.enrollmentId).probe.control.phase, 'active');
+  await fc.ws.send('binary', requestHeader('cancel'));
+  await until(() => f.owner.inspectEnrollment(later.enrollmentId), v => v.probe.io.proxyWriteCompletions > 0);
 });
 
 test('committed revoke invalidates blocked A synchronously, sends actual disconnect, preserves independent B and joins original charges', { timeout: 25000 }, async t => {
