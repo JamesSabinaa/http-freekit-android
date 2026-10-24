@@ -1,6 +1,6 @@
 # Developer build
 
-The first foundation build contains a native Kotlin/Compose launch screen and a JVM-tested draft pairing parser. It does not establish a VPN, enroll a device, or capture traffic. No network or VPN permissions are requested by this build.
+The current build contains a native Kotlin/Compose [local interface preview](android-preview.md), a JVM-tested draft pairing parser, and a separately tested security library. The app does not establish a VPN, enroll a device, or capture traffic, and does not request network or VPN permissions. Keystore code is not wired into the simulated connection flow.
 
 ## Requirements
 
@@ -21,16 +21,18 @@ On Windows, set `JAVA_HOME` to your JDK 17 directory, then run:
 ./scripts/build.ps1
 ```
 
-The script installs the exact Node test dependency from its lockfile, runs parser and Kotlin/Node transport tests, assembles the debug APK, and runs Android lint with warnings treated as errors. It exports the APK, SHA-256, and source metadata directly into ignored `dist/` with stable filenames. A local SDK path and the local Android debug signing key stay outside Git. Metadata distinguishes a dirty source tree and does not claim desktop compatibility.
+The script installs the exact Node test dependency from its lockfile, runs parser, Kotlin/Node transport, security, and app lifecycle host tests, compiles the security instrumentation APK, assembles the app's debug APK, and runs strict Android lint. Compiling instrumentation does not run it. The script exports the app APK, SHA-256, and source metadata directly into ignored `dist/` with stable filenames. A local SDK path and the local Android debug signing key stay outside Git. Metadata distinguishes a dirty source tree and does not claim desktop compatibility.
 
 Equivalent commands on other systems (after installing the SDK and JDK):
 
 ```sh
 npm --prefix tools/transport-spike ci --ignore-scripts --no-fund
-./gradlew :core-protocol:test :app:assembleDebug :app:lintDebug
+./gradlew :core-protocol:test :app:testDebugUnitTest :core-security:testDebugUnitTest :core-security:assembleDebugAndroidTest :core-security:lintDebug :app:assembleDebug :app:lintDebug
 ```
 
 The JVM transport test launches an ephemeral Node process bound only to `127.0.0.1`. It generates test identities in a temporary directory, uses the logical TLS hostname while dialing loopback, verifies a pinned self-signed server, presents a device certificate, and checks that wrong pins, wrong hostnames, and absent/untrusted client certificates fail. A 64 KiB binary frame is checked byte for byte. The process and temporary keys are removed after the test. This does not establish Android Keystore interoperability, pairing approval, proxy forwarding, backpressure, or production protocol compatibility.
+
+`core-security` host tests cover signed PKCS#10 key binding and scoped platform trust built from a public gateway certificate with a matching pin. Real Android Keystore tests can be run with `./gradlew :core-security:connectedDebugAndroidTest` only when a usable device is attached. Record device/API results separately; they remain unrun in the current Windows environment. The [native engine harness](../tools/engine-spike/README.md) is a separate Linux research check and does not establish Android VPN behavior.
 
 ## Install the foundation APK
 

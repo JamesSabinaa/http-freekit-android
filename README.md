@@ -2,7 +2,7 @@
 
 HTTP FreeKit Android companion, under development. The planned app captures selected application traffic and sends it to HTTP FreeKit on a computer through an authenticated, encrypted connection. USB, LAN, and WAN are delivery stages of the same design.
 
-Status: foundation implementation in progress. The repository now contains an Android launch screen, a draft pairing parser, and a host transport interoperability test. Pairing, VPN capture, desktop gateway integration, and relay support are not implemented. See [developer build instructions](docs/development.md) and [foundation decisions and evidence](docs/decisions/0001-foundation.md).
+Status: foundation implementation in progress. The Android app now has a local preview of pairing review, app selection, consent, connection recovery, and diagnostics. These flows use clearly labeled simulations. A separate security library implements Keystore identity and signed enrollment-request foundations with host tests; device behavior is not yet verified. Real enrollment, VPN capture, desktop gateway integration, and relay support are not implemented. See [developer build instructions](docs/development.md), [interface preview](docs/android-preview.md), and [credential decisions and limits](docs/decisions/0002-device-identity-and-bootstrap.md).
 
 ## Start here
 
