@@ -62,6 +62,7 @@ test('capability syntax/unique/subset schema accepts unknown optional and requir
     code(() => decode({ ...hello, capabilities: invalid }));
   }
   code(() => decode({ ...hello, requiredCapabilities: ['unoffered'] }));
+  code(() => decode({ ...ready, capabilities: [] }));
   assert.deepEqual(decode({ ...hello, requiredCapabilities: [] }).toWire().requiredCapabilities, []);
 });
 

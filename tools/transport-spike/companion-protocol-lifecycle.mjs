@@ -115,7 +115,7 @@ export class CompanionBudgetPool {
 export class CompanionControl {
   constructor({ pool, deviceId, desktopId, supportedCapabilities = DEFAULT_CAPABILITIES, clock }) {
     if (!pools.has(pool) || !localId(deviceId) || !localId(desktopId)) invalid();
-    const supported = validateCapabilities(supportedCapabilities);
+    const supported = validateCapabilities(supportedCapabilities, true);
     const valid = safeClock(clock);
     controls.set(this, { pool, deviceId, desktopId, supported, phase: valid ? 'awaiting_hello' : 'failed',
       cause: valid ? null : 'invalid_message', created: valid ? clock.monotonicMillis : 0,

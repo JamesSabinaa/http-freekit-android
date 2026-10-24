@@ -334,6 +334,17 @@ test('local desktop and supported capability constructor values also require ful
   }
 });
 
+test('an empty trusted local support set rejects required traffic capabilities without acquiring a lease', () => {
+  const pool = new CompanionBudgetPool();
+  const control = new CompanionControl({ pool, deviceId: 'device', desktopId: 'desktop', supportedCapabilities: [], clock: clock() });
+  assert.equal(control.snapshot().phase, 'awaiting_hello');
+  const negotiation = control.text('client', controlWire({ type: 'hello', capabilities: ['tcp-http'], requiredCapabilities: ['tcp-http'] }), clock());
+  assert.equal(negotiation.code, 'unsupported_capability');
+  assert.equal(control.snapshot().phase, 'failed');
+  assert.equal(control.snapshot().cause, 'unsupported_capability');
+  assert.deepEqual(pool.snapshot(), { sessionLeases: 0, streamLeases: 0, chargedBytes: 0 });
+});
+
 test('readiness combined defects follow identity, expiry, capability negotiation, frame-fit, lease order', () => {
   const attempt = fields => {
     const pool = new CompanionBudgetPool({ maxBytes: 1 });
