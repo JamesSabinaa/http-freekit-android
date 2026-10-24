@@ -178,6 +178,16 @@ jobs:
           fi
           export ANDROID_SERIAL=emulator-5554
           printf 'Booted emulator API=%s Android=%s\n' "$actual_api" "$(adb -s emulator-5554 shell getprop ro.build.version.release | tr -d '\r')"
+          if ! timeout 10s adb -s emulator-5554 shell settings put secure show_ime_with_hard_keyboard 1; then
+            echo '::error::The fresh AVD software-keyboard setting could not be enabled.'
+            exit 1
+          fi
+          keyboard_setting="$(timeout 10s adb -s emulator-5554 shell settings get secure show_ime_with_hard_keyboard | tr -d '\r')"
+          if [[ "$keyboard_setting" != 1 ]]; then
+            echo '::error::The fresh AVD software-keyboard setting was not retained.'
+            exit 1
+          fi
+          echo 'Fresh AVD software-keyboard setting verified: 1'
           fixture_install_attempted=true
           adb -s emulator-5554 install --no-streaming tools/installed-app-fixture/build/outputs/apk/debug/installed-app-fixture-debug.apk
           ./gradlew --no-daemon --console=plain :app:connectedDebugAndroidTest \

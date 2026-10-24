@@ -2,7 +2,9 @@ package com.httpfreekit.android.preview
 
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
+import android.os.Build
 import android.os.ParcelFileDescriptor
+import android.view.WindowManager
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.test.assertIsDisplayed
@@ -18,6 +20,8 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextReplacement
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -73,6 +77,7 @@ class InstalledAppsActivityTest {
     }
 
     @Test fun installedSelectionSurvivesRefreshAndRotationWithoutCapture() {
+        assertPackagedKeyboardResizeMode()
         openInstalled()
         search(FIXTURE_PACKAGE)
         waitFixture(present = true)
@@ -81,11 +86,17 @@ class InstalledAppsActivityTest {
         clickTag("apps-refresh")
         waitFixture(present = true)
         assertFixtureSelected(true)
+        focusSearchAndWaitForKeyboard()
+        assertPreviewWarning(requireKeyboard = true)
         rotate(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE, Configuration.ORIENTATION_LANDSCAPE)
+        focusSearchAndWaitForKeyboard()
+        assertPreviewWarning(requireKeyboard = true)
         waitFixture(present = true)
         assertFixtureSelected(true)
         assertPreviewWarning()
         rotate(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT, Configuration.ORIENTATION_PORTRAIT)
+        focusSearchAndWaitForKeyboard()
+        assertPreviewWarning(requireKeyboard = true)
         waitFixture(present = true)
         assertFixtureSelected(true)
         assertPreviewWarning()
@@ -161,11 +172,39 @@ class InstalledAppsActivityTest {
         compose.onNodeWithTag(tag).performScrollTo().performClick()
     }
 
-    private fun search(value: String) = safeUi("Fixture-only catalog search failed") {
+    private fun search(value: String) {
+        waitReady()
+        safeUi("Fixture-only search field scrolling failed") {
+            compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasTestTag("apps-search"))
+            compose.onNodeWithTag("apps-search").performScrollTo()
+        }
+        safeUi("Fixture-only search text replacement failed") {
+            compose.onNodeWithTag("apps-search").performTextReplacement(value)
+        }
+        safeUi("Fixture-only search keyboard dismissal failed") { Espresso.closeSoftKeyboard() }
+        safeUi("Fixture-only search idle synchronization failed") { compose.waitForIdle() }
+    }
+
+    private fun assertPackagedKeyboardResizeMode() = safeUi("Packaged activity keyboard resize mode was absent") {
+        val activity = compose.activity
+        val info = activity.packageManager.getActivityInfo(activity.componentName, 0)
+        assertTrue((info.softInputMode and WindowManager.LayoutParams.SOFT_INPUT_MASK_ADJUST) ==
+            WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+    }
+
+    private fun focusSearchAndWaitForKeyboard() = safeUi("Fixture-only search keyboard did not become visible") {
         compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasTestTag("apps-search"))
-        compose.onNodeWithTag("apps-search").performScrollTo().performTextReplacement(value)
-        Espresso.closeSoftKeyboard()
-        compose.waitForIdle()
+        compose.onNodeWithTag("apps-search").performScrollTo().performClick()
+        compose.waitUntil(timeoutMillis = 15_000) { keyboardVisible() }
+    }
+
+    private fun keyboardVisible(): Boolean {
+        var visible = false
+        compose.activityRule.scenario.onActivity { activity ->
+            visible = ViewCompat.getRootWindowInsets(activity.window.decorView)
+                ?.isVisible(WindowInsetsCompat.Type.ime()) == true
+        }
+        return visible
     }
 
     private fun waitReady() = safeUi("Installed catalog did not finish loading") {
@@ -219,8 +258,28 @@ class InstalledAppsActivityTest {
             if (selected) ToggleableState.On else ToggleableState.Off)
     }
 
-    private fun assertPreviewWarning() = safeUi("No-capture banner was not visible") {
-        compose.onNodeWithText(label(R.string.preview_banner)).assertIsDisplayed()
+    private fun assertPreviewWarning(requireKeyboard: Boolean = false) {
+        var imeVisible = false
+        var orientation = Configuration.ORIENTATION_UNDEFINED
+        var rootHeight = -1
+        safeUi("Preview keyboard visibility could not be observed") {
+            compose.activityRule.scenario.onActivity { activity ->
+                val root = activity.window.decorView
+                imeVisible = ViewCompat.getRootWindowInsets(root)?.isVisible(WindowInsetsCompat.Type.ime()) == true
+                orientation = activity.resources.configuration.orientation
+                rootHeight = root.height
+            }
+        }
+        val bounds = safeUi("Known banner geometry could not be observed") {
+            compose.onAllNodes(hasText(label(R.string.preview_banner)))
+                .fetchSemanticsNodes(atLeastOneRootRequired = false).singleOrNull()?.boundsInWindow
+                ?.let { "[${it.left},${it.top},${it.right},${it.bottom}]" } ?: "absent"
+        }
+        // Only public window metadata and this fixed banner's numeric geometry may enter reports.
+        safeUi("No-capture banner was not visible (api=${Build.VERSION.SDK_INT}, orientation=$orientation, imeVisible=$imeVisible, rootHeight=$rootHeight, bannerBounds=$bounds, requireKeyboard=$requireKeyboard)") {
+            if (requireKeyboard) assertTrue(imeVisible)
+            compose.onNodeWithText(label(R.string.preview_banner)).assertIsDisplayed()
+        }
     }
 
     private fun rotate(requested: Int, expected: Int) = safeUi("Installed preview rotation did not finish") {
