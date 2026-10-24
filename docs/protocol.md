@@ -4,13 +4,15 @@ Status: proposed v1, not frozen or implemented. Package A must prove interoperab
 
 Draft revision 0.2 adds an optional `gatewayCertificateDer` invitation field for native platform trust bootstrap. This additive draft change preserves parsing of older pin-only invitations for review; those invitations are insufficient to start the new native enrollment path. Newly generated desktop invitations must include the public certificate. Whether it becomes mandatory in the frozen schema remains a foundation decision. No production enrollment client or gateway is integrated yet.
 
+Draft revision 0.3 specifies the [control/stream grammar and conformance contract](protocol-streams.md), including exact messages, independent END_WRITE, session negotiation, bounded queues/leases, deadlines and error precedence. That appendix is normative for the new A19 draft implementations; it does not freeze v1 or change the existing pairing/enrollment fields. `unsupported_capability`, `session_limit`, `session_expired` and local `message_too_large` decoding results are made explicit there. No production integration depends on these fields yet.
+
 ## Encoding and identity
 
 Use UTF-8 JSON for bounded control messages and binary WebSocket frames for proxy bytes. JSON timestamps use UTC RFC 3339. IDs are opaque strings; do not trust display names as identities. Unknown required capabilities or unsupported protocol versions produce explicit errors. Ignore unknown optional fields only where the schema permits them. Validate field types, lengths, endpoint syntax, and total payload size before acting.
 
 The desktop has a dedicated persistent gateway key and certificate. A pairing payload supplies its SHA-256 SPKI pin and logical TLS server name. Validate the certificate against this configured identity within the gateway client only; never install a global trust-all handler. The dial address may be device loopback for USB while the logical server name and pin stay stable. Stage 0 must demonstrate this separation without weakening verification for any other request.
 
-Initial proposed limits are 16 KiB for control messages, 64 KiB per binary frame, 64 concurrent streams per device, 1 MiB queued application data per stream, a 15-second handshake timeout, and a 60-second idle timeout with heartbeat support. These are configuration defaults to validate under load, not performance claims. Define a global byte and stream budget as well; per-device limits alone do not bound gateway memory.
+Draft defaults are 16 KiB for text messages, 64 KiB per binary message, 64 concurrent streams per device, 1 MiB queued/in-flight application data per stream, 4 MiB per device, a 15-second application handshake timeout, and a 60-second idle timeout. The appendix defines global defaults of 16 session leases, 256 stream leases and 16 MiB application bytes, plus bounded frame/history metadata and lower-limit negotiation. These are model/configuration limits to verify in actual adapters and under load, not total-process-memory or performance claims.
 
 ## Pairing payload
 
@@ -66,7 +68,7 @@ Control hello and response carry protocolVersion, message type, capabilities, se
 
 Each stream begins with a bounded JSON open message containing protocolVersion and an opaque streamId. After a ready response, client binary frames contain an ordinary explicit-proxy byte stream. HTTP starts with an absolute-form request; HTTPS starts with CONNECT authority and includes the proxy's response before subsequent TLS bytes. Gateway forwards only to its configured local proxy, preserving ordered bytes and backpressure. It does not parse a client-supplied local forwarding address or grant access to the management API.
 
-Specify and test half-close support during the spike. If necessary, use a typed JSON end-of-write message while continuing binary reads; a full WebSocket close represents abort or completed bidirectional shutdown. Do not inject control data into binary payloads. Buffering entire requests or responses is forbidden. Observe total stream budgets, cancellation, and idle timeouts even before any proxy bytes arrive.
+Use the appendix's typed JSON `end_write` in each direction while continuing opposite reads. It follows all prior bytes in that direction; a normal full WebSocket close counts as completed shutdown only after both directional EOFs and queues finish. Do not inject control data into binary payloads. Buffering entire requests or responses is forbidden. Observe total stream budgets, cancellation, and idle timeouts even before any proxy bytes arrive. Actual authenticated WSS proof remains required; the native research carrier does not establish this companion framing.
 
 Revocation invalidates sessions and immediately closes their streams. Desktop stop closes new enrollment and active sessions. Reconnect establishes a fresh session and new streams; do not replay HTTP requests automatically, since they may have caused side effects already. Credentials and payloads must not appear in close reasons.
 
