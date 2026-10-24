@@ -225,6 +225,8 @@ jobs:
               if name is None or value is None or name in properties:
                   raise SystemExit("Invalid or duplicate draft-stream properties")
               properties[name] = value
+          if any(name.startswith("draftPressure") for name in properties):
+              raise SystemExit("Failure-only pressure diagnostics appeared in a passing report")
           required = {
               "actualStarted": "7", "actualCompleted": "7",
               "draftClockStatus": "within_bound", "sourceCommit": os.environ["GITHUB_SHA"], "sourceDirty": "false",
