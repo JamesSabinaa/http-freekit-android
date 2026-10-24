@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 import build_android_probe as build
 from android_bridge import HELLO, PACKET, STOP, STOPPED, PacketChannel, read_control, read_frame, write_frame
-from run_android import await_bridge, capture_command, instrumentation_phases, reserve_reverse, validate_instrumentation
+from run_android import await_bridge, capture_command, instrumentation_phases, reserve_reverse, validate_carrier_stop, validate_instrumentation
 from verify_probe_apk import verify_manifest
 from record_native_host import classify_log_tail
 
@@ -25,6 +25,19 @@ def elf(api=26, alignment=16384, machine=62):
 
 
 class AndroidProbeTest(unittest.TestCase):
+    def test_carrier_stop_requires_four_completed_streams_and_joined_workers(self):
+        validate_carrier_stop({"socksCarrierCompleted": 4, "socksCarrierStopped": True})
+        for count in (None, False, True, 0, 3, 5, "4", 4.0):
+            with self.subTest(count=count):
+                with self.assertRaisesRegex(AssertionError, "all four streams"):
+                    validate_carrier_stop({"socksCarrierCompleted": count, "socksCarrierStopped": True})
+        for stopped in (None, False, 1, "true"):
+            with self.subTest(stopped=stopped):
+                with self.assertRaisesRegex(AssertionError, "all four streams"):
+                    validate_carrier_stop({"socksCarrierCompleted": 4, "socksCarrierStopped": stopped})
+        with self.assertRaises(AssertionError):
+            validate_carrier_stop({})
+
     def test_reverse_uses_two_distinct_nonzero_keys_and_norebind(self):
         calls, owned = [], []
         replies = iter(("", "38002"))

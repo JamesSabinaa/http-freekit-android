@@ -64,6 +64,12 @@ def validate_instrumentation(output):
     check(not any(marker in output for marker in ("FAILURES!!!", "INSTRUMENTATION_FAILED", "Process crashed", "INSTRUMENTATION_STATUS_CODE: -2")), "Instrumentation reported a failure")
 
 
+def validate_carrier_stop(result):
+    check(type(result.get("socksCarrierCompleted")) is int and
+          result["socksCarrierCompleted"] == 4 and result.get("socksCarrierStopped") is True,
+          "Research SOCKS carrier did not complete and stop all four streams")
+
+
 def fixtures(channel, expectations, gates, api):
     results = []
     for index, (mode, target) in enumerate(expectations):
@@ -172,10 +178,7 @@ def main():
                     proxy_result.result(timeout=15)
                     socks_result.result(timeout=15)
                     summary["stop"] = channel.stop()
-                    check(summary["stop"].get("socksCarrierCompleted") == 4 and
-                          type(summary["stop"].get("socksCarrierCompleted")) is int and
-                          summary["stop"].get("socksCarrierStopped") is True,
-                          "Research SOCKS carrier did not complete and stop all four streams")
+                    validate_carrier_stop(summary["stop"])
                     summary["bridgePackets"] = {"sent": channel.sent, "received": channel.received}
             process.wait(timeout=30)
             check(process.returncode == 0, "ADB instrumentation command failed")
