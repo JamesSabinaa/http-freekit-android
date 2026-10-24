@@ -1,5 +1,7 @@
 package com.httpfreekit.interop
 
+import android.os.Bundle
+import androidx.test.platform.app.InstrumentationRegistry
 import com.httpfreekit.protocol.*
 import com.httpfreekit.research.websocket.EndpointRole
 import com.httpfreekit.research.websocket.ResearchWebSocketEvent
@@ -10,6 +12,7 @@ import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
 import java.security.MessageDigest
+import java.util.Collections
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.TimeUnit
@@ -415,16 +418,49 @@ internal class DraftStreamingOwner(
             }
         }
 
-        fun observedBlockedWriter() {
+        fun observedBlockedWriter(retainExpiryFailure: Boolean = false) {
             var candidate = 0L
             var since = 0L
-            draftAwait("observed TLS writer and retained ingress", 20000) {
-                val entry = writeInFlight.get()
-                val state = snapshot()
-                val observed = entry != 0L && writeCompleted.get() < entry && state.chargedBytes > 0 &&
-                    pendingClientBytes.get() in 1..FRAME.toLong() && state.chargedBytes <= 8192 && state.chargedFrames <= 4
-                if (!observed || candidate != entry) { candidate = entry; since = System.nanoTime() }
-                observed && System.nanoTime() - since >= 250_000_000
+            var longestCandidateMillis = 0L
+            var seenPredicateMask = 0
+            val waitStartUtc = System.currentTimeMillis()
+            val waitStartElapsed = (System.nanoTime() - readyAtNanos) / 1_000_000
+            try {
+                draftAwait("observed TLS writer and retained ingress", 20000) {
+                    val entry = writeInFlight.get()
+                    val state = snapshot()
+                    val completed = writeCompleted.get()
+                    val pending = pendingClientBytes.get()
+                    val observed = entry != 0L && completed < entry && state.chargedBytes > 0 &&
+                        pending in 1..FRAME.toLong() && state.chargedBytes <= 8192 && state.chargedFrames <= 4
+                    if (entry != 0L && completed < entry) seenPredicateMask = seenPredicateMask or 1
+                    if (pending in 1..FRAME.toLong()) seenPredicateMask = seenPredicateMask or 2
+                    if (state.chargedBytes in 1..8192 && state.chargedFrames in 1..4) seenPredicateMask = seenPredicateMask or 4
+                    if (!observed || candidate != entry) { candidate = entry; since = System.nanoTime() }
+                    if (observed) longestCandidateMillis = maxOf(longestCandidateMillis, (System.nanoTime() - since) / 1_000_000)
+                    observed && System.nanoTime() - since >= 250_000_000
+                }
+            } catch (failure: IllegalStateException) {
+                if (retainExpiryFailure) {
+                    try {
+                        val failureUtc = System.currentTimeMillis()
+                        val failureElapsed = (System.nanoTime() - readyAtNanos) / 1_000_000
+                        val facts = lock.withLock {
+                            // Read monotonically increasing entered last, so sampled IDs cannot exceed it.
+                            val inFlight = writeInFlight.get()
+                            val completed = writeCompleted.get()
+                            val entered = writeEntered.get()
+                            pressureValues(waitStartUtc, waitStartElapsed, failureUtc, failureElapsed, expiresAtMillis,
+                                model.snapshot(), stream.snapshot(), entered, completed, inFlight, pendingClientBytes.get(),
+                                applicationWritten.get(), producerFinished.get(), owned.stopping.get(), owned.failure.get() != null,
+                                deadlineTicks.get(), expiredDeadlineTicks.get(), longestCandidateMillis, seenPredicateMask)
+                        }
+                        // Binder reporting owns no model lock and performs no additional peer/model operation.
+                        val bundle = Bundle().apply { facts.forEach { (key, value) -> putString(key, value) } }
+                        InstrumentationRegistry.getInstrumentation().sendStatus(3, bundle)
+                    } catch (_: Exception) { /* A reporting failure cannot replace the original failed wait. */ }
+                }
+                throw failure
             }
         }
 
@@ -493,6 +529,37 @@ internal class DraftStreamingOwner(
         val CAPABILITIES = listOf("tcp-http", "tcp-https-connect")
         val LIMITS = DraftLimits(FRAME, 8192, 16384, 2, 4, 64)
         private val TERMINAL = setOf(DraftStreamPhase.COMPLETE, DraftStreamPhase.CANCELLED, DraftStreamPhase.FAILED)
+        /** Explicit primitive serialization excludes IDs, credentials, payloads and worker error text. */
+        private fun pressureValues(waitStartUtc: Long, waitStartElapsed: Long, failureUtc: Long, failureElapsed: Long,
+            expiresUtc: Long, control: DraftSessionSnapshot, stream: DraftStreamSnapshot,
+            entered: Long, completed: Long, inFlight: Long, pending: Long, applicationWritten: Long,
+            producerFinished: Boolean, stopping: Boolean, workerFailed: Boolean, ticks: Long, expiryTicks: Long,
+            longestCandidate: Long, seenMask: Int): Map<String, String> = Collections.unmodifiableMap(linkedMapOf(
+            "draftPressureVersion" to "1",
+            "draftPressureWaitStartUtcMillis" to waitStartUtc.toString(),
+            "draftPressureWaitStartElapsedMillis" to waitStartElapsed.toString(),
+            "draftPressureFailureUtcMillis" to failureUtc.toString(),
+            "draftPressureFailureElapsedMillis" to failureElapsed.toString(),
+            "draftPressureExpiresUtcMillis" to expiresUtc.toString(),
+            "draftPressureControlPhase" to control.phase.name.lowercase(),
+            "draftPressureControlCause" to (control.cause ?: "null"),
+            "draftPressureStreamPhase" to stream.phase.name.lowercase(),
+            "draftPressureStreamCause" to (stream.cause ?: "null"),
+            "draftPressureWriteEntered" to entered.toString(),
+            "draftPressureWriteCompleted" to completed.toString(),
+            "draftPressureWriteInFlight" to inFlight.toString(),
+            "draftPressureChargedBytes" to stream.chargedBytes.toString(),
+            "draftPressureChargedFrames" to stream.chargedFrames.toString(),
+            "draftPressurePendingClientBytes" to pending.toString(),
+            "draftPressureApplicationWritten" to applicationWritten.toString(),
+            "draftPressureProducerFinished" to producerFinished.toString(),
+            "draftPressureOwnedStopping" to stopping.toString(),
+            "draftPressureWorkerFailed" to workerFailed.toString(),
+            "draftPressureLocalTicks" to ticks.toString(),
+            "draftPressureLocalExpiryTicks" to expiryTicks.toString(),
+            "draftPressureLongestCandidateMillis" to longestCandidate.toString(),
+            "draftPressureSeenPredicateMask" to seenMask.toString(),
+        ))
         private fun createPair(): Pair<Socket, Socket> {
             val acceptor = ServerSocket()
             val application = Socket()

@@ -98,7 +98,7 @@ class DraftStreamingInteropTest {
         stream.produce(DraftStreamingOwner.BURST)
         context.awaitProxyBackpressure()
         phase = "expiry-android-actual-write"
-        stream.observedBlockedWriter()
+        stream.observedBlockedWriter(retainExpiryFailure = true)
         check(context.owner.expiresAtMillis > System.currentTimeMillis()) { "Writer was not observed before expiry" }
         phase = "real-session-expiry"
         var peerExpired = false
