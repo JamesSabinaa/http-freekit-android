@@ -148,6 +148,19 @@ CI sets `FREEKIT_ENROLLMENT_CRASH_REPORT` to `build/reports/enrollment-store/cra
 
 Retain only `build/reports/draft-enrollment/*-conformance.json` and the fixed sanitized crash report alongside existing reports. Do not upload registries, rollback journals, temporary inputs, keys, CSRs/certificates, nonces/signatures or raw child/provider logs. The independent wire/proof corpus and actual OS crash evidence remain distinct. This foundation does not establish live enrollment HTTPS, Android Keystore status signing, complete approval/save/reopen, production registry integration or protocol v1 freeze; those remain [A22 and later gates](decisions/0013-enrollment-transactions.md).
 
+[Hosted enrollment checkpoint 40132791278](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40132791278) passed at exact clean source `155f013881ec07ea8b65e49704d69364bccfee67`. Independent downloaded XML/log audit confirms 188 unique JVM cases (33 app, 65 protocol, 62 security, 28 framing), 243 Node cases including all 77 enrollment cases, 42 new evidence guards, 44 existing script tests, nine documentation tests, 161 links and five clean lint reports. Hosted actionlint and the unchanged 38 Python/four Linux packet-flow checks passed. All failures, errors and skips are zero.
+
+Both downloaded actual language pairs independently pass their comparators: A19 retains 142 codec cases/73 traces/704 operations at its existing digest; A21 retains all 272 codec/39 proof/31 comparison cases at the digest above. The Linux crash report passes both the hosted fresh-source gate and an independent replay against the downloaded artifact. All eight fixed cases verify barrier observation, excluded owner/reader, actual kill and process/stdio-close join before reopen, recovery and integrity; test cleanup hooks also passed.
+
+| Operation | Before-commit outcome | After-commit outcome | Before-commit journal bytes |
+| --- | --- | --- | --- |
+| Reservation | `reservation_rolled_back` | `reservation_retained` | 13824 |
+| Issuer claim | `claim_rolled_back` | `intent_reclaimed` | 10752 |
+| Publication | `publication_rolled_back` | `exact_publication_retained` | 28160 |
+| Revocation | `revocation_rolled_back` | `revocation_retained` | 10752 |
+
+Every before-commit journal had a nonzero recovery header. The sanitized revision-1 report is 3,880 bytes, binds the exact clean source and Linux/Node 24.22.1, and has SHA-256 `9487fdf12cf5076d6da4948fa077c21b9abb7754c9f77771c0b8a719af9cdaf7`. Artifact `12575891313` contains that report and both conformance pairs, with no database, journal, key or APK output. The runner was Ubuntu 24.04.5 with Node 24.22.1, OpenSSL 3.0.13 and Temurin JDK 17; setup resolved `17.0.20+1`, while the separate JSSE diagnostic records its executable's version as `17.0.20.1`. Its completion-time flags remain host diagnostics, not strict Android timing proof. This verifies the A21 foundation host checkpoint and actual Linux process-crash cases, with `powerLossTested=false`; A22 live enrollment and production protocol freeze remain open. No A20 emulator rerun was needed for this unchanged app/streaming source.
+
 ## Manual Android native packet runtime
 
 [Native run 40103179435](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40103179435) at `7e9b1c8c03b4bb925fd894e37cd53c5dc522eff4` passed all four IPv4/IPv6 HTTP/opaque-CONNECT cases on each API 26/37 emulator. Each transferred 16,421 upload bytes and 32,787 download bytes with the expected reply checksum above, gated streaming, half-close, native peer EOF, and unchanged original-address checks. Each job also passed fourteen standalone JVM cases (nine carrier, five Stop-gate), strict lint, and the APK source/pin/ABI/manifest/alignment checks.
