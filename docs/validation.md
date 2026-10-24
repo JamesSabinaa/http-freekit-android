@@ -31,7 +31,9 @@ openssl version # The research fixture requires OpenSSL 3.
 node --test tools/transport-spike/android-peer.test.mjs
 node --test tools/transport-spike/instrumentation-results.test.mjs
 node --test tools/transport-spike/draft-stream-results.test.mjs
+node --test tools/transport-spike/draft-stream-command.test.mjs tools/transport-spike/run-draft-streaming.test.mjs
 node --test tools/transport-spike/research-websocket*.test.mjs
+node --test tools/transport-spike/companion-stream-peer*.test.mjs
 ./gradlew --no-daemon --console=plain \
   :core-protocol:test \
   :transport-framing:test \
@@ -48,7 +50,7 @@ The host job checks OpenSSL 3 explicitly and runs five loopback Node fixture tes
 
 The documentation job also runs fifteen stdlib Python regressions for the [exact Keystore result verifier](../scripts/verify-keystore-results.py). They cover the actual AGP wrapper/per-class formats, missing/duplicate/unexpected cases or suites, interrupted XML, skipped/crashed results, inconsistent counters, bounded reports, and CLI failures without dumping report messages.
 
-The host job also runs fifteen [draft-stream result/clock regressions](../tools/transport-spike/draft-stream-results.test.mjs) for the separate [authenticated streaming proof](decisions/0012-authenticated-draft-streaming.md). They require seven actual paired instrumentation starts/completions and terminal success, reject skipped/crashed/duplicate/missing results, sanitize reports, and enforce the measured two-second clock-probe/skew profile. These parser checks do not execute the seven Android streaming methods or establish streaming runtime acceptance.
+The host job also runs twenty [draft-stream result/clock regressions](../tools/transport-spike/draft-stream-results.test.mjs) for the separate [authenticated streaming proof](decisions/0012-authenticated-draft-streaming.md). They require seven actual paired instrumentation starts/completions and terminal success, reject skipped/crashed/duplicate/missing results, retain only fixed scenario/phase/type diagnostics and typed expiry observations, and enforce the two-second round trip and entire skew interval, including UTC-second quantization. Ten additional process/driver checks cover actual child cancellation/output bounds, process-group teardown after leader exit, explicit CLI arguments, and safe incomplete reports. These host checks do not execute the seven Android streaming methods or establish streaming runtime acceptance; the POSIX process-group branch requires Linux execution.
 
 The separate [research WebSocket framing module](../tools/transport-spike/framing/README.md) and Node framing tests exercise bounded RFC 6455 frame reading, serialized writes, backpressure, cancellation, and resource closure with real loopback sockets. CI runs `:transport-framing:test` and retains its XML/HTML reports. This research layer does not establish HTTP upgrade, TLS, authentication, the draft session grammar over a live connection, or Android transport integration.
 
@@ -186,6 +188,22 @@ The separate manual [Android-to-Node transport workflow](android-transport-runti
 The earlier [run 40101591378](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40101591378) at `bd7b676` executed all four named cases on each API with a usable ADB channel and intact mappings. It failed certificate-validity checks: API 26 failed all four cases; API 37 passed the three rejection cases but failed the positive exchange. Its exact clock skew was not measured. The later passing run uses bounded research certificate dates and a measured clock-skew preflight; it does not establish the earlier skew's magnitude.
 
 The transport workflow prepares a private `ANDROID_ADB_LOG_PATH` under `RUNNER_TEMP` before its first ADB command. This raw server log can include kill-request command-line arguments and is excluded from console output and all artifact uploads. Only the driver's bounded, sanitized marker/source categories may enter test reports; see the [source-backed diagnostic limits](android-transport-runtime.md). No ADB version change or runtime success is implied by this diagnostic setup.
+
+## Manual authenticated draft-stream workflow
+
+[Authenticated draft-stream runtime](../.github/workflows/draft-stream-runtime.yml) is a separate manual-only API 26/37 AOSP x86_64 workflow for [decision 0012](decisions/0012-authenticated-draft-streaming.md). It leaves the existing four-case echo workflow unchanged. Standard Ubuntu 24.04 runners must provide KVM; SDK command-line tools are checksum-verified, compile platform 37.0/build tools 36.0.0 are explicit, Node is pinned to 24.22.1, OpenSSL 3 is required, and `npm ci --ignore-scripts` installs the locked dependencies. No snapshots, AVD cache, signing secrets, release publication, or larger/paid runners are used. The 45-minute job budget includes bounded 600-second boot, 15-minute build and 12-minute instrumentation deadlines; individual test deadlines remain unchanged.
+
+The host workflow runs seventeen new peer/seam/I/O tests through `companion-stream-peer*.test.mjs`. They exercise actual TLS/model/fixture streaming and EOF, 32 MiB backpressure/resumption, blocked-write cancellation and real expiry, binding/authorization/header/admission negatives, callback ownership, and failure cleanup. These remain host-side research checks, not Android runtime evidence.
+
+On the fresh selected emulator, the new driver builds/installs only the research test package, starts the ephemeral loopback peer, and owns exactly two successful explicit reverse registrations. Its preflight requires round trip at most 2000 ms and the full device/host skew interval inside ±2000 ms, including the device's whole-second UTC quantization. It does not change a clock, rebase UTC, or accept an unavailable setup as a skip. Run it only on the prepared research device with an explicit serial:
+
+```sh
+node tools/transport-spike/run-draft-streaming.mjs --serial emulator-5554
+```
+
+The driver must exit successfully after actual selective cleanup. An independent XML gate then requires all seven exact `DraftStreamingInteropTest` methods once each, actual starts/completions `7`, terminal success, consistent passing counters, a fresh bounded report, the current clean source commit, intact ADB mappings/device state, and successful package force-stop/uninstall, two reverse removals, peer close and owned-child/process-group cleanup. It independently derives the skew interval from the recorded device seconds and host before/after values and checks those measurements against the reported bounds. The expiry case must retain its fourteen fixed, typed timing/owner properties: the gate checks a 30–31 second peer lifetime, actual deadline ticks, the 2100 ms early-observation bound, and at least one owner's real UTC or monotonic deadline observation. Arbitrary status text and raw instrumentation output are excluded. Emulator teardown must issue a successful stop request and join the owned process; incomplete cleanup fails the step while preserving any original failure.
+
+Only the new sanitized XML/HTML report directories are retained for seven days. Raw instrumentation/ADB/emulator/peer logs, private fixture directories, APKs, keys, AVD data and userdata are excluded. The private task-owned ADB log is configured before the first ADB call and never uploaded. The seven Android cases are compiled and awaiting actual API 26/37 dispatch/audit at this checkpoint; no Android streaming result is inferred from host tests or assembly. This research setup does not establish VPN/protected sockets, physical networks, production enrollment or registry/destination policy, total-process-memory limits, or protocol v1 freeze.
 
 ## Dependency and licence evidence
 

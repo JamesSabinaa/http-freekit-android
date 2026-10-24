@@ -1,0 +1,335 @@
+name: Android authenticated draft-stream runtime
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: draft-stream-runtime-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  draft-stream:
+    name: Draft stream API ${{ matrix.api }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - api: '26'
+            image: system-images;android-26;default;x86_64
+          - api: '37'
+            image: system-images;android-37.0;default;x86_64
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Require the integrated streaming producers
+        run: |
+          test -f tools/transport-spike/run-draft-streaming.mjs
+          test -f tools/transport-spike/companion-stream-peer.mjs
+          test -f tools/transport-spike/android/src/androidTest/kotlin/com/httpfreekit/interop/DraftStreamingInteropTest.kt
+      - name: Require Linux KVM
+        run: |
+          if [[ ! -c /dev/kvm ]]; then
+            echo '::error::This runner does not expose /dev/kvm.'
+            exit 1
+          fi
+          sudo chown "$(id -u):$(id -g)" /dev/kvm
+          sudo chmod u+rw /dev/kvm
+          if [[ ! -r /dev/kvm || ! -w /dev/kvm ]]; then
+            echo '::error::The runner cannot access accelerated Android emulation.'
+            exit 1
+          fi
+      - name: Install Linux emulator runtime dependency
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends libpulse0
+      - name: Set up JDK 17
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - name: Set up Node test peer
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24.22.1'
+          cache: npm
+          cache-dependency-path: tools/transport-spike/package-lock.json
+      - name: Check Node and OpenSSL prerequisites
+        run: |
+          node --version
+          openssl version
+          if [[ "$(node --version)" != v24.22.1 || "$(openssl version)" != 'OpenSSL 3.'* ]]; then
+            echo '::error::Draft streaming requires Node 24.22.1 and OpenSSL 3.'
+            exit 1
+          fi
+      - name: Install locked research dependencies
+        run: npm --prefix tools/transport-spike ci --ignore-scripts --no-fund
+      - name: Prepare private ADB server log
+        run: |
+          umask 077
+          adb_log_dir="$(mktemp -d "$RUNNER_TEMP/draft-stream-adb-log.XXXXXX")"
+          export ANDROID_ADB_LOG_PATH="$adb_log_dir/server.log"
+          : > "$ANDROID_ADB_LOG_PATH"
+          printf 'ANDROID_ADB_LOG_PATH=%s\n' "$ANDROID_ADB_LOG_PATH" >> "$GITHUB_ENV"
+      - name: Bootstrap verified Android command-line tools
+        env:
+          ANDROID_TOOLS_ARCHIVE: commandlinetools-linux-15859902_latest.zip
+          ANDROID_TOOLS_SHA256: 4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583
+        run: |
+          sdk_root="$RUNNER_TEMP/draft-stream-android-sdk"
+          archive="$RUNNER_TEMP/draft-stream-android-command-line-tools.zip"
+          curl --fail --location --retry 3 \
+            "https://dl.google.com/android/repository/$ANDROID_TOOLS_ARCHIVE" --output "$archive"
+          printf '%s  %s\n' "$ANDROID_TOOLS_SHA256" "$archive" | sha256sum --check
+          mkdir -p "$sdk_root/cmdline-tools"
+          unzip -q "$archive" -d "$sdk_root/cmdline-tools"
+          mv "$sdk_root/cmdline-tools/cmdline-tools" "$sdk_root/cmdline-tools/latest"
+          {
+            printf 'ANDROID_HOME=%s\n' "$sdk_root"
+            printf 'ANDROID_SDK_ROOT=%s\n' "$sdk_root"
+            printf 'ANDROID_AVD_HOME=%s\n' "$RUNNER_TEMP/draft-stream-avd"
+          } >> "$GITHUB_ENV"
+          printf '%s\n' "$sdk_root/cmdline-tools/latest/bin" "$sdk_root/platform-tools" "$sdk_root/emulator" >> "$GITHUB_PATH"
+      - name: Accept SDK licences and install emulator packages
+        env:
+          SYSTEM_IMAGE: ${{ matrix.image }}
+        run: |
+          answers="$RUNNER_TEMP/draft-stream-sdk-license-answers.txt"
+          printf 'y\n%.0s' {1..100} > "$answers"
+          sdkmanager --sdk_root="$ANDROID_HOME" --licenses < "$answers" > "$RUNNER_TEMP/draft-stream-sdk-licenses.log"
+          sdkmanager --sdk_root="$ANDROID_HOME" 'platforms;android-37.0' 'build-tools;36.0.0' 'platform-tools' 'emulator' "$SYSTEM_IMAGE"
+          emulator -version
+          emulator -accel-check
+          adb version
+          sdkmanager --sdk_root="$ANDROID_HOME" --list_installed
+      - name: Run seven authenticated draft-stream cases on a fresh AVD
+        env:
+          API_LEVEL: ${{ matrix.api }}
+          SYSTEM_IMAGE: ${{ matrix.image }}
+        run: |
+          mkdir -p "$ANDROID_AVD_HOME"
+          printf 'no\n' > "$RUNNER_TEMP/draft-stream-avd-answers.txt"
+          avdmanager create avd --force --name freekit-draft-stream --package "$SYSTEM_IMAGE" --device pixel < "$RUNNER_TEMP/draft-stream-avd-answers.txt"
+          emulator_log="$RUNNER_TEMP/draft-stream-emulator.log"
+          emulator -avd freekit-draft-stream -port 5554 -accel on -gpu swiftshader \
+            -no-window -no-audio -no-boot-anim -no-snapshot -camera-front none -camera-back none \
+            -cores 2 -memory 3072 > "$emulator_log" 2>&1 &
+          emulator_pid=$!
+          cleanup() {
+            local status="$1" cleanup_status=0 wait_status=0 attempt
+            trap - EXIT
+            if timeout --kill-after=1s 10s adb -s emulator-5554 emu kill >/dev/null 2>&1; then
+              echo 'Emulator stop request: exit=0'
+            else
+              printf 'Emulator stop request: exit=%s\n' "$?"
+              cleanup_status=1
+            fi
+            if kill -0 "$emulator_pid" 2>/dev/null; then
+              kill "$emulator_pid" 2>/dev/null || true
+              for ((attempt=0; attempt<50; attempt++)); do
+                if ! kill -0 "$emulator_pid" 2>/dev/null; then break; fi
+                sleep 0.1
+              done
+            fi
+            if kill -0 "$emulator_pid" 2>/dev/null; then
+              kill -KILL "$emulator_pid" 2>/dev/null || true
+              for ((attempt=0; attempt<50; attempt++)); do
+                if ! kill -0 "$emulator_pid" 2>/dev/null; then break; fi
+                sleep 0.1
+              done
+            fi
+            if kill -0 "$emulator_pid" 2>/dev/null; then
+              echo '::error::The owned emulator did not terminate; cleanup is incomplete.'
+              cleanup_status=1
+            else
+              if wait "$emulator_pid" 2>/dev/null; then wait_status=0; else wait_status=$?; fi
+              printf 'Owned emulator joined: exit=%s\n' "$wait_status"
+            fi
+            if (( status == 0 && cleanup_status != 0 )); then status=1; fi
+            return "$status"
+          }
+          trap 'status=$?; if cleanup "$status"; then exit 0; else exit $?; fi' EXIT
+          deadline=$((SECONDS + 600))
+          while true; do
+            if ! kill -0 "$emulator_pid" 2>/dev/null; then
+              echo '::error::The emulator exited before Android completed booting.'
+              exit 1
+            fi
+            if booted="$(timeout --kill-after=1s 5s adb -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null)"; then
+              if [[ "${booted//$'\r'/}" == 1 ]]; then break; fi
+            fi
+            if (( SECONDS >= deadline )); then
+              echo '::error::Android did not finish booting within 600 seconds.'
+              exit 1
+            fi
+            sleep 5
+          done
+          actual_api="$(timeout --kill-after=1s 5s adb -s emulator-5554 shell getprop ro.build.version.sdk | tr -d '\r')"
+          if [[ "$actual_api" != "$API_LEVEL" ]]; then
+            echo '::error::The booted emulator API does not match the requested matrix.'
+            exit 1
+          fi
+          export ANDROID_SERIAL=emulator-5554
+          printf 'Booted draft-stream emulator API=%s\n' "$actual_api"
+          export DRAFT_STREAM_STARTED_EPOCH
+          DRAFT_STREAM_STARTED_EPOCH="$(date +%s)"
+          node tools/transport-spike/run-draft-streaming.mjs --serial emulator-5554
+          python3 - <<'PY'
+          import json
+          import math
+          import os
+          from pathlib import Path
+          import re
+          import xml.etree.ElementTree as ET
+
+          directory = Path("tools/transport-spike/android/build/outputs/androidTest-results/draft-streaming/debug")
+          report = directory / "TEST-draft-stream-research.xml"
+          if sorted(directory.rglob("*.xml")) != [report] or not report.is_file():
+              raise SystemExit("The exact draft-stream report was not produced")
+          if report.stat().st_size > 2 * 1024 * 1024 or report.stat().st_mtime < int(os.environ["DRAFT_STREAM_STARTED_EPOCH"]):
+              raise SystemExit("The draft-stream report is oversized or stale")
+          root = ET.parse(report).getroot()
+          classname = "com.httpfreekit.interop.DraftStreamingInteropTest"
+          expected = {
+              "authenticatedControlAndGatedStreamPreserveHalfClose",
+              "boundedBackpressureResumesWithoutDroppingBytes",
+              "cancelClosesAnObservedBlockedWriterAndJoinsResources",
+              "expiryClosesAnObservedBlockedWriterAndJoinsResources",
+              "wrongSessionAndDeviceBindingAreRejected",
+              "malformedAndOversizedIngressFailBeforeForwarding",
+              "prematureCloseCannotCompleteStream",
+          }
+          if root.tag != "testsuite" or root.get("name") != classname:
+              raise SystemExit("Unexpected draft-stream report identity")
+          if any(root.get(field) != str(value) for field, value in {"tests": 7, "failures": 0, "errors": 0, "skipped": 0}.items()):
+              raise SystemExit("Draft-stream counters are incomplete or failing")
+          cases = root.findall("testcase")
+          if len(cases) != 7 or len(root.findall(".//testcase")) != 7 or root.findall(".//testsuite"):
+              raise SystemExit("Unexpected draft-stream testcase structure")
+          if {(case.get("classname"), case.get("name")) for case in cases} != {(classname, name) for name in expected}:
+              raise SystemExit("The exact seven draft-stream cases did not execute once each")
+          if any(node.tag in ("failure", "error", "skipped") for node in root.iter()):
+              raise SystemExit("A draft-stream case failed or was skipped")
+          if root.findtext("system-out") != "Seven actual start/end pairs and terminal success verified.":
+              raise SystemExit("The draft-stream run did not verify terminal success")
+          properties = {}
+          for node in root.findall("./properties/property"):
+              name, value = node.get("name"), node.get("value")
+              if name is None or value is None or name in properties:
+                  raise SystemExit("Invalid or duplicate draft-stream properties")
+              properties[name] = value
+          required = {
+              "actualStarted": "7", "actualCompleted": "7",
+              "draftClockStatus": "within_bound", "sourceCommit": os.environ["GITHUB_SHA"], "sourceDirty": "false",
+              "cleanupStatus": "complete", "cleanupTestPackageForceStopExitCode": "0",
+              "cleanupTestPackageUninstallExitCode": "0", "cleanupReverseMappingsVerified": "true",
+              "cleanupPeerClosed": "true", "cleanupOwnedChildClosed": "true",
+              "selectedDeviceState": "device", "ownedReverseMappingsPresent": "true",
+          }
+          if any(properties.get(name) != value for name, value in required.items()):
+              raise SystemExit("Draft-stream execution, source, channel or cleanup was not verified")
+          try:
+              removals = json.loads(properties["cleanupReverseRemovalExitCodes"])
+              skew = float(properties["fixtureClockSkewMillis"])
+              round_trip = float(properties["fixtureClockRoundTripMillis"])
+              skew_lower = float(properties["fixtureClockSkewLowerBoundMillis"])
+              skew_upper = float(properties["fixtureClockSkewUpperBoundMillis"])
+              device_seconds = int(properties["fixtureDeviceEpochSeconds"])
+              host_before = int(properties["fixtureHostBeforeProbeEpochMillis"])
+              host_after = int(properties["fixtureHostAfterProbeEpochMillis"])
+          except (KeyError, ValueError, TypeError):
+              raise SystemExit("Missing or invalid draft-stream cleanup/clock observations") from None
+          if not isinstance(removals, list) or len(removals) != 2 or any(type(code) is not int or code != 0 for code in removals):
+              raise SystemExit("The two owned reverse mappings were not removed successfully")
+          if not math.isfinite(skew) or abs(skew) > 2000 or not math.isfinite(round_trip) or not 0 <= round_trip <= 2000:
+              raise SystemExit("The actual draft-stream clock preflight exceeded two seconds")
+          if not math.isfinite(skew_lower) or not math.isfinite(skew_upper) or not -2000 <= skew_lower <= skew <= skew_upper <= 2000:
+              raise SystemExit("The full quantization/round-trip clock interval exceeded two seconds")
+          if not 946684800000 <= host_before <= host_after <= 4102444800000:
+              raise SystemExit("The draft-stream clock observations are invalid")
+          if skew_lower != device_seconds * 1000 - host_after or skew_upper != device_seconds * 1000 + 999 - host_before:
+              raise SystemExit("The draft-stream skew interval disagrees with the actual clock observations")
+          if round_trip != host_after - host_before or skew != device_seconds * 1000 - (host_before + host_after) // 2:
+              raise SystemExit("The draft-stream clock estimate disagrees with the actual clock observations")
+          if not re.fullmatch(r"[a-f0-9]{40}", properties["sourceCommit"]):
+              raise SystemExit("Invalid draft-stream source observation")
+
+          def expiry_number(suffix, maximum=9007199254740991):
+              value = properties.get("draftExpiry" + suffix, "")
+              if not re.fullmatch(r"0|[1-9][0-9]*", value) or len(value) > 16:
+                  raise SystemExit("Missing or invalid typed draft-stream expiry observation")
+              number = int(value)
+              if number > maximum:
+                  raise SystemExit("A draft-stream expiry observation exceeded its bound")
+              return number
+
+          def expiry_utc(suffix):
+              number = expiry_number(suffix, 4102444800000)
+              if number < 946684800000:
+                  raise SystemExit("Invalid draft-stream expiry UTC observation")
+              return number
+
+          if properties.get("draftExpiryVersion") != "1":
+              raise SystemExit("The typed draft-stream expiry proof was not retained")
+          ready = expiry_utc("ReadyUtcMillis")
+          expires = expiry_utc("ExpiresUtcMillis")
+          observed = expiry_utc("ObservedUtcMillis")
+          peer_ready = expiry_utc("PeerReadyUtcMillis")
+          elapsed = expiry_number("ElapsedMillis", 120000)
+          remaining = expiry_number("RemainingAtReadyMillis", 120000)
+          initial_remaining = expiry_number("InitialDeviceRemainingMillis", 35000)
+          local_ticks = expiry_number("LocalTicks", 120000)
+          expiry_ticks = expiry_number("LocalExpiryTicks", 120000)
+          local_expired = properties.get("draftExpiryLocalExpired")
+          peer_expired = properties.get("draftExpiryPeerExpired")
+          if local_expired not in ("true", "false") or peer_expired not in ("true", "false"):
+              raise SystemExit("Missing or invalid draft-stream expiry owner observations")
+          peer_utc_text = properties.get("draftExpiryPeerTerminalUtcMillis")
+          peer_elapsed_text = properties.get("draftExpiryPeerTerminalElapsedMillis")
+          if peer_utc_text == "null" and peer_elapsed_text == "null":
+              peer_utc = peer_elapsed = None
+          elif peer_utc_text == "null" or peer_elapsed_text == "null":
+              raise SystemExit("Inconsistent nullable draft-stream peer expiry observations")
+          else:
+              peer_utc = expiry_utc("PeerTerminalUtcMillis")
+              peer_elapsed = expiry_number("PeerTerminalElapsedMillis", 120000)
+          peer_lifetime = expires - peer_ready
+          if remaining != expires - ready or remaining <= 0 or initial_remaining <= 0 or not 30000 <= peer_lifetime <= 31000:
+              raise SystemExit("The actual draft-stream expiry profile was not thirty seconds")
+          if local_ticks <= 0 or expiry_ticks > local_ticks:
+              raise SystemExit("Draft-stream expiry was not checked by actual bounded deadline ticks")
+          if observed < expires - 2100 or elapsed < remaining - 2100:
+              raise SystemExit("The actual draft-stream expiry observation was implausibly early")
+          if local_expired == "true" and not (observed >= expires or elapsed >= remaining):
+              raise SystemExit("The local expiry owner did not observe an actual deadline")
+          if peer_expired == "true" and (peer_utc is None or not (peer_utc >= expires or peer_elapsed >= peer_lifetime)):
+              raise SystemExit("The peer expiry owner did not observe an actual deadline")
+          if local_expired != "true" and peer_expired != "true":
+              raise SystemExit("Neither owner observed actual draft-stream expiry")
+          print(json.dumps({"api": os.environ["API_LEVEL"], "tests": 7, "actualStarted": 7, "actualCompleted": 7,
+              "failures": 0, "errors": 0, "skipped": 0, "clockSkewMillis": skew,
+              "clockRoundTripMillis": round_trip, "clockSkewLowerBoundMillis": skew_lower,
+              "clockSkewUpperBoundMillis": skew_upper, "expiryElapsedMillis": elapsed,
+              "expiryLocalTicks": local_ticks, "expiryLocalOwner": local_expired,
+              "expiryPeerOwner": peer_expired, "cleanup": "complete"}, sort_keys=True))
+          PY
+          cleanup 0
+      # Only the new sanitized research reports are retained. No APKs, keys, raw
+      # instrumentation/ADB/emulator/peer logs, private fixture directories or AVD data.
+      - name: Retain sanitized draft-stream reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: draft-stream-api-${{ matrix.api }}-results
+          retention-days: 7
+          if-no-files-found: warn
+          path: |
+            tools/transport-spike/android/build/outputs/androidTest-results/draft-streaming/debug/*.xml
+            tools/transport-spike/android/build/reports/androidTests/draft-streaming/debug/

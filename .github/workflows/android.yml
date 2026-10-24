@@ -112,8 +112,12 @@ jobs:
         run: node --test tools/transport-spike/instrumentation-results.test.mjs
       - name: Test strict draft-stream instrumentation result parsing
         run: node --test tools/transport-spike/draft-stream-results.test.mjs
+      - name: Test owned draft-stream processes and driver CLI
+        run: node --test tools/transport-spike/draft-stream-command.test.mjs tools/transport-spike/run-draft-streaming.test.mjs
       - name: Test bounded research WebSocket framing
         run: node --test tools/transport-spike/research-websocket*.test.mjs
+      - name: Test the authenticated draft-stream peer and owned cleanup
+        run: node --test tools/transport-spike/companion-stream-peer*.test.mjs
       - name: Test independent draft protocol codec and lifecycle
         run: |
           node --test tools/transport-spike/companion-protocol-codec.test.mjs \
