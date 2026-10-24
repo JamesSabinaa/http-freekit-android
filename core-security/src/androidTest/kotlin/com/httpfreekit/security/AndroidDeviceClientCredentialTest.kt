@@ -8,7 +8,9 @@ import java.security.KeyStore
 import java.util.Collections
 import java.util.UUID
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicReference
 import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLServerSocket
@@ -112,6 +114,7 @@ class AndroidDeviceClientCredentialTest {
                 }
             } catch (failure: Throwable) { receivedIdentity.completeExceptionally(failure) }
         }, "freekit-keystore-tls-peer").apply { isDaemon = true; start() }
+        var reportedFailure: Throwable? = null
         try {
             Socket().use { raw ->
                 raw.connect(InetSocketAddress(loopback, server.localPort), 5000)
@@ -127,12 +130,31 @@ class AndroidDeviceClientCredentialTest {
                 }
             }
             assertArrayEquals(expectedPublicKey, receivedIdentity.get(10, TimeUnit.SECONDS))
+        } catch (clientFailure: Throwable) {
+            val diagnostic = AssertionError("Android Keystore mutual TLS failed using $protocol", clientFailure)
+            reportedFailure = diagnostic
+            try {
+                receivedIdentity.get(5, TimeUnit.SECONDS)
+            } catch (peerFailure: ExecutionException) {
+                diagnostic.addSuppressed(AssertionError("Loopback TLS server failed using $protocol", peerFailure.cause ?: peerFailure))
+            } catch (timeout: TimeoutException) {
+                diagnostic.addSuppressed(AssertionError("Loopback TLS server did not report within five seconds using $protocol", timeout))
+            } catch (interrupted: InterruptedException) {
+                Thread.currentThread().interrupt()
+                diagnostic.addSuppressed(interrupted)
+            }
+            throw diagnostic
         } finally {
-            server.close()
-            accepted.get()?.close()
-            worker.interrupt()
-            worker.join(5000)
-            check(!worker.isAlive) { "Keystore TLS test peer did not stop" }
+            try {
+                server.close()
+                accepted.get()?.close()
+                worker.interrupt()
+                worker.join(5000)
+                check(!worker.isAlive) { "Keystore TLS test peer did not stop" }
+            } catch (cleanupFailure: Throwable) {
+                if (reportedFailure == null) throw cleanupFailure
+                reportedFailure.addSuppressed(cleanupFailure)
+            }
         }
     }
 }
