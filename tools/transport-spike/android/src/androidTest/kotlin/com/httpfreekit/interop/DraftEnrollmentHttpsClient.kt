@@ -68,6 +68,16 @@ internal class DraftEnrollmentHttpsClient(
         }
     }
 
+    /** A valid TLS client leaf can still be denied by the exact current enrollment registry. */
+    fun requireSavedDenied(manager: X509ExtendedKeyManager) {
+        val reply = request("GET", "/research/enrollment/credential", credentialPort, byteArrayOf(), manager)
+        val decoded = DraftEnrollmentCodec.decode(DraftEnrollmentChannel.STATUS_RESPONSE, reply.body)
+            as? DraftEnrollmentDecodeResult.Accepted ?: throw DraftEnrollmentStateException()
+        check(reply.status == 403 && (decoded.message as? DraftEnrollmentMessage.Error)?.code == "authentication_failed") {
+            "Saved enrollment credential did not receive exact registry denial"
+        }
+    }
+
     private class Reply(val status: Int, val body: ByteArray) {
         override fun toString() = "EnrollmentHttpReply([REDACTED])"
     }

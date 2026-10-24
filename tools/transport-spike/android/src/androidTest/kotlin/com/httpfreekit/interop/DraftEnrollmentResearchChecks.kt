@@ -55,22 +55,34 @@ internal object DraftEnrollmentResearchChecks {
 internal class DraftEnrollmentProofSession(val client: DraftEnrollmentHttpsClient, val identity: DeviceIdentity,
     val desktop: String, val pin: String, val invitation: String, val enrollment: String, val reservation: String) {
     private var lastReceived = 0L
-    fun status(): DraftEnrollmentMessage {
+    fun challenge(purpose: DraftEnrollmentPurpose): DraftEnrollmentMessage.Challenge {
         if (lastReceived != 0L) {
             val remaining = 1_000_000_000 - (System.nanoTime() - lastReceived)
             if (remaining > 0) Thread.sleep((remaining + 999999) / 1_000_000)
         }
         val challenge = client.exchange(DraftEnrollmentCodec.message(DraftEnrollmentChannel.CHALLENGE_REQUEST, linkedMapOf(
             "protocolVersion" to 1, "type" to "pair_challenge", "desktopId" to desktop, "invitationId" to invitation,
-            "enrollmentId" to enrollment, "purpose" to "status"))) as? DraftEnrollmentMessage.Challenge
+            "enrollmentId" to enrollment, "purpose" to purpose.wire))) as? DraftEnrollmentMessage.Challenge
             ?: error("Fresh enrollment challenge was not issued")
         lastReceived = System.nanoTime()
-        val payload = DraftEnrollmentProof.payload(DraftEnrollmentProofContext(desktop, pin, invitation,
-            enrollment, b64(hash(identity.publicKey.encoded)), DraftEnrollmentPurpose.STATUS), challenge)
-        val signature = identity.signChallenge(payload)
-        val result = client.exchange(DraftEnrollmentCodec.message(DraftEnrollmentChannel.STATUS_REQUEST, linkedMapOf(
-            "protocolVersion" to 1, "type" to "pair_status", "desktopId" to desktop, "invitationId" to invitation,
-            "enrollmentId" to enrollment, "challengeId" to challenge.challengeId, "signature" to b64(signature))))
+        // Validate against the locally requested purpose before any caller may sign it.
+        DraftEnrollmentProof.payload(context(purpose), challenge)
+        return challenge
+    }
+    fun context(purpose: DraftEnrollmentPurpose) = DraftEnrollmentProofContext(desktop, pin, invitation,
+        enrollment, b64(hash(identity.publicKey.encoded)), purpose)
+    fun signature(challenge: DraftEnrollmentMessage.Challenge): ByteArray =
+        identity.signChallenge(DraftEnrollmentProof.payload(context(challenge.purpose), challenge))
+    /** Explicit purpose selection is used only by the adversarial purpose-substitution test. */
+    fun request(challenge: DraftEnrollmentMessage.Challenge, signature: ByteArray,
+        purpose: DraftEnrollmentPurpose = challenge.purpose): DraftEnrollmentMessage =
+        DraftEnrollmentCodec.message(if (purpose == DraftEnrollmentPurpose.STATUS) DraftEnrollmentChannel.STATUS_REQUEST else DraftEnrollmentChannel.CANCEL_REQUEST,
+            linkedMapOf("protocolVersion" to 1, "type" to if (purpose == DraftEnrollmentPurpose.STATUS) "pair_status" else "pair_cancel",
+                "desktopId" to desktop, "invitationId" to invitation, "enrollmentId" to enrollment,
+                "challengeId" to challenge.challengeId, "signature" to b64(signature)))
+    fun status(): DraftEnrollmentMessage {
+        val challenge = challenge(DraftEnrollmentPurpose.STATUS)
+        val result = client.exchange(request(challenge, signature(challenge)))
         if (result is DraftEnrollmentMessage.Pending) check(result.desktopId == desktop &&
             result.enrollmentId == enrollment && result.reservationExpiresAt == reservation) { "Pending enrollment context changed" }
         return result
