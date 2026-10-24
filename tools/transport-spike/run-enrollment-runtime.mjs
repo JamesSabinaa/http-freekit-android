@@ -27,19 +27,24 @@ export { registerEnrollmentReverses, enrollmentOwnedReversesAbsent };
 
 export function enrollmentRuntimeOptions(args, env = process.env) {
   const options = { adb: env.ANDROID_HOME ? path.join(env.ANDROID_HOME, 'platform-tools', process.platform === 'win32' ? 'adb.exe' : 'adb') : 'adb',
-    openssl: env.OPENSSL_BIN ?? 'openssl' };
+    openssl: env.OPENSSL_BIN ?? 'openssl', suite: 'a22a' };
   const seen = new Set();
   for (let i = 0; i < args.length; i += 2) {
     const name = args[i], value = args[i + 1];
-    if (!['--serial', '--adb', '--openssl'].includes(name) || seen.has(name) || typeof value !== 'string' ||
+    if (!['--serial', '--adb', '--openssl', '--suite'].includes(name) || seen.has(name) || typeof value !== 'string' ||
         !value || value.length > 4096 || /[\0\r\n]/.test(value)) throw Error('invalid_enrollment_arguments');
     seen.add(name); options[name.slice(2)] = value;
   }
   if (!/^[A-Za-z0-9_.:-]{1,128}$/.test(options.serial ?? '')) throw Error('explicit_enrollment_serial_required');
+  if (!['a22a', 'a22b'].includes(options.suite)) throw Error('invalid_enrollment_arguments');
   return Object.freeze(options);
 }
 
 export async function runEnrollmentRuntime(options) {
+  if (options.suite === 'a22b') {
+    const { runEnrolledStreamRuntime } = await import('./run-enrolled-stream-runtime.mjs');
+    return runEnrolledStreamRuntime(options);
+  }
   const report = { format: 'http-freekit-a22a-runtime', revision: 1, source: null, api: null, clock: null,
     invocations: expectedEnrollmentMethods.map(method => createEnrollmentInvocationParser(method).finish()),
     input: null, approval: null, stop: null, restart: null, cleanup: null, problems: [] };
