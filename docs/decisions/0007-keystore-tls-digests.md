@@ -1,6 +1,6 @@
 # Android Keystore digest authorization for TLS
 
-Status: compatibility correction with host checks and instrumentation compilation. Actual Android TLS execution remains pending; the earlier failure may have an additional fixture cause. This change does not establish capture or freeze the protocol.
+Status: compatibility correction verified by seven passing instrumentation cases on each of API 26 and API 37. The separate Android-to-Node and native packet proofs remain unresolved. This change does not establish capture or freeze the protocol.
 
 The first enrolled-client instrumentation run reached the real TLS handshake and failed on both API 26 and API 37. The three original identity cases and deletion/recreation case passed. Its client read-abort exception hid the server's diagnostic. The test now preserves both peers' failures, labels the attempted protocol, and bounds the server-result wait; cleanup failures cannot replace the original error. Neither TLS versions nor identity assertions are relaxed.
 
@@ -25,3 +25,9 @@ npm --prefix tools/transport-spike ci --ignore-scripts --no-fund
 ```
 
 An actual device run must execute all seven methods with zero failures/errors/skips and retain exact commit/API evidence. The separate [Android-to-Node research proof](0006-android-node-interop.md) remains another runtime gate. Hardware backing, physical-phone behavior, active-session expiry/revocation, production enrollment/persistence, and VPN/proxy delivery remain unverified by this correction.
+
+## Executed Android checkpoint
+
+[Run 40095225102](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40095225102) passed at `2ab4d7459c6689e22637ba621441eb901e37185a`, containing the correction integrated as `a6daa4f`. Independent AOSP x86_64 API 26 (Android 8.0.0) and API 37 (Android 17) KVM jobs each executed exactly seven methods with zero failures, errors, or skips. The downloaded XML includes all five earlier identity/client-credential cases plus both new methods above. The real Keystore mutual-TLS method now passes on both images, using TLS 1.2 and TLS 1.3 where supported, while retaining the original key handle and Keystore certificate bytes.
+
+This supersedes the pending runtime status for these seven methods. It proves the tested software-backed emulator behavior, including prehashed signing and refusal to replace a legacy key. It does not establish hardware protection, Android-to-Node interoperability, or physical capture. The separate transport run's incomplete one-case result and native probe's pre-HELLO timeout still require diagnosis.
