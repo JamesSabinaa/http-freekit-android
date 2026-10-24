@@ -49,7 +49,7 @@ The self-targeted debuggable package is com.httpfreekit.interop.test. Validate A
 
 Deliver input through owned adb/run-as stdin with fixed shell commands/restrictive modes to no_backup/draft-enrollment-research/input-v1.bin. Create only that owned directory, which can be absent initially. Invitation bytes never appear in argv/env/command text/status/reports. The command helper supports copied bounded stdin and live bounded output observation, with actual child/stdio/group closure.
 
-Input is at most 16384 bytes: eight magic bytes HFKENR1 followed by NUL; unsigned 16-bit big-endian setupPort and credentialPort in 1..65535; then seven LP16 fields (unsigned 16-bit big-endian byte length plus bytes), in this order:
+Input is at most 16384 bytes: eight magic bytes HFKENR1 followed by NUL; distinct unsigned 16-bit big-endian setupPort and credentialPort in 1..65535; then seven LP16 fields (unsigned 16-bit big-endian byte length plus bytes), in this order:
 
 1. gatewayCertificateDer:1..4096 raw bytes
 2. gatewaySpkiSha256:32 raw bytes
