@@ -5,6 +5,7 @@ import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.net.SocketTimeoutException
+import java.security.MessageDigest
 import java.security.cert.CertificateException
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
@@ -19,13 +20,14 @@ import javax.net.ssl.SNIHostName
 import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLException
 import javax.net.ssl.SSLSocket
+import javax.net.ssl.X509ExtendedKeyManager
 
 /**
- * Scoped server-authenticated TLS spike, independent of companion routes and framing.
+ * Scoped TLS spike, optionally using one computer's bound client credential.
  *
  * A fresh platform trust manager/context and validity checks belong to every connection,
  * even when this factory is reused. [connect] accepts an already resolved dial address:
- * DNS resolution, VPN socket protection, stream I/O budgets, client credentials, and
+ * DNS resolution, VPN socket protection, stream I/O budgets, credential provenance, and
  * active-session expiry are separate integration responsibilities. Call off the main thread.
  */
 class GatewayTlsConnectionFactory(
@@ -36,6 +38,7 @@ class GatewayTlsConnectionFactory(
     private val handshakeTimeoutMillis: Int = DEFAULT_TIMEOUT_MILLIS,
     private val clock: Clock = Clock.systemUTC(),
     private val rawSocketFactory: SocketFactory = SocketFactory.getDefault(),
+    private val clientKeyManager: X509ExtendedKeyManager? = null,
 ) {
     private val gatewayCertificate = copyCertificate(certificate)
     private val serverName = logicalServerName.also {
@@ -55,7 +58,10 @@ class GatewayTlsConnectionFactory(
         require(!dialAddress.isUnresolved && dialAddress.port in 1..65535) { "Expected a resolved gateway endpoint" }
         // A trust anchor can skip normal PKIX validity checks. Never cache this check or manager.
         val trust = GatewayTrust.forCertificate(gatewayCertificate, expectedSpkiSha256, now())
-        val context = SSLContext.getInstance("TLS").apply { init(null, arrayOf(trust), null) }
+        val expectedClientLeaf = clientLeaf()
+        val context = SSLContext.getInstance("TLS").apply {
+            init(clientKeyManager?.let { arrayOf(it) }, arrayOf(trust), null)
+        }
         val raw = rawSocketFactory.createSocket()
         var tls: SSLSocket? = null
         var deadline: HandshakeDeadline? = null
@@ -84,6 +90,15 @@ class GatewayTlsConnectionFactory(
             val peer = tls.session.peerCertificates.firstOrNull() as? X509Certificate
                 ?: throw CertificateException("Missing gateway peer certificate")
             GatewayTrust.verifyPinnedCertificate(peer, expectedSpkiSha256, currentTime)
+            if (expectedClientLeaf != null) {
+                val currentClientLeaf = clientLeaf()
+                val presentedClientLeaf = tls.session.localCertificates?.firstOrNull()?.encoded
+                if (currentClientLeaf == null || presentedClientLeaf == null ||
+                    !MessageDigest.isEqual(expectedClientLeaf, currentClientLeaf) ||
+                    !MessageDigest.isEqual(expectedClientLeaf, presentedClientLeaf)) {
+                    throw CertificateException("Gateway TLS did not use the expected client credential")
+                }
+            }
             deadline.complete()
             // The handshake budget does not silently define an application-stream idle policy.
             tls.soTimeout = 0
@@ -104,6 +119,18 @@ class GatewayTlsConnectionFactory(
     }
 
     private fun now(): Date = Date.from(clock.instant())
+
+    /** Use only a manager returned by the intended identity's validated enrollment binding. */
+    private fun clientLeaf(): ByteArray? = clientKeyManager?.let { manager ->
+        val alias = manager.chooseClientAlias(arrayOf("EC"), null, null)
+            ?: throw CertificateException("Client credential is unavailable")
+        if (manager.getPrivateKey(alias) == null) throw CertificateException("Client credential is unavailable")
+        val certificate = manager.getCertificateChain(alias)?.firstOrNull()
+            ?: throw CertificateException("Client credential is unavailable")
+        certificate.encoded.also {
+            if (it.size !in 1..MAX_CERTIFICATE_BYTES) throw CertificateException("Invalid client certificate size")
+        }
+    }
 
     private class HandshakeDeadline(private val raw: Socket, timeoutMillis: Int) {
         private val startedAt = System.nanoTime()

@@ -1,6 +1,6 @@
 # Scoped gateway TLS connection factory
 
-Status: foundation transport spike. No companion endpoint, enrollment transaction, client-certificate authentication, Android capture, or protocol freeze is implemented by this change.
+Status: foundation transport spike with optional enrolled-client authentication. No companion endpoint, production enrollment transaction, Android capture, or protocol freeze is implemented by this change.
 
 The raw-manager lifetime issue recorded in [decision 0002](0002-device-identity-and-bootstrap.md) now has a public connection boundary: `GatewayTlsConnectionFactory`. `GatewayTrust` is internal. A reusable factory does not expose a reusable trust manager or SSL context.
 
@@ -24,6 +24,14 @@ The optional raw SocketFactory is a local integration hook for future network bi
 
 The caller owns a successful [SSLSocket](https://developer.android.com/reference/javax/net/ssl/SSLSocket) and must close it. Its handshake-specific SO_TIMEOUT is cleared on return; application read/write, heartbeat, idle, and overall transaction budgets must be supplied by the future transport. The two setup budgets do not establish the draft companion control handshake's overall deadline. This blocking API must run off the main thread.
 
+## Enrolled-client composition
+
+The optional `clientKeyManager` constructor argument accepts the scoped manager returned by [DeviceIdentity's validated enrollment binding](0004-enrolled-client-credentials.md). The caller must authenticate that computer's enrollment authority before binding; the factory does not establish CA provenance or approval. Every connection uses that manager in its fresh SSL context alongside the existing pinned gateway trust. No default key manager or global TLS setting is changed.
+
+Before allocating a TCP socket, the factory requires an available EC client alias, private-key handle, and bounded client leaf. After the TLS handshake it checks the manager again and compares both the current leaf and TLS session's actual local certificate with the original encoded leaf. Missing, expired, deleted, changed, or unused client credentials fail before exposing the socket. A server that never requests the configured client certificate cannot appear mutually authenticated. Connections without a client manager retain the pinned server-only bootstrap path.
+
+These setup checks do not make key deletion atomic with an in-flight signature or close established sessions after revocation/expiry. The transport must still own active-session lifetime and cancellation. The app's simulated connection flow is unchanged.
+
 ## Evidence and remaining gates
 
 Host validation runs:
@@ -33,6 +41,8 @@ Host validation runs:
 ./gradlew.bat :core-security:assembleDebugAndroidTest
 ```
 
-The security JVM suite passes 19 tests, including 13 new factory cases. Those cases cover logical hostname/SNI over loopback, protocol minimums, unchanged global TLS defaults, factory reuse after clock expiry, expiry during a handshake, wrong pin/name/key, an unpinned child certificate, TCP timeout propagation, failure cleanup, silent and trickled TLS peers, watchdog cancellation, invalid timeout/name/address inputs, and connected-socket injection rejection. Security lint reports `No issues found.` `:core-security:assembleDebugAndroidTest` also compiled successfully; instrumentation execution is unrun. Local Markdown links and `git diff --check` passed.
+The initial security JVM suite passed 19 tests, including 13 new factory cases. Those cases cover logical hostname/SNI over loopback, protocol minimums, unchanged global TLS defaults, factory reuse after clock expiry, expiry during a handshake, wrong pin/name/key, an unpinned child certificate, TCP timeout propagation, failure cleanup, silent and trickled TLS peers, watchdog cancellation, invalid timeout/name/address inputs, and connected-socket injection rejection.
 
-Android TLS/provider execution, real Keystore client-certificate installation and handshake use, active-stream certificate expiry and renegotiation policy, renewal/rotation, authenticated session revocation and user cancellation, bounded DNS/network selection, stream I/O budgets, companion routes/framing, and Android-to-desktop capture remain open. The three existing Keystore instrumentation tests remain unrun. The factory is not wired into the simulated app connection flow, and no frozen wire contract changes.
+The enrolled-client composition checkpoint passes all 40 security JVM tests with zero failures, errors, or skips. Four new cases authenticate the bound client and pinned gateway together on TLS 1.2 and TLS 1.3, reject unavailable/expired credentials before socket allocation, reject servers that do not request the configured client certificate, and withhold a socket when the credential becomes unavailable after TLS authentication. Strict security lint reports `No issues found.` The five-method instrumentation APK compiles. Local Markdown links and `git diff --check` pass.
+
+The original three identity tests have since executed on API 26/37 emulators as recorded in [decision 0002](0002-device-identity-and-bootstrap.md). Android TLS/provider execution with the composed factory, real Keystore client-certificate handshake use, active-stream certificate expiry and renegotiation policy, renewal/rotation, authenticated session revocation and user cancellation, bounded DNS/network selection, stream I/O budgets, companion routes/framing, and Android-to-desktop capture remain open. The factory is not wired into the simulated app connection flow, and no frozen wire contract changes.
