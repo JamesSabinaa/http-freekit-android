@@ -1,6 +1,8 @@
 package com.httpfreekit.interop
 
+import android.os.Bundle
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import com.httpfreekit.protocol.DraftControlPhase
 import com.httpfreekit.protocol.DraftStreamPhase
 import java.util.Base64
@@ -121,16 +123,26 @@ class DraftStreamingInteropTest {
         check(observedUtc >= context.owner.expiresAtMillis - 2100 && elapsed >= readyRemaining - 2100 &&
             context.owner.deadlineTicks.get() > 0) { "Implausibly early or unticked expiry" }
         val peerTiming = context.probe()
-        println("draft-expiry readyUtc=${context.owner.readyAtUtcMillis} expiresUtc=${context.owner.expiresAtMillis} " +
-            "observedUtc=$observedUtc elapsedMs=$elapsed remainingAtReadyMs=$readyRemaining " +
-            "initialDeviceRemainingMs=$remaining " +
-            "localTicks=${context.owner.deadlineTicks.get()} localExpiryTicks=${context.owner.expiredDeadlineTicks.get()} " +
-            "localExpired=$localExpired peerExpired=$peerExpired peerReadyUtc=${peerTiming.number("timing", "readyUtcMillis")} " +
-            "peerTerminalUtc=${peerTiming.optionalNumber("timing", "terminalUtcMillis")} " +
-            "peerTerminalElapsedMs=${peerTiming.optionalNumber("timing", "terminalElapsedMillis")}")
         val retained = stream.snapshot()
         check(retained.phase == DraftStreamPhase.FAILED && retained.cause in setOf("session_expired", "network_unreachable") && retained.chargedBytes > 0 &&
             retained.streamLease && !retained.resourceClosureConfirmed) { "Expiry released resources before real joins" }
+        val observation = Bundle().apply {
+            putString("draftExpiryVersion", "1")
+            putString("draftExpiryReadyUtcMillis", context.owner.readyAtUtcMillis.toString())
+            putString("draftExpiryExpiresUtcMillis", context.owner.expiresAtMillis.toString())
+            putString("draftExpiryObservedUtcMillis", observedUtc.toString())
+            putString("draftExpiryElapsedMillis", elapsed.toString())
+            putString("draftExpiryRemainingAtReadyMillis", readyRemaining.toString())
+            putString("draftExpiryInitialDeviceRemainingMillis", remaining.toString())
+            putString("draftExpiryLocalTicks", context.owner.deadlineTicks.get().toString())
+            putString("draftExpiryLocalExpiryTicks", context.owner.expiredDeadlineTicks.get().toString())
+            putString("draftExpiryLocalExpired", localExpired.toString())
+            putString("draftExpiryPeerExpired", peerExpired.toString())
+            putString("draftExpiryPeerReadyUtcMillis", peerTiming.number("timing", "readyUtcMillis").toString())
+            putString("draftExpiryPeerTerminalUtcMillis", peerTiming.optionalNumber("timing", "terminalUtcMillis")?.toString() ?: "null")
+            putString("draftExpiryPeerTerminalElapsedMillis", peerTiming.optionalNumber("timing", "terminalElapsedMillis")?.toString() ?: "null")
+        }
+        InstrumentationRegistry.getInstrumentation().sendStatus(2, observation)
         phase = "expiry-real-resource-joins"
         stream.close()
         check(stream.writeInFlight.get() == 0L && stream.snapshot().phase == DraftStreamPhase.FAILED) { "Expired writer did not terminate" }
