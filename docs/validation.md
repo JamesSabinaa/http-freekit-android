@@ -6,6 +6,57 @@ Record exact Android and desktop commits, Android version and device model, SDK/
 
 Documentation-only changes require local Markdown link validation, consistency review, and git diff --check. The foundation now has a pinned Gradle build, parser tests, and a host transport test. Run the commands in [developer instructions](development.md); see [foundation evidence](decisions/0001-foundation.md) for actual results and outstanding gates. Host checks do not demonstrate device capture.
 
+## Host validation workflow
+
+[Android host validation](../.github/workflows/android.yml) runs on pushes, pull requests, and manual dispatch with read-only repository permissions. It uses Ubuntu 24.04, Temurin JDK 17, Node 24.22.1, SDK platform 37.0, and build tools 36.0.0. GitHub Actions are pinned to commit IDs, and the workflow linter download has a pinned SHA-256. Gradle and app dependencies retain the versions committed in the wrapper and catalogue. The workflow does not request release secrets, publish APKs, or run an emulator.
+
+Run the source checks locally:
+
+```sh
+node --test scripts/tests/check-doc-links.test.mjs
+node scripts/check-doc-links.mjs
+git diff --check
+```
+
+The [link checker](../scripts/check-doc-links.mjs) checks local Markdown inline links, image links, reference destinations, ATX heading fragments, and explicit HTML anchors. It resolves encoded paths, enforces that targets stay inside the checkout, and reports the document and source line for failures. Code fences and inline code are examples, so plain sibling-repository paths in those examples do not become links to validate. Generated folders, symlink directories, and nested Git repositories/worktrees are not scanned. Remote URLs are intentionally not fetched; external-link availability and non-Markdown fragments require separate review.
+
+After installing the SDK/JDK and locked Node peer dependencies, CI runs:
+
+```sh
+npm --prefix tools/transport-spike ci --ignore-scripts --no-fund
+./gradlew --no-daemon --console=plain \
+  :core-protocol:test \
+  :core-security:testDebugUnitTest :core-security:assembleDebugAndroidTest :core-security:lintDebug \
+  :app:testDebugUnitTest :app:assembleDebug :app:lintDebug
+```
+
+Assembling the security module's Android instrumentation APK checks compilation only; no Keystore or device result is inferred from it.
+
+Unit-test/lint reports and resolved dependency inventories are retained for seven days, including on failed builds when reports exist. The upload paths exclude `dist/`, APK outputs, signing material, and the temporary TLS identities created by the host test. A green workflow establishes only these host checks; Android installation, UI behavior, Keystore use, VPN packet forwarding on Android, and physical-network acceptance remain independent evidence requirements. Workflow syntax is checked locally with actionlint; execution evidence is recorded separately. A hosted run is not claimed until its actual run result is recorded.
+
+The separate Linux native-engine job checks the fixtures, fetches HevSocks5Tunnel root commit `c0dfc4b07baa5e48022f5f88ac90488601f05674` and its pinned submodules, then executes the worker. Reproduce both checks with:
+
+```sh
+python3 -m unittest discover -s tools/engine-spike -p 'test_*.py'
+python3 tools/engine-spike/run_linux.py --engine-root .gradle/engine-spike/hev-socks5-tunnel
+```
+
+The runner verifies its source checkout and builds the candidate locally. Its synthetic packet fixtures use a socket pair, a controlled SOCKS adapter, and an explicit-proxy peer. It needs GCC, make, and Python 3, with no sudo, TUN device, network-route changes, SDK, or phone. This isolates native packet-to-stream evidence from Android routing, protected sockets, real desktop proxy integration, and physical-device acceptance. It does not bundle the candidate into the APK or freeze the protocol.
+
+## Dependency and licence evidence
+
+The workflow records the resolved Gradle debug/release runtime graphs, the core JVM and security test runtime graphs, and the Node peer dependency graph under `build/reports/dependencies/`. To inspect the same inputs locally:
+
+```sh
+./gradlew :app:dependencies --configuration debugRuntimeClasspath
+./gradlew :app:dependencies --configuration releaseRuntimeClasspath
+./gradlew :core-protocol:dependencies --configuration testRuntimeClasspath
+./gradlew :core-security:dependencies --configuration debugUnitTestRuntimeClasspath
+npm --prefix tools/transport-spike ls --all --json
+```
+
+These graphs identify exact resolved modules and distinguish shipped runtime dependencies from test-only libraries. They are inputs to a licence review, not proof that every obligation has been satisfied. [Dependency notices](../THIRD_PARTY_NOTICES.md) currently group dependency families. Before distributing a production app, add a reviewed per-component inventory covering transitive runtime modules, their POM/parent-POM and source-header licences, required bundled notices, native submodules and ABI inputs, and any corresponding-source obligations. Unresolved or conflicting licences must fail that release gate. Build tooling and test dependencies should remain separately identified. No complete release licence audit, device acceptance, or protocol freeze is claimed by the host workflow.
+
 ## Automated checks to add
 
 | Area | Required checks |
