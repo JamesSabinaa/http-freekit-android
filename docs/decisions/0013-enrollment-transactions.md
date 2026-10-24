@@ -1,6 +1,6 @@
 # Enrollment transactions and key-bound recovery
 
-Status: A21 implementation assigned against draft enrollment revision 0.4. No production listener, app enrollment flow or v1 freeze is established by this decision.
+Status: A21 codecs, proof coordinator and durable reference store are implemented against draft enrollment revision 0.4, with local evidence below; hosted Linux validation is pending. No production listener, app enrollment flow or v1 freeze is established by this decision.
 
 The verified A20 checkpoint establishes authenticated streaming, not enrollment. The next foundation package must connect explicit operator approval to a durable exact credential result and key-bound recovery. The canonical grammar is [the enrollment appendix](../protocol-enrollment.md).
 
@@ -13,5 +13,9 @@ The Node builtin SQLite API at pinned version 24.22.1 is a release candidate. It
 Reject the temporary-client-certificate alternative for this package: Android binding can use it, but pending material could accidentally enter the generic active store, TLS resumption complicates fresh key proof, and approval just before pending expiry creates another recovery boundary. This decision does not adopt a new encryption scheme, signing algorithm, private-key storage format or production database library.
 
 A21 ends with implemented codecs/proof bytes, challenge/state logic, strict public profiles, durable authority tests and independent cross-language fixtures. A22 must prove their complete live HTTPS/Keystore/approval/save/recovery path. Production registry integration, real session revocation, renewal/credential lifetime composition, capture policy and full v1 freeze remain subsequent gates.
+
+The integrated local checkpoint implements all eight wire channels with bounded duplicate-aware UTF-8/JSON, canonical signature-shape checks and redacted snapshots. Both actual Kotlin/Node reports independently match 272 codec, 39 proof and 31 comparison expectations at corpus SHA-256 f9ca02fde11c58c286bddb3319e89258a780fdf4f446ee842e46c4e07b9d5fe4. The coordinator uses real P-256 proofs and the actual SQLite store for purpose/replay, quota, verification-time expiry, frozen-wall deadlines, lost-response recovery and exact-leaf revocation tests. Store bindings expose the exact checked clock observation so issuance shares its result-window anchor.
+
+Eight actual owned-child kills on Windows/NTFS cover before/after reservation, issuer claim, publication and revocation commits. The tests positively observe a recovery journal before each uncommitted kill, exclude another owner/reader, join the killed child before reopen, and check exact rollback/retained tuples plus integrity/FKs. The clean integrated source for the first retained Windows report is 97a810a7a52a61a7f86658bb9b227525eaa4264c on Node 24.22.1. These process-kill checks do not establish power-loss durability; Linux needs its own hosted run. Independent OpenSSL checks use temporary public DER files for portability; no signing key is committed or exported in reports. See [validation commands and evidence](../validation.md).
 
 Sources: [pinned Node SQLite API](https://raw.githubusercontent.com/nodejs/node/v24.22.1/doc/api/sqlite.md), [SQLite locking mode](https://www.sqlite.org/pragma.html#pragma_locking_mode), [SQLite synchronization](https://www.sqlite.org/pragma.html#pragma_synchronous), [atomic-commit assumptions](https://www.sqlite.org/atomiccommit.html), [pinned Node signature encodings](https://raw.githubusercontent.com/nodejs/node/v24.22.1/doc/api/crypto.md).
