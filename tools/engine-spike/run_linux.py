@@ -194,16 +194,20 @@ class PacketFixture:
                     continue
                 check(checksum(packet[:offset]) == 0, "Engine emitted an invalid IPv4 checksum")
                 check(struct.unpack("!H", packet[2:4])[0] == len(packet), "Engine emitted an invalid IPv4 length")
+                return_source, return_destination = packet[12:16], packet[16:20]
                 pseudo = packet[12:20] + struct.pack("!BBH", 0, 6, len(packet) - offset)
             else:
                 if packet[6] != 6:
                     continue
                 check(struct.unpack("!H", packet[4:6])[0] == len(packet) - offset, "Engine emitted an invalid IPv6 length")
+                return_source, return_destination = packet[8:24], packet[24:40]
                 pseudo = packet[8:40] + struct.pack("!I3xB", len(packet) - offset, 6)
             check(checksum(pseudo + packet[offset:]) == 0, "Engine emitted an invalid TCP checksum")
             source_port, destination_port, sequence, acknowledgement = struct.unpack("!HHII", packet[offset:offset + 12])
             if (source_port, destination_port) != (self.port, self.source_port):
                 continue
+            check((return_source, return_destination) == (self.destination, self.source),
+                  "Engine emitted unexpected fixture addresses")
             flags = packet[offset + 13]
             check(not flags & 4, "Engine reset a fixture stream")
             size = (packet[offset + 12] >> 4) * 4

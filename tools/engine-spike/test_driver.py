@@ -68,6 +68,53 @@ class FixtureDriverTest(unittest.TestCase):
             first.result(timeout=10)
             second.result(timeout=10)
 
+    def test_return_packets_preserve_original_addresses(self):
+        for version in (4, 6):
+            with self.subTest(version=version):
+                flow, packet = self.return_fixture(version)
+                self.assertEqual(flow._packet(), (2000, 1000, 24, b"return fixture"))
+
+    def test_valid_checksums_cannot_hide_wrong_return_addresses(self):
+        for version in (4, 6):
+            for wrong in ("source", "destination"):
+                with self.subTest(version=version, wrong=wrong):
+                    flow, packet = self.return_fixture(version, wrong)
+                    offset = 20 if version == 4 else 40
+                    if version == 4:
+                        self.assertEqual(checksum(packet[:offset]), 0)
+                        pseudo = packet[12:20] + struct.pack("!BBH", 0, 6, len(packet) - offset)
+                    else:
+                        pseudo = packet[8:40] + struct.pack("!I3xB", len(packet) - offset, 6)
+                    self.assertEqual(checksum(pseudo + packet[offset:]), 0)
+                    with self.assertRaisesRegex(AssertionError, "unexpected fixture addresses"):
+                        flow._packet()
+
+    @staticmethod
+    def return_fixture(version, wrong=None):
+        client = ipaddress.ip_address("10.0.0.2" if version == 4 else "fd00::2").packed
+        target = ipaddress.ip_address("198.51.100.10" if version == 4 else "2001:db8::10").packed
+        other = ipaddress.ip_address("203.0.113.5" if version == 4 else "2001:db8::11").packed
+        packets = []
+        class Capture:
+            def send(self, packet):
+                packets.append(packet)
+        sender = PacketFixture.__new__(PacketFixture)
+        sender.channel, sender.version = Capture(), version
+        sender.port, sender.source_port = 41000, 80
+        sender.next_client, sender.next_server = 2000, 1000
+        sender.source = other if wrong == "source" else target
+        sender.destination = other if wrong == "destination" else client
+        sender._send(24, b"return fixture")
+        packet = packets.pop()
+        class Reply:
+            def recv(self, _maximum):
+                return packet
+        receiver = PacketFixture.__new__(PacketFixture)
+        receiver.channel, receiver.version = Reply(), version
+        receiver.port, receiver.source_port = 80, 41000
+        receiver.source, receiver.destination = client, target
+        return receiver, packet
+
 
 if __name__ == "__main__":
     unittest.main()
