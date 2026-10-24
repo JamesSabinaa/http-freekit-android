@@ -206,7 +206,7 @@ export class ResearchWebSocket {
 
   // Both WS close frames and a released inbound event precede normal transport cleanup.
   finish() {
-    if (this.#stopTask !== null) return this.#stopTask;
+    if (this.#stopTask !== null) return this.#finishing ? this.#stopTask : Promise.reject(error('invalid_close_state'));
     if (this.#failure || !this.#receivedClose || !this.#closeWritten || this.#leased !== null ||
         this.#readerTask !== null || this.#writes.length !== 0) {
       return Promise.reject(error('invalid_close_state'));

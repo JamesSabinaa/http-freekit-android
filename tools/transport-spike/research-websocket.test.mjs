@@ -98,6 +98,7 @@ test('coalesced frames stop exactly at one leased message and disclose underlyin
   await assert.rejects(async () => event.copyBytes(), code('message_released'));
   await read(owner, 'binary', bytes('second'));
   await owner.cancel();
+  await assert.rejects(owner.finish(), code('invalid_close_state'));
 });
 
 test('upgrade remainder is copied, bounded, and consumed without losing following frames', async () => {
@@ -507,6 +508,7 @@ test('real nonreading TCP peer backpressures a write; cancel settles it only aft
       if (outcome === 'waiting') {
         assert.ok(client.writableLength > 0);
         assert.equal(owner.snapshot().writeBackpressured, true);
+        assert.equal(owner.snapshot().pendingWriteCallbacks, 1);
         assert.equal(owner.snapshot().queuedWrites, 1);
         assert.equal(owner.snapshot().queuedWriteBytes, payload.length);
         pending = assert.rejects(writing, code('cancelled'));
@@ -517,6 +519,8 @@ test('real nonreading TCP peer backpressures a write; cancel settles it only aft
     assert.equal(client.closed, true);
     assert.equal(owner.snapshot().transportClosed, true);
     assert.equal(owner.snapshot().queuedWriteBytes, 0);
+    assert.equal(owner.snapshot().pendingWriteCallbacks, 0);
+    assert.equal(owner.snapshot().reading, false);
     assert.equal(client.listenerCount('drain'), 0);
   } finally {
     clearTimeout(timer);
