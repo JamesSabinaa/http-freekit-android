@@ -11,8 +11,9 @@ from unittest.mock import patch
 
 import build_android_probe as build
 from android_bridge import HELLO, PACKET, STOP, STOPPED, PacketChannel, read_control, read_frame, write_frame
-from run_android import validate_instrumentation
+from run_android import await_bridge, capture_command, instrumentation_phases, validate_instrumentation
 from verify_probe_apk import verify_manifest
+from record_native_host import classify_log_tail
 
 
 def elf(api=26, alignment=16384, machine=62):
@@ -24,6 +25,67 @@ def elf(api=26, alignment=16384, machine=62):
 
 
 class AndroidProbeTest(unittest.TestCase):
+    def test_host_emulator_categories_never_retain_arbitrary_log_content(self):
+        with tempfile.TemporaryDirectory(prefix="freekit-host-log-") as directory:
+            path = Path(directory) / "emulator.log"
+            path.write_text("private arbitrary diagnostic string\nqemu: Segmentation fault (core dumped)\n")
+            result = classify_log_tail(path)
+            self.assertEqual(result["fatalLogMarkers"], ["segmentation_fault"])
+            self.assertNotIn("private", json.dumps(result))
+            self.assertNotIn("core dumped", json.dumps(result))
+
+    def test_host_emulator_classifier_is_bounded_and_handles_absent_logs(self):
+        with tempfile.TemporaryDirectory(prefix="freekit-host-log-") as directory:
+            path = Path(directory) / "emulator.log"
+            self.assertFalse(classify_log_tail(path)["logPresent"])
+            path.write_bytes(b"FATAL: old marker\n" + b"x" * (256 * 1024))
+            result = classify_log_tail(path)
+            self.assertEqual(result["inspectedTailBytes"], 256 * 1024)
+            self.assertEqual(result["fatalLogMarkers"], [])
+
+    def test_android_phase_report_accepts_only_fixed_nonsecret_markers(self):
+        output = ("INSTRUMENTATION_STATUS: native_probe_phase=jni-load-start\n"
+                  "INSTRUMENTATION_STATUS: native_probe_phase=https://untrusted.invalid/secret\n"
+                  "INSTRUMENTATION_STATUS: native_probe_phase=unknown-private-label\n"
+                  "INSTRUMENTATION_STATUS: native_probe_phase=bridge-connected\n")
+        self.assertEqual(instrumentation_phases(output), ["jni-load-start", "bridge-connected"])
+
+    def test_exited_instrumentation_fails_before_blocking_in_accept(self):
+        class Server:
+            def gettimeout(self): return 60
+            def settimeout(self, value): self.timeout = value
+            def accept(self): raise AssertionError("Should not enter accept")
+        class Process:
+            def poll(self): return 1
+        server = Server()
+        with self.assertRaisesRegex(AssertionError, "Instrumentation exited"):
+            await_bridge(server, Process())
+        self.assertEqual(server.timeout, 60)
+
+    def test_live_bridge_accept_preserves_connection_and_timeout(self):
+        class Process:
+            def poll(self): return None
+        with socket.socket() as server:
+            server.bind(("127.0.0.1", 0))
+            server.listen(1)
+            server.settimeout(60)
+            with socket.create_connection(server.getsockname(), timeout=2) as client:
+                connection, _ = await_bridge(server, Process())
+                with connection:
+                    client.sendall(b"bridge")
+                    self.assertEqual(connection.recv(6), b"bridge")
+                self.assertEqual(server.gettimeout(), 60)
+
+    def test_cleanup_reports_actual_adb_error_and_bounds_its_output(self):
+        completed = subprocess.CompletedProcess(["adb"], 1, stdout="status\0\n", stderr="adb: listener not found\n" + "x" * 5000)
+        with patch("run_android.subprocess.run", return_value=completed):
+            result = capture_command("reverse-remove-1234", ["adb", "reverse"])
+        self.assertEqual(result["operation"], "reverse-remove-1234")
+        self.assertEqual(result["returncode"], 1)
+        self.assertEqual(result["stdout"], "status")
+        self.assertTrue(result["stderr"].startswith("adb: listener not found"))
+        self.assertLessEqual(len(result["stderr"]), 4096)
+
     def test_fragmented_frames_preserve_one_complete_datagram(self):
         sender, receiver = socket.socketpair()
         with sender, receiver:

@@ -5,8 +5,10 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import socket
 import subprocess
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 import xml.etree.ElementTree as ET
 
@@ -15,6 +17,44 @@ from run_linux import BODY, REPLY, ENGINE_COMMIT, PacketFixture, check, listener
 
 PACKAGE = "com.httpfreekit.engineprobe.test"
 RUNNER = f"{PACKAGE}/androidx.test.runner.AndroidJUnitRunner"
+PHASES = frozenset("""arguments-start arguments-ready source-asset-start source-asset-ready
+jni-load-start jni-loaded jni-running-check-start jni-running-check-done jni-prestop-start
+jni-prestop-done configuration-ready bridge-connect-start bridge-connected descriptors-ready
+jni-start-start jni-started hello-sent jni-statistics-start jni-stop-start jni-joined
+jni-repeat-stop-done descriptors-closed cleanup-stop-start cleanup-stop-returned
+cleanup-stop-unconfirmed packet-pump-retained descriptors-retained""".split())
+
+
+def instrumentation_phases(output):
+    values = re.findall(r"^INSTRUMENTATION_STATUS: native_probe_phase=([a-z-]{1,64})\s*$", output, re.MULTILINE)
+    return [value for value in values if value in PHASES]
+
+
+def await_bridge(server, process, timeout=60):
+    deadline, previous = time.monotonic() + timeout, server.gettimeout()
+    try:
+        while True:
+            check(process.poll() is None, "Instrumentation exited before opening the packet bridge")
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError("Android packet bridge did not connect within 60 seconds")
+            server.settimeout(min(0.25, remaining))
+            try:
+                return server.accept()
+            except socket.timeout:
+                pass
+    finally:
+        server.settimeout(previous)
+
+
+def capture_command(label, arguments, timeout=20):
+    try:
+        result = subprocess.run(arguments, timeout=timeout, check=False, capture_output=True, text=True)
+        return {"operation": label, "returncode": result.returncode,
+                "stdout": result.stdout.replace("\0", "")[:4096].strip(),
+                "stderr": result.stderr.replace("\0", "")[:4096].strip()}
+    except (OSError, subprocess.TimeoutExpired) as failure:
+        return {"operation": label, "exception": type(failure).__name__}
 
 
 def validate_instrumentation(output):
@@ -84,12 +124,13 @@ def main():
                "repositoryCommit": subprocess.check_output(["git", "-C", str(repository), "rev-parse", "HEAD"], text=True).strip(),
                "sourceDirty": bool(subprocess.check_output(["git", "-C", str(repository), "status", "--porcelain"], text=True).strip()),
                "apkSha256": hashlib.sha256(arguments.test_apk.read_bytes()).hexdigest(),
-               "model": command("shell", "getprop", "ro.product.model"), "cases": [], "passed": False}
+               "model": command("shell", "getprop", "ro.product.model"), "cases": [], "passed": False, "reverseMappings": []}
     mappings, process, error = [], None, None
     def reverse(host_port):
         value = command("reverse", "tcp:0", f"tcp:{host_port}")
         check(value.isdigit() and 0 < int(value) <= 65535, "ADB did not allocate an owned reverse port")
         mappings.append(int(value))
+        summary["reverseMappings"].append({"devicePort": int(value), "hostPort": host_port})
         return int(value)
     try:
         arguments.reports.mkdir(parents=True, exist_ok=True)
@@ -101,19 +142,19 @@ def main():
             gates = [(threading.Event(), threading.Event()) for _ in expectations]
             process = subprocess.Popen([*adb, "shell", "am", "instrument", "-w", "-r", "-e", "class", "com.httpfreekit.engineprobe.NativePacketTest",
                                         "-e", "bridgePort", str(bridge_port), "-e", "socksPort", str(socks_port), RUNNER], stdout=output, stderr=subprocess.STDOUT, text=True)
-            with ThreadPoolExecutor(max_workers=2) as peers:
-                proxy_result = peers.submit(proxy_fixture, proxy, expectations, gates)
-                socks_result = peers.submit(socks_fixture, socks, proxy.getsockname()[1], expectations)
-                connection, _ = bridge_server.accept()
-                with connection:
-                    connection.settimeout(20)
-                    hello = read_control(connection, HELLO)
-                    check(hello.get("bridge") == "freekit-native-probe/1" and hello.get("engineCommit") == ENGINE_COMMIT, "Unexpected JNI source/bridge identity")
-                    check(hello.get("api") == actual_api and hello.get("jniLoaded") is True and hello.get("running") is True, "JNI did not load/start on the expected Android API")
-                    check(type(hello.get("pageSize")) is int and hello["pageSize"] > 0, "Missing Android page-size evidence")
-                    summary["jni"] = hello
-                    summary["pageSize"] = hello["pageSize"]
-                    channel = PacketChannel(connection)
+            connection, _ = await_bridge(bridge_server, process)
+            with connection:
+                connection.settimeout(20)
+                hello = read_control(connection, HELLO)
+                check(hello.get("bridge") == "freekit-native-probe/1" and hello.get("engineCommit") == ENGINE_COMMIT, "Unexpected JNI source/bridge identity")
+                check(hello.get("api") == actual_api and hello.get("jniLoaded") is True and hello.get("running") is True, "JNI did not load/start on the expected Android API")
+                check(type(hello.get("pageSize")) is int and hello["pageSize"] > 0, "Missing Android page-size evidence")
+                summary["jni"] = hello
+                summary["pageSize"] = hello["pageSize"]
+                channel = PacketChannel(connection)
+                with ThreadPoolExecutor(max_workers=2) as peers:
+                    proxy_result = peers.submit(proxy_fixture, proxy, expectations, gates)
+                    socks_result = peers.submit(socks_fixture, socks, proxy.getsockname()[1], expectations)
                     summary["cases"] = fixtures(channel, expectations, gates, actual_api)
                     proxy_result.result(timeout=15)
                     socks_result.result(timeout=15)
@@ -133,26 +174,36 @@ def main():
         raise
     finally:
         cleanup_errors = []
+        summary["instrumentationExitBeforeCleanup"] = process.poll() if process is not None else None
+        if error is not None:
+            summary["deviceDiagnostics"] = [
+                capture_command("device-state", [*adb, "get-state"], timeout=5),
+                capture_command("reverse-list", [*adb, "reverse", "--list"], timeout=5),
+                capture_command("research-process", [*adb, "shell", "pidof", PACKAGE], timeout=5),
+            ]
         if process is not None and process.poll() is None:
             try:
                 process.kill()
                 process.wait(timeout=10)
             except (OSError, subprocess.TimeoutExpired) as failure:
-                cleanup_errors.append(type(failure).__name__)
-        commands = [[*adb, "shell", "am", "force-stop", PACKAGE]]
+                cleanup_errors.append({"operation": "instrumentation-client-stop", "exception": type(failure).__name__})
+        commands = [("force-stop", [*adb, "shell", "am", "force-stop", PACKAGE])]
         for port in mappings:
-            commands.append([*adb, "reverse", "--remove", f"tcp:{port}"])
-        for cleanup in commands:
-            try:
-                result = subprocess.run(cleanup, timeout=20, check=False, capture_output=True)
-                if result.returncode:
-                    cleanup_errors.append("ADB cleanup failed")
-            except (OSError, subprocess.TimeoutExpired) as failure:
-                cleanup_errors.append(type(failure).__name__)
+            commands.append((f"reverse-remove-{port}", [*adb, "reverse", "--remove", f"tcp:{port}"]))
+        cleanup_results = [capture_command(label, command_arguments) for label, command_arguments in commands]
+        cleanup_errors.extend(result for result in cleanup_results if result.get("returncode") != 0)
+        summary["cleanup"] = cleanup_results
         if cleanup_errors:
             summary["passed"] = False
             summary["cleanupErrors"] = cleanup_errors
-        summary["ownedMappingsRemoved"] = not cleanup_errors
+        summary["ownedMappingsRemoved"] = all(result.get("returncode") == 0 for result in cleanup_results if result["operation"].startswith("reverse-remove-"))
+        summary["hostForceStopSucceeded"] = cleanup_results[0].get("returncode") == 0
+        instrumentation_path = arguments.reports / "instrumentation.txt"
+        if instrumentation_path.exists():
+            with instrumentation_path.open("rb") as recorded:
+                raw = recorded.read(1024 * 1024 + 1)
+            summary["instrumentationOutputTruncated"] = len(raw) > 1024 * 1024
+            summary["androidPhases"] = instrumentation_phases(raw[:1024 * 1024].decode("utf-8", errors="replace"))
         cleanup_failure = RuntimeError("Research process/mapping cleanup failed") if cleanup_errors else None
         save_reports(arguments.reports, summary, error or cleanup_failure)
         if error is None and cleanup_failure:

@@ -49,6 +49,7 @@ androidComponents.onVariants { variant ->
 tasks.named("preBuild") { dependsOn(buildNative) }
 
 dependencies {
+    testImplementation(libs.junit)
     androidTestImplementation(libs.junit)
     androidTestImplementation(libs.android.test.runner)
     androidTestImplementation(libs.android.test.junit)

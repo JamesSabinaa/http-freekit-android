@@ -1,6 +1,6 @@
 # A4 Android JNI and synthetic packet probe
 
-Status: local compile/packaging/helper validation only; Android API 26/37 execution is pending manual hosted validation. This does not select the engine for production, establish VPN capture, or freeze the protocol.
+Status: the first hosted API 26/37 run failed before packet-bridge readiness. A diagnostic checkpoint passes local validation and awaits its Android run. This does not select the engine for production, establish VPN capture, or freeze the protocol.
 
 ## Source and ownership
 
@@ -26,7 +26,7 @@ The unchanged Python packet/proxy peers exercise IPv4 and IPv6, each over port-8
 
 The `freekit-native-probe/1` framing is test infrastructure, not companion wire. It bounds packets to 65535 bytes and control JSON to 4096 bytes, preserves datagram boundaries across arbitrary TCP fragmentation and uses typed Stop evidence. A passing host result additionally requires JNI load/start/running/stats, bounded Stop, idempotent Stop, packet-thread termination, descriptor closure, ADB cleanup and one passing Android instrumentation result. Failures/timeouts cannot be recorded as a successful skip.
 
-## Local evidence
+## Initial local evidence
 
 On Windows Server 2025 x64 with JDK 17, Gradle 9.8.2, AGP 9.4.1 and NDK 28.2.13676358:
 
@@ -42,6 +42,14 @@ Reproduction commands are in the [research README](../../tools/engine-spike/andr
 
 ## Hosted execution gate and limits
 
-The new manual-only workflow uses free standard Ubuntu 24.04 runners, the established verified SDK bootstrap, JDK 17, NDK `28.2.13676358`, compile/target 37 and API 26/37 AOSP x86_64 images. It installs `libpulse0`, requires accessible KVM and successful acceleration checks, bounds boot/test waits and uses fresh AVD state with snapshots disabled. It uploads only native/JUnit/instrumentation/lint reports, never APKs, signing keys, source caches, emulator logs or AVD data. The coordinator reviews/pushes/dispatches it; no hosted A4 result is claimed here.
+The first [hosted native run 40095030716](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40095030716), at exact source `ed12db3b02451f67898f4ee19bbb80e1d5f42e5b`, failed on both API 26 and API 37 after successful compilation, lint and APK verification. Each artifact has a clean source tree, the expected APK/native identity, zero completed packet cases, and only the instrumentation test-method-start event. The host's bridge accept timed out before HELLO. Neither artifact contains JNI, page-size, native-statistics or Stop proof. API 26 reported two ADB cleanup failures and API 37 three, with their stderr unavailable in that checkpoint. AVD device-description warnings did not prevent boot/API verification/APK installation; they do not identify the cause.
+
+The subsequent diagnostic change starts from `2ab4d7459c6689e22637ba621441eb901e37185a`. It preserves timeouts and assertions, adds fixed Android phase markers around asset/JNI/Stop/connection operations, fails early if instrumentation exits, and retains bounded actual device/ADB cleanup diagnostics. It starts fixture worker threads after HELLO. These changes expose the failure location; they do not establish or assume its cause.
+
+A separate review found an unsafe failure path: timing out a Java Future cannot cancel the native Stop/pthread join, while the old finally block retried Stop and closed its borrowed FD. The new `NativeStopGate` prevents overlapping requests, clears old join evidence before every Stop (including repeated Stop), and retains strong descriptor/peer leases until the current request confirms its join. If it cannot confirm, it leaves the resources for host force-stop rather than closing them under native code. Five focused JVM cases cover initial deadlines/failure, successful idempotence and successful-first/blocked-or-false repeated Stop.
+
+The diagnostic workflow also records emulator PID/liveness and, when already exited, the host wait exit code before its teardown trap. [record_native_host.py](../../tools/engine-spike/record_native_host.py) retains only fixed marker categories from a bounded log tail; it never exports emulator-log contents. These markers are diagnostic observations, not a proven crash cause. Eighteen Python tests cover the existing fixtures/build gates plus fixed phase parsing, early-exit connection handling, actual cleanup error reporting and bounded nonsecret host-emulator classification. All five JVM cases, instrumentation assembly, strict lint, APK verification, Python/syntax checks, workflow actionlint and documentation checks pass locally. Android execution of this diagnostic checkpoint remains pending.
+
+The new manual-only workflow uses free standard Ubuntu 24.04 runners, the established verified SDK bootstrap, JDK 17, NDK `28.2.13676358`, compile/target 37 and API 26/37 AOSP x86_64 images. It installs `libpulse0`, requires accessible KVM and successful acceleration checks, bounds boot/test waits and uses fresh AVD state with snapshots disabled. It uploads only native/JUnit/instrumentation/lint reports, never APKs, signing keys, source caches, emulator logs or AVD data. The coordinator reviews/pushes/dispatches it; no successful hosted A4 runtime result is claimed here.
 
 Even a passing run proves synthetic AF_UNIX datagrams and JNI on those emulator images, not a real TUN/VpnService, selected-app routing, protected sockets/no capture loop, DNS/UDP policy, physical IPv6 networking, actual desktop integration, genuine TLS/HTTPS decryption, real USB traffic or performance. ARM64 is compiled/packaged but this workflow runs x86_64 only. ELF/ZIP 16 KiB alignment is checked; device page size is recorded separately and does not imply a 16 KiB runtime image. Those production/device gates remain open before package C or protocol freeze.

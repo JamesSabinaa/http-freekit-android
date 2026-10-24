@@ -83,7 +83,7 @@ jobs:
           sdkmanager --sdk_root="$ANDROID_HOME" --list_installed
       - name: Build the isolated research APK from verified native source
         run: |
-          ./gradlew --no-daemon --console=plain -p tools/engine-spike/android assembleDebugAndroidTest lintDebug
+          ./gradlew --no-daemon --console=plain -p tools/engine-spike/android testDebugUnitTest assembleDebugAndroidTest lintDebug
           python3 tools/engine-spike/verify_probe_apk.py \
             --apk tools/engine-spike/android/build/outputs/apk/androidTest/debug/FreeKitNativeResearch-debug-androidTest.apk \
             --output tools/engine-spike/android/build/reports/native-runtime/apk-build.json
@@ -126,8 +126,31 @@ jobs:
             fi
             sleep 5
           done
+          set +e
           timeout 240s python3 tools/engine-spike/run_android.py --serial emulator-5554 --api "$API_LEVEL" \
             --test-apk tools/engine-spike/android/build/outputs/apk/androidTest/debug/FreeKitNativeResearch-debug-androidTest.apk
+          native_status=$?
+          set -e
+          emulator_alive=false
+          exit_arguments=()
+          if kill -0 "$emulator_pid" 2>/dev/null; then
+            emulator_alive=true
+          else
+            set +e
+            wait "$emulator_pid"
+            emulator_exit=$?
+            set -e
+            exit_arguments=(--emulator-exit-code "$emulator_exit")
+          fi
+          python3 tools/engine-spike/record_native_host.py --emulator-log "$emulator_log" \
+            --emulator-pid "$emulator_pid" --emulator-alive "$emulator_alive" \
+            --native-exit-code "$native_status" "${exit_arguments[@]}" \
+            --output tools/engine-spike/android/build/reports/native-runtime/host-emulator.json
+          if [[ "$native_status" == 0 && "$emulator_alive" != true ]]; then
+            echo '::error::The emulator exited before workflow teardown despite a passing native command.'
+            exit 1
+          fi
+          exit "$native_status"
       # Research reports only: no APKs, emulator logs, source caches, keys or AVD data.
       - name: Retain native research evidence
         if: always()

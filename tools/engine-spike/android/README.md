@@ -10,7 +10,7 @@ Set `JAVA_HOME` to JDK 17 and `ANDROID_HOME` to an SDK containing platform 37.0,
 
 ```sh
 python3 -m unittest discover -s tools/engine-spike -p 'test_*.py'
-./gradlew --no-daemon --console=plain -p tools/engine-spike/android assembleDebugAndroidTest lintDebug
+./gradlew --no-daemon --console=plain -p tools/engine-spike/android testDebugUnitTest assembleDebugAndroidTest lintDebug
 python3 tools/engine-spike/verify_probe_apk.py \
   --apk tools/engine-spike/android/build/outputs/apk/androidTest/debug/FreeKitNativeResearch-debug-androidTest.apk \
   --output tools/engine-spike/android/build/reports/native-runtime/apk-build.json
@@ -38,5 +38,9 @@ The Android native engine points at the reversed SOCKS peer. The host reuses `Pa
 The private research bridge `freekit-native-probe/1` uses a one-byte type and a four-byte big-endian length: HELLO=1 (bounded JSON), PACKET=2 (1..65535 raw IP bytes), STOP=3 (empty), STOPPED=4 (bounded JSON). Controls are limited to 4096 bytes. This framing is unrelated to the companion protocol.
 
 Reports are written to `build/reports/native-runtime/` with repository/APK/native identities, API/model/page size, four fixture results and explicit JNI stop evidence. A successful ADB command alone is insufficient: the driver requires all fixture assertions and one passing instrumentation test with a successful final result.
+
+Failure reports include fixed nonsecret Android phase markers, instrumentation exit state, owned reverse mappings, bounded device/mapping/research-process diagnostics, and actual bounded cleanup stdout/stderr. Instrumentation exiting before connection fails immediately; the bridge still has the original 60-second deadline. Fixture worker threads start only after HELLO. The workflow records host-emulator PID/liveness/exit status before teardown and fixed fatal-marker categories from a bounded tail. Report artifacts exclude logcat, emulator logs, traffic payloads and credential dumps.
+
+[NativeStopGate](src/main/java/com/httpfreekit/engineprobe/NativeStopGate.java) allows only one pending JNI Stop and resets join evidence for each request. A deadline does not cancel native `pthread_join`. Borrowed resources have a static strong lease until the current Stop returns successfully; an unresolved Stop is neither repeated nor followed by descriptor closure. The failed research process then relies on the owned host force-stop/emulator teardown. Five JVM tests exercise deadlines, failures, repeated Stop and resource lifetime.
 
 The [manual workflow](../../../.github/workflows/native-engine-runtime.yml) uses standard Ubuntu KVM runners with API 26/37 x86_64 AOSP images, explicit `libpulse0`, no snapshots or AVD caches, a verified SDK bootstrap and pinned NDK/source. It retains reports only, excluding APKs, keys, source caches, emulator logs and AVD data. Its runtime results must be reviewed after dispatch; see the [A4 decision and limits](../../../docs/decisions/0005-android-native-packet-probe.md).
