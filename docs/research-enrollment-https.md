@@ -96,6 +96,30 @@ Status 2 has exactly draftEnrollmentVersion="1" and draftEnrollmentPhase from th
 
 Separate host tests cover malformed HTTP, unpublished/unknown/revoked exact leaves, issuer races and actual joins. Additional Android adversarial proof/TLS/cancel cases and A22b active WSS revocation/expiry remain required for full A22 acceptance.
 
+## A22b enrolled streaming lifetime
+
+This extension composes the verified enrollment and stream adapters before production integration. It changes no draft 0.3/0.4 wire messages. The existing A22a methods, private input and report revision remain unchanged.
+
+The stream service uses the same owned gateway TLS identity, enrollment authority and live Store. A trusted optional authenticated-service factory on the HTTPS fixture receives only in-process TLS options, copied public metadata and an exact-leaf Store authorizer. A new enrollment-stream adapter exposes its public webSocketPort and host-only inspection/invalidation methods; no operator HTTP route is added. Close and join the service before releasing the Store or TLS assets. Keep existing A20 defaults when the optional integration is absent.
+
+Bind every control owner to the Store's copied desktopId, durable deviceId, enrollmentId, clientCertificateSha256, deviceSpkiSha256 and credentialExpiresAt, retaining the exact leaf internally. Stream attachment requires that same grant and leaf plus the session token. Revalidate against the live Store before admission, enqueue and each new write, and on the existing bounded deadline watcher. No cached fallback is permitted. A committed revoke synchronously invalidates affected owners before acknowledging the operator; actual socket/callback/worker joins remain separately observable. A Store failure latches unavailable and closes all affected owners as network_unreachable, without inventing a revoke. Explicit revoke uses device_revoked; credential or session expiry uses session_expired. Already-written OS bytes cannot be recalled; require no new admission or write after invalidation and retain charges until actual joins.
+
+For enrolled sessions, session_ready.expiresAt is no later than the minimum of the trusted policy deadline, exact credential expiry and gateway certificate expiry, rounded down to a whole UTC second. The Android client independently bounds readiness using the validated saved gateway, client chain, enrollment anchor and trusted policy; reject overlong readiness rather than rewriting it. Reuse the existing UTC/monotonic session model and deadline worker so expiry invalidates blocked I/O. A real 60-second issued credential with a 120-second policy proves credential-limited expiry. A separate 15-second policy with a still-valid 60-second credential proves session-limited expiry.
+
+Use a fresh host directory/desktop and one actual Android Keystore enrollment per destructive scenario. Save and reload through the existing credential store. Reuse enrollment proof/certificate checks and the existing stream owner's connector, socket pairs, conservative blocked-write observation and joins. Do not change production credential-store identity semantics or duplicate either I/O framework. Actual host TLS clients test two-device isolation, exact-leaf substitution, storage faults and no new forwarding after invalidation.
+
+The Android class is com.httpfreekit.interop.DraftEnrolledStreamingInteropTest, with separate ordered invocations:
+
+1. revocationClosesSavedCredentialBlockedSession
+2. credentialExpiryClosesSavedCredentialBlockedSession
+3. sessionExpiryClosesSavedCredentialBlockedSession
+
+Each method consumes its seed, reserves/proves pending enrollment, waits for host-only approval, saves/reloads credentials, accepts bounded readiness and observes real proxy/application pending writes. Revocation waits for a validated live awaiting-host-revocation phase before the host commits revoke, then proves affected-owner closure and fresh same-credential admission denial. Credential expiry proves the actual certificate deadline, joins and expired fresh-connect refusal. Session expiry proves the earlier policy deadline, rejects the old session token, and proves the unchanged still-valid credential can establish a new control session. Forget only owned state after these checks. F freezes the finite phase/observation descriptor before driver or instrumentation phase emission is implemented; no raw logs, IDs, tokens, certificate bytes or keys enter reports.
+
+A22b private input is at no_backup/draft-enrollment-research/stream-input-v1.bin, delivered through the same bounded owned run-as stdin mechanism. It is at most 16384 bytes: eight-byte magic HFKSTR1 followed by NUL, a BE16 stream port, one scenario byte (1 revoke, 2 credential expiry, 3 session expiry), a BE16 embedded-seed length and exactly that many bytes of the existing A22a input. All three ports are distinct and nonzero. Reject truncation, invalid scenario/length/ports and trailing data; validate and unlink before key/network use. No secrets enter argv, environment or status output.
+
+The existing private worker gains startStreaming with the existing start fields plus streamPort, credentialLifetimeSeconds and sessionLifetimeMillis; A22b starts fresh create mode. Public metadata adds only webSocketPort. inspectEnrollment accepts only enrollmentId and returns bounded redacted stream observations through IPC. Existing operations and A22a behavior remain compatible. The checked-source workflow selects a finite A22a or A22b suite and retains only its four sanitized reports; it does not merge partial results across sources. Additional Android adversarial enrollment proof/TLS/cancel checks remain required for full A22, along with the other foundation and production gates.
+
 ## Sources
 
 - [Pinned Node HTTP](https://raw.githubusercontent.com/nodejs/node/v24.22.1/doc/api/http.md)
