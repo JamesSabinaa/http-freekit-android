@@ -15,8 +15,10 @@ const encode = value => Buffer.from(JSON.stringify(value));
 const context = challenge => Object.fromEntries(['desktopId', 'gatewaySpkiSha256', 'invitationId',
   'enrollmentId', 'deviceSpkiSha256', 'purpose'].map(key => [key, challenge[key]]));
 
-function fixture(t) {
-  const crypto = createCryptoFixture();
+function fixture(t, fixtureUtcMillis) {
+  const crypto = createCryptoFixture(fixtureUtcMillis === undefined ? {} : { utcMillis: fixtureUtcMillis });
+  if (fixtureUtcMillis !== undefined) crypto.caDer = crypto.certificate({ ca: true,
+    notAfter: Math.min(fixtureUtcMillis + 86400000, Date.parse('2099-12-31T23:59:59Z')) });
   const temporaryRoot = fs.realpathSync(os.tmpdir());
   const directory = fs.mkdtempSync(path.join(temporaryRoot, 'freekit-enrollment-authority-'));
   let utcMillis = crypto.utcMillis, monotonicMillis = 0;
@@ -274,6 +276,13 @@ test('issuance time follows the final live Store observation after random genera
   assert.equal(challenge.expiresAt, new Date(f.crypto.utcMillis + 11000).toISOString().replace('.000Z', 'Z'));
   f.advance(9999, false);
   assert.equal(f.submit(record, challenge).type, 'pair_pending');
+});
+
+test('an unrepresentable informational challenge expiry fails closed at the wire year boundary', t => {
+  const f = fixture(t, Date.parse('2099-12-31T22:59:55Z')), record = f.pair();
+  f.advance(3595000);
+  assert.equal(f.challenge(record).code, 'pairing_unavailable');
+  assert.equal(f.counters.verify, 0);
 });
 
 test('synchronous reentrancy is denied before duplicate proof verification or state access', t => {

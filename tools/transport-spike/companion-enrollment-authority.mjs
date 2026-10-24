@@ -89,6 +89,7 @@ export class EnrollmentAuthority {
     this.#issuanceAllowed(request, now);
     const expiresAt = new Date(Math.floor((now.utcMillis + 10000) / 1000) * 1000)
       .toISOString().replace('.000Z', 'Z');
+    if (expiresAt > '2099-12-31T23:59:59Z') fail('pairing_unavailable');
     const material = { protocolVersion: 1, type: 'pair_challenge', desktopId: binding.desktopId,
       gatewaySpkiSha256: binding.gatewaySpkiSha256, invitationId: binding.invitationId,
       enrollmentId: binding.enrollmentId, challengeId, deviceSpkiSha256: binding.deviceSpkiSha256,
