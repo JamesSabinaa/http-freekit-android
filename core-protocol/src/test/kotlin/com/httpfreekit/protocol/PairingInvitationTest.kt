@@ -95,4 +95,16 @@ class PairingInvitationTest {
             rejected(changed("expiresAt", JsonPrimitive(it)))
         }
     }
+
+    @Test fun validatesPublicGatewayCertificateAndKeepsLegacyReviewParsingCompatible() {
+        val accepted = PairingInvitationParser.parse(valid, now) as PairingParseResult.Accepted
+        assertTrue(checkNotNull(accepted.invitation.gatewayCertificateDer).isNotEmpty())
+        rejected(changed("gatewayCertificateDer", JsonPrimitive("not-a-certificate")))
+        rejected(changed("gatewayCertificateDer", JsonPrimitive("A".repeat(6000))))
+        rejected(changed("gatewaySpkiSha256", JsonPrimitive("A".repeat(43))))
+        val root = (Json.parseToJsonElement(valid) as JsonObject).toMutableMap()
+        root.remove("gatewayCertificateDer")
+        val legacy = PairingInvitationParser.parse(JsonObject(root).toString(), now) as PairingParseResult.Accepted
+        assertEquals(null, legacy.invitation.gatewayCertificateDer)
+    }
 }

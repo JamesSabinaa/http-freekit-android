@@ -7,12 +7,13 @@
   "desktopId": "fixture-desktop",
   "displayName": "Development computer",
   "serverName": "gateway-fixture.invalid",
-  "gatewaySpkiSha256": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+  "gatewaySpkiSha256": "LinZ7itJnvLXGoYJneyHn0ksUCJwijkoP_SPBh67q7Q",
   "endpoints": [
     {
       "mode": "usb",
       "host": "127.0.0.1",
       "port": 8766
     }
-  ]
+  ],
+  "gatewayCertificateDer": "MIIBojCCAUigAwIBAgIJALJLAEfPum4uMAoGCCqGSM49BAMCMCIxIDAeBgNVBAMTF2dhdGV3YXktZml4dHVyZS5pbnZhbGlkMB4XDTI2MTAyNDA5MDAwMFoXDTM2MTAyMTA5MDAwMFowIjEgMB4GA1UEAxMXZ2F0ZXdheS1maXh0dXJlLmludmFsaWQwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARUTiKIlujBPzMUGUCIzQnB5IVY2ESJweREPdyQd14BK8fsKm-cVORqPm4TVCxGjfWwvxSkR114y6eLcEVIAAxRo2cwZTAdBgNVHQ4EFgQUGMZSGVj_F4t-ChJUSNy_dyBzufswCwYDVR0PBAQDAgeAMCIGA1UdEQQbMBmCF2dhdGV3YXktZml4dHVyZS5pbnZhbGlkMBMGA1UdJQQMMAoGCCsGAQUFBwMBMAoGCCqGSM49BAMCA0gAMEUCIHCSE5OfC99K0zM0g2Ab2wTipGK9yLxiqlbgrMI4NEgLAiEA5FEAMBpI83b1JI4MOTxhQGG6OSwtqOyChv9BktXPp8g"
 }

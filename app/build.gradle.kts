@@ -33,6 +33,9 @@ android {
     lint { warningsAsErrors = true }
 }
 kotlin { jvmToolchain(17) }
+tasks.withType<Test>().configureEach {
+    inputs.dir(rootProject.layout.projectDirectory.dir("protocol/fixtures"))
+}
 
 dependencies {
     implementation(project(":core-protocol"))

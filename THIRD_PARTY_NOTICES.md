@@ -11,5 +11,6 @@ This independent implementation does not incorporate HTTP Toolkit Android source
 | OkHttp, Okio, okhttp-tls | JVM test transport only | [Apache-2.0](https://github.com/square/okhttp/blob/parent-5.5.1/LICENSE.txt) |
 | JUnit 4, Hamcrest | Tests only | [EPL-1.0](https://github.com/junit-team/junit4/blob/main/LICENSE-junit.txt), [BSD-3-Clause](https://github.com/hamcrest/JavaHamcrest/blob/master/LICENSE.txt) |
 | ws | Node test peer only | [MIT](https://github.com/websockets/ws/blob/master/LICENSE) |
+| Bouncy Castle bcprov-jdk18on 1.86 | ASN.1 encoding for device PKCS#10 requests in core-security; not installed as a global provider | [Bouncy Castle licence](third-party/bouncycastle-LICENSE.txt), [upstream source](https://github.com/bcgit/bc-java) |
 
 The Gradle distribution includes additional third-party licences. Native engine candidate licence findings are recorded in the [foundation decision](docs/decisions/0001-foundation.md); they are not shipped dependencies. A complete resolved runtime dependency inventory, bundled notices, and licence check remain release gates before distributing a production app.

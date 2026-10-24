@@ -2,9 +2,15 @@ package com.httpfreekit.protocol
 
 import java.net.Inet6Address
 import java.net.InetAddress
+import java.io.ByteArrayInputStream
+import java.security.GeneralSecurityException
+import java.security.MessageDigest
+import java.security.cert.CertificateFactory
+import java.security.cert.X509Certificate
 import java.time.Instant
 import java.time.format.DateTimeParseException
 import java.util.Base64
+import java.util.Date
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -22,6 +28,7 @@ class PairingInvitation internal constructor(
     val serverName: String,
     val gatewaySpkiSha256: String,
     val endpoints: List<GatewayEndpoint>,
+    val gatewayCertificateDer: String?,
 ) {
     override fun toString(): String = "PairingInvitation(protocolVersion=1, credentials=[REDACTED])"
 }
@@ -68,7 +75,7 @@ object PairingInvitationParser {
             val root = json.parseToJsonElement(payload) as? JsonObject ?: invalid()
             val version = root.integer("protocolVersion")
             if (version != 1) return PairingParseResult.Rejected(PairingError.UNSUPPORTED_VERSION)
-            require(root.keys == fields)
+            require(root.keys.containsAll(fields) && (root.keys - fields).all { it == "gatewayCertificateDer" })
             require(root.string("kind") == "http-freekit-pairing")
             val invitationId = root.string("invitationId").also { require(idPattern.matches(it)) }
             val secret = root.string("invitationSecret").also { require(isSha256Value(it)) }
@@ -80,6 +87,22 @@ object PairingInvitationParser {
             val pin = root.string("gatewaySpkiSha256").also { require(isSha256Value(it)) }
             val expiryText = root.string("expiresAt").also { require(it.endsWith('Z') && it.length <= 40) }
             val expiresAt = Instant.parse(expiryText)
+            val certificateDer = if ("gatewayCertificateDer" in root) root.string("gatewayCertificateDer") else null
+            if (certificateDer != null) {
+                require(certificateDer.length in 1..5462 && Regex("[A-Za-z0-9_-]+").matches(certificateDer))
+                val encoded = Base64.getUrlDecoder().decode(certificateDer)
+                require(encoded.size <= 4096 && Base64.getUrlEncoder().withoutPadding().encodeToString(encoded) == certificateDer)
+                val input = ByteArrayInputStream(encoded)
+                val certificate = CertificateFactory.getInstance("X.509").generateCertificate(input) as X509Certificate
+                require(input.available() == 0 && certificate.encoded.contentEquals(encoded))
+                certificate.checkValidity(Date.from(now))
+                require(certificate.basicConstraints < 0 && certificate.subjectX500Principal == certificate.issuerX500Principal)
+                certificate.verify(certificate.publicKey)
+                require(MessageDigest.isEqual(
+                    MessageDigest.getInstance("SHA-256").digest(certificate.publicKey.encoded),
+                    Base64.getUrlDecoder().decode(pin),
+                ))
+            }
             val rawEndpoints = root["endpoints"] as? JsonArray ?: invalid()
             require(rawEndpoints.size in 1..8)
             val endpoints = rawEndpoints.map { element ->
@@ -99,13 +122,15 @@ object PairingInvitationParser {
             require(endpoints.distinct().size == endpoints.size)
             if (!expiresAt.isAfter(now)) return PairingParseResult.Rejected(PairingError.INVITATION_EXPIRED)
             PairingParseResult.Accepted(
-                PairingInvitation(invitationId, PairingSecret(secret), expiresAt, desktopId, displayName, serverName, pin, endpoints),
+                PairingInvitation(invitationId, PairingSecret(secret), expiresAt, desktopId, displayName, serverName, pin, endpoints, certificateDer),
             )
         } catch (_: SerializationException) {
             PairingParseResult.Rejected(PairingError.INVALID_MESSAGE)
         } catch (_: IllegalArgumentException) {
             PairingParseResult.Rejected(PairingError.INVALID_MESSAGE)
         } catch (_: DateTimeParseException) {
+            PairingParseResult.Rejected(PairingError.INVALID_MESSAGE)
+        } catch (_: GeneralSecurityException) {
             PairingParseResult.Rejected(PairingError.INVALID_MESSAGE)
         }
     }

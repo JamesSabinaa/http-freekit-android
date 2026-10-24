@@ -13,4 +13,4 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "HTTPFreeKitAndroid"
-include(":app", ":core-protocol")
+include(":app", ":core-protocol", ":core-security")

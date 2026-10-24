@@ -2,6 +2,8 @@
 
 Status: proposed v1, not frozen or implemented. Package A must prove interoperability and record a freeze decision before production integration depends on these fields. This document is canonical across the Android and desktop repositories. Change the protocol version for incompatible wire changes.
 
+Draft revision 0.2 adds an optional `gatewayCertificateDer` invitation field for native platform trust bootstrap. This additive draft change preserves parsing of older pin-only invitations for review; those invitations are insufficient to start the new native enrollment path. Newly generated desktop invitations must include the public certificate. Whether it becomes mandatory in the frozen schema remains a foundation decision. No production enrollment client or gateway is integrated yet.
+
 ## Encoding and identity
 
 Use UTF-8 JSON for bounded control messages and binary WebSocket frames for proxy bytes. JSON timestamps use UTC RFC 3339. IDs are opaque strings; do not trust display names as identities. Unknown required capabilities or unsupported protocol versions produce explicit errors. Ignore unknown optional fields only where the schema permits them. Validate field types, lengths, endpoint syntax, and total payload size before acting.
@@ -30,6 +32,8 @@ Desktop creates a pending invitation from its local UI. Proposed QR contents:
 ```
 
 Port 8766 is illustrative and must be configurable, with collision handling; it is not an assigned or implemented project port. Endpoint values are routing hints, not trusted identities. A copied payload is a pairing credential until used or expired. Do not put it in logs, analytics, browser history, crash reports, or third-party QR services. Prefer in-app scan or paste over external web redirects.
+
+New desktop payloads also include `gatewayCertificateDer`: canonical unpadded base64url of the dedicated self-signed gateway leaf certificate's DER, limited to 4096 decoded bytes within the overall 16 KiB control limit. It is public material, distinct from the interception CA, and contains the logical `serverName` in its SAN. Validate its single-certificate encoding, self-signature, leaf role, validity, and SPKI match before using it as a scoped trust anchor in the platform TrustManagerFactory. Preserve normal TLS hostname and server-purpose verification. Recheck validity on each connection/reconnect; platform trust-anchor validation may omit anchor expiry. Do not install the anchor globally, accept an arbitrary replacement certificate, or use a trust-all callback to retrieve it. Certificate renewal/rotation and active-session expiry handling remain freeze gates.
 
 Invitations expire after five minutes by default, are single-use, and are bounded and rate-limited on the desktop. The phone displays the receiving computer before proceeding. A future short numeric code requires a standard authenticated pairing protocol or trusted lookup channel with explicit threat analysis; do not replace the high-entropy secret with six digits in this flow.
 

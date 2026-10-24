@@ -6,16 +6,18 @@ Codex coordinates package A in `../http-freekit-android-a`, with uniquely assign
 
 | Package | Owner | Branch | Status | Dependencies |
 | --- | --- | --- | --- | --- |
-| A Foundation and contracts | Codex | plan/a-foundation | In progress: toolchain, build, and contract validation | None |
+| A Foundation and contracts | Codex | plan/a-foundation | In progress: native packet proof and credential bootstrap | None |
 | B Android interface and lifecycle | Codex UI agent | feat/b-android-shell | In progress against mocks | A for final toolchain and interfaces |
 | C Capture engine and transport | Unassigned | feat/c-capture | Blocked for production integration | A engine choice and frozen protocol |
-| D Desktop gateway and ADB | Codex desktop agent | feat/d-companion-gateway | In progress: proxy compatibility and gateway design spike | A for production protocol; C for end-to-end capture |
+| D Desktop gateway and ADB | Codex desktop agent | feat/d-companion-gateway | Proxy/SNI checkpoint verified; production gateway gated | A for production protocol; C for end-to-end capture |
 | E WAN and relay | Unassigned | feat/e-wan | Blocked | Authenticated USB milestone and destination policy |
 | F Integration and release | Codex validation agent | test/f-integration | In progress: host CI and reproducible validation | A for stable fixtures; B C D for device acceptance |
 
 Current ownership: A owns root Gradle configuration, shared protocol, Android manifest/security spike wiring, native-engine research, and decision records. B owns app UI/resources and mocked lifecycle models/tests; manifest and dependency changes go through A. D works only in `../http-freekit-companion-d` on desktop proxy compatibility tests and gateway design; production wire integration waits for freeze. F owns `.github/workflows`, new validation scripts, and `docs/validation.md`; existing build/export script changes go through A. The coordinator alone edits this board and merges reviewed commits.
 
 Package A checkpoint: pinned Kotlin/Compose Android build, draft pairing parser and fixtures, nine passing host tests including Node mutual-TLS/WebSocket interoperability, clean Android lint, verified debug APK export, and native candidate API 26 compilation on ARM64/x86_64. See [foundation evidence](../docs/decisions/0001-foundation.md) and [build commands](../docs/development.md). The emulator stayed offline; no device, Keystore, or packet-forwarding proof is claimed. Engine selection, authenticated Android interoperability, and protocol freeze remain open; A is not complete.
+
+Next A checkpoint adds Android Keystore/PKCS#10 code, scoped platform gateway trust, a public-certificate draft payload extension, and a Linux native-engine harness. See [credential evidence and limits](../docs/decisions/0002-device-identity-and-bootstrap.md). B's mock UI checkpoint is `c68b890aca05ab80ad05667a5fa0f781fcfd70c6` with 19 lifecycle tests. Desktop checkpoints `d573251` and `cad06c0` pass 461 proxy/Android/layout tests and are integrated locally in the desktop checkout; their gateway design remains unimplemented. F is preparing host/native CI, whose hosted results must be checked separately. No package is marked complete by these checkpoints.
 
 The branch names are suggestions, not existing branches. For desktop tasks, create the branch and worktree inside the desktop repository. Record paired repository commits during integration. Each owner requests contract changes through A, rather than silently editing shared fields.
 

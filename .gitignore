@@ -6,6 +6,8 @@
 local.properties
 *.iml
 node_modules/
+__pycache__/
+*.py[cod]
 .cxx/
 .externalNativeBuild/
 
