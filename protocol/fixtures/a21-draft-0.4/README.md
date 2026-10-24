@@ -1,6 +1,6 @@
 # Enrollment fixture and adapter contract
 
-These independent fixtures test [draft enrollment revision 0.4](../../../docs/protocol-enrollment.md). This document defines only the test adapter and report format, with no additional wire fields. The grammar is normative; implementation output is never an expectation source. This initial contract commit contains no executable corpus and establishes no conformance result. A later corpus must have nonzero coverage in every category before validation can succeed.
+These independent fixtures test [draft enrollment revision 0.4](../../../docs/protocol-enrollment.md). This document defines only the test adapter and report format, with no additional wire fields. The grammar is normative; implementation output is never an expectation source. The adapter contract was committed before the executable corpus. Validation requires nonzero coverage in every category; conformance requires both actual implementation reports to match every expectation.
 
 ## Files and limits
 
@@ -65,5 +65,19 @@ Write independently produced actual reports to ignored `build/reports/draft-enro
 Compute `corpusSha256` in fixed lexical filename order: `codec.json`, `comparison.json`, `manifest.json`, `proof.json`. For each, update SHA-256 with its UTF-8 filename, one NUL byte, its exact committed file bytes and one NUL byte. There is no digest field in the corpus files themselves. Formatting changes deliberately change the digest. Load bounded fixture files and validate their envelopes/order/IDs before execution. Compare expected outcomes only after computing actual results; write the actual report even when an implementation mismatch will make the test fail.
 
 The independent comparator rejects missing/stale reports, duplicate or unknown keys, type substitutions, wrong format/revision/implementation, wrong digest, missing/extra/reordered IDs, mismatched outcomes and cross-language disagreement. Both reports must independently match every expectation; agreement on the same wrong answer fails.
+
+## Validation tools
+
+Run the independent bounded corpus and report checks from the repository root:
+
+```sh
+node --test scripts/tests/enrollment-corpus.test.mjs scripts/tests/enrollment-conformance.test.mjs
+node scripts/check-enrollment-corpus.mjs
+node scripts/compare-enrollment-conformance.mjs
+```
+
+Each CLI accepts `--corpus DIRECTORY`; the comparator also accepts `--kotlin FILE` and `--node FILE`. Defaults are the fixed corpus/report paths above. Missing actual reports fail rather than creating synthetic results.
+
+The shared Node loader is `loadEnrollmentCorpus(root?)` from `scripts/enrollment-corpus.mjs`. It returns a deeply frozen `{digest,codec,proof,comparison}` with ordered case arrays after bounded strict parsing and structural/coverage checks; it throws `EnrollmentCorpusError` carrying only a fixed `code`. Node adapters may consume those exact validated inputs without another parse. `expectedEnrollmentOutcome(kind, expectation)` is an assertion/comparator helper, including the proof-hex digest conversion; it must never construct an actual execution result. Kotlin loads the same committed bytes independently.
 
 These fixtures establish only codec/proof/comparison agreement. Coordinator state, real crypto verification, durable-store transactions, owned-child crash/recovery and actual resource closure require their own tests. Deterministic models are not OS process-crash evidence; process kills are not power-loss proof. A22 live HTTPS/Keystore/approval/save/reopen and production protocol freeze remain separate gates.
