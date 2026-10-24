@@ -2,13 +2,18 @@ package com.httpfreekit.android.preview
 
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
+import android.graphics.Rect
 import android.os.Build
 import android.os.ParcelFileDescriptor
+import android.os.SystemClock
 import android.view.WindowManager
+import android.view.inputmethod.InputMethodManager
+import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasTestTag
@@ -88,16 +93,16 @@ class InstalledAppsActivityTest {
         clickTag("apps-refresh")
         waitFixture(present = true)
         assertFixtureSelected(true)
-        focusSearchAndWaitForKeyboard()
+        focusSearchAndWaitForKeyboard(Configuration.ORIENTATION_PORTRAIT)
         assertPreviewWarning(requireKeyboard = true)
         rotate(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE, Configuration.ORIENTATION_LANDSCAPE)
-        focusSearchAndWaitForKeyboard()
+        focusSearchAndWaitForKeyboard(Configuration.ORIENTATION_LANDSCAPE)
         assertPreviewWarning(requireKeyboard = true)
         waitFixture(present = true)
         assertFixtureSelected(true)
         assertPreviewWarning()
         rotate(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT, Configuration.ORIENTATION_PORTRAIT)
-        focusSearchAndWaitForKeyboard()
+        focusSearchAndWaitForKeyboard(Configuration.ORIENTATION_PORTRAIT)
         assertPreviewWarning(requireKeyboard = true)
         waitFixture(present = true)
         assertFixtureSelected(true)
@@ -213,10 +218,45 @@ class InstalledAppsActivityTest {
             WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
     }
 
-    private fun focusSearchAndWaitForKeyboard() = safeUi("Fixture-only search keyboard did not become visible") {
-        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasTestTag("apps-search"))
-        compose.onNodeWithTag("apps-search").performScrollTo().performClick()
-        compose.waitUntil(timeoutMillis = 15_000) { keyboardVisible() }
+    private fun focusSearchAndWaitForKeyboard(expectedOrientation: Int) {
+        val deadline = SystemClock.uptimeMillis() + 15_000
+        fun remaining(): Long {
+            val remaining = deadline - SystemClock.uptimeMillis()
+            assertTrue("Search keyboard precondition deadline elapsed", remaining > 0)
+            return remaining
+        }
+        val initialWindow = keyboardWindow(observeInputManager = true)
+        var initialFieldFocused: Boolean? = null
+        val diagnostics = {
+            "initialWindow=(${initialWindow.describe()}),initialFieldFocused=$initialFieldFocused,current=(${keyboardDiagnostics()})"
+        }
+        safeUi("Fixture-only search window was not ready", diagnostics) {
+            compose.waitUntil(timeoutMillis = remaining()) {
+                val window = keyboardWindow()
+                window.ready && window.orientation == expectedOrientation
+            }
+        }
+        val alreadySatisfied = safeUi("Fixture-only initial search focus could not be observed", diagnostics) {
+            initialFieldFocused = searchFocused()
+            keyboardVisible() && initialFieldFocused == true
+        }
+        if (!alreadySatisfied) {
+            safeUi("Fixture-only search field scrolling failed", diagnostics) {
+                compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasTestTag("apps-search"))
+            }
+            safeUi("Fixture-only search field was not displayed and enabled", diagnostics) {
+                compose.onNodeWithTag("apps-search").performScrollTo().assertIsDisplayed().assertIsEnabled()
+            }
+            safeUi("Fixture-only search editor touch failed", diagnostics) {
+                compose.onNodeWithTag("apps-search").performClick()
+            }
+        }
+        safeUi("Fixture-only search editor was not focused", diagnostics) {
+            compose.onNodeWithTag("apps-search").assertIsFocused()
+        }
+        safeUi("Fixture-only search IME did not become visible", diagnostics) {
+            compose.waitUntil(timeoutMillis = remaining()) { keyboardVisible() }
+        }
     }
 
     private fun keyboardVisible(): Boolean {
@@ -307,10 +347,107 @@ class InstalledAppsActivityTest {
         }
     }
 
-    private fun rotate(requested: Int, expected: Int) = safeUi("Installed preview rotation did not finish") {
+    private fun rotate(requested: Int, expected: Int) = safeUi("Installed preview rotation window was not ready", ::keyboardDiagnostics) {
+        val before = keyboardWindow()
         compose.activityRule.scenario.onActivity { it.requestedOrientation = requested }
-        compose.waitUntil(timeoutMillis = 15_000) { compose.activity.resources.configuration.orientation == expected }
+        compose.waitUntil(timeoutMillis = 15_000) {
+            val after = keyboardWindow()
+            val geometryChanged = before.orientation == expected || before.rootWidth <= 0 || after.rootWidth != before.rootWidth
+            after.ready && after.orientation == expected && geometryChanged
+        }
         compose.waitForIdle()
+    }
+
+    private data class KeyboardWindow(
+        val available: Boolean = false,
+        val orientation: Int = Configuration.ORIENTATION_UNDEFINED,
+        val attached: Boolean = false,
+        val laidOut: Boolean = false,
+        val layoutRequested: Boolean = true,
+        val windowFocused: Boolean = false,
+        val hasInsets: Boolean = false,
+        val rootWidth: Int = 0,
+        val rootHeight: Int = 0,
+        val imeVisible: Boolean = false,
+        val imeBottom: Int = 0,
+        val visibleBottomGap: Int = 0,
+        val currentFocusPresent: Boolean = false,
+        val immActive: Boolean = false,
+        val immCurrentFocusActive: Boolean = false,
+        val immAcceptingText: Boolean = false,
+    ) {
+        val ready: Boolean get() = available && attached && laidOut && !layoutRequested && windowFocused &&
+            hasInsets && rootWidth > 0 && rootHeight > 0
+
+        fun describe() = "available=$available,api=${Build.VERSION.SDK_INT},orientation=$orientation," +
+            "attached=$attached,laidOut=$laidOut,layoutRequested=$layoutRequested,windowFocused=$windowFocused," +
+            "hasInsets=$hasInsets,rootWidth=$rootWidth,rootHeight=$rootHeight,imeVisible=$imeVisible," +
+            "imeBottom=$imeBottom,visibleBottomGap=$visibleBottomGap,currentFocusPresent=$currentFocusPresent," +
+            "immActive=$immActive,immCurrentFocusActive=$immCurrentFocusActive,immAcceptingText=$immAcceptingText"
+    }
+
+    private fun keyboardWindow(observeInputManager: Boolean = false): KeyboardWindow {
+        var state = KeyboardWindow()
+        try {
+            compose.activityRule.scenario.onActivity { activity ->
+                val root = activity.window.decorView
+                val insets = ViewCompat.getRootWindowInsets(root)
+                val frame = Rect()
+                val location = IntArray(2)
+                root.getWindowVisibleDisplayFrame(frame)
+                root.getLocationOnScreen(location)
+                val imm = if (observeInputManager) activity.getSystemService(InputMethodManager::class.java) else null
+                val focus = activity.currentFocus
+                state = KeyboardWindow(
+                    available = true,
+                    orientation = activity.resources.configuration.orientation,
+                    attached = root.isAttachedToWindow,
+                    laidOut = root.isLaidOut,
+                    layoutRequested = root.isLayoutRequested,
+                    windowFocused = root.hasWindowFocus(),
+                    hasInsets = insets != null,
+                    rootWidth = root.width,
+                    rootHeight = root.height,
+                    imeVisible = insets?.isVisible(WindowInsetsCompat.Type.ime()) == true,
+                    imeBottom = insets?.getInsets(WindowInsetsCompat.Type.ime())?.bottom ?: 0,
+                    visibleBottomGap = (location[1] + root.height - frame.bottom).coerceAtLeast(0),
+                    currentFocusPresent = focus != null,
+                    immActive = imm?.isActive == true,
+                    immCurrentFocusActive = focus != null && imm?.isActive(focus) == true,
+                    immAcceptingText = imm?.isAcceptingText == true,
+                )
+            }
+        } catch (_: AssertionError) {
+            // A not-yet-resumed scenario is not a ready window; the bounded assertion still must pass.
+        } catch (_: Exception) {
+            // Never retain or report platform exception messages or view identities.
+        }
+        return state
+    }
+
+    private fun searchFocused(): Boolean {
+        val node = tagNodes("apps-search").singleOrNull() ?: return false
+        return node.config.contains(SemanticsProperties.Focused) && node.config[SemanticsProperties.Focused]
+    }
+
+    private fun keyboardDiagnostics(): String {
+        val window = keyboardWindow(observeInputManager = true).describe()
+        val field = try {
+            val node = tagNodes("apps-search").singleOrNull()
+            if (node == null) "absent" else {
+                val focused = node.config.contains(SemanticsProperties.Focused) && node.config[SemanticsProperties.Focused]
+                val enabled = !node.config.contains(SemanticsProperties.Disabled)
+                val bounds = node.boundsInWindow
+                "focused=$focused,enabled=$enabled,bounds=[${bounds.left},${bounds.top},${bounds.right},${bounds.bottom}]"
+            }
+        } catch (_: ComposeTimeoutException) {
+            "unavailable"
+        } catch (_: AssertionError) {
+            "unavailable"
+        } catch (_: Exception) {
+            "unavailable"
+        }
+        return "$window,searchField=($field)"
     }
 
     private fun label(resource: Int) = compose.activity.getString(resource)
@@ -363,6 +500,8 @@ class InstalledAppsActivityTest {
     // Compose failures can otherwise print an entire semantics tree containing installed packages.
     private fun <T> safeUi(message: String, diagnostics: (() -> String)? = null, action: () -> T): T = try {
         action()
+    } catch (_: ComposeTimeoutException) {
+        throw AssertionError(if (diagnostics == null) message else "$message (${diagnostics()})")
     } catch (_: AssertionError) {
         throw AssertionError(if (diagnostics == null) message else "$message (${diagnostics()})")
     } catch (_: Exception) {
@@ -382,6 +521,8 @@ class InstalledAppsActivityTest {
             statusNode.config[SemanticsProperties.StateDescription] else null
         val status = observed?.takeIf { it in setOf("loading", "ready", "error", "idle") } ?: "absent"
         "sampleSource=(${source("apps-mode-sample")}),installedSource=(${source("apps-mode-installed")}),status=$status"
+    } catch (_: ComposeTimeoutException) {
+        "catalogState=unavailable"
     } catch (_: AssertionError) {
         "catalogState=unavailable"
     } catch (_: Exception) {
