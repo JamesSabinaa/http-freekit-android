@@ -40,7 +40,13 @@ function der(input) {
   function read(start, limit, depth) {
     if (++nodes > 512 || depth > 16 || start + 2 > limit) fail();
     let offset = start; const tag = data[offset++];
-    if ((tag & 31) === 31 || tag === 0) fail();
+    if (tag === 0) fail();
+    if ((tag & 31) === 31) {
+      if (offset >= limit) fail(); let octet = data[offset++];
+      if ((octet & 127) === 0 || (!(octet & 128) && octet < 31)) fail();
+      while (octet & 128) { if (offset >= limit) fail(); octet = data[offset++]; }
+      if (offset >= limit) fail();
+    }
     let length = data[offset++];
     if (length & 128) {
       const count = length & 127;

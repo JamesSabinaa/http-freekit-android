@@ -108,5 +108,7 @@ test('canonical 2050 GeneralizedTime is accepted and bad ranges fail', () => {
 test('duplicate extensions and unknown critical extensions fail; bounded noncritical extension survives', () => {
   const custom = f.extension('2a030405', tlv(4, Buffer.from('opaque')), false);
   leaf({ extraExtensions: [custom] });
+  leaf({ extraExtensions: [f.extension('2a030405', Buffer.from('9f200101', 'hex'))] });
+  for (const malformed of ['9f1e0101', '9f80200101', '9f80']) reject(() => leaf({ extraExtensions: [f.extension('2a030405', Buffer.from(malformed, 'hex'))] }));
   for (const extraExtensions of [[custom, custom], [f.extension('2a030405', tlv(4, Buffer.of(1)), true)], [f.extension('2a030405', Buffer.from('3080', 'hex'))]]) reject(() => leaf({ extraExtensions }));
 });
