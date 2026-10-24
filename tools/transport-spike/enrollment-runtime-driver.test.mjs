@@ -29,7 +29,7 @@ test('invalid reverse endpoints cause no registration and known complete rows al
   await assert.rejects(registerEnrollmentReverses(async () => { called = true; }, { setupPort: 1, credentialPort: 1 }, []));
   assert.equal(called, false);
   const owned = [{ devicePort: 32101, hostPort: 32101 }];
-  for (const output of ['garbage', 'host tcp:bad tcp:333', 'host tcp:1', 'host tcp:1 tcp:2 extra',
+  for (const output of ['garbage', '\uFEFF', '\v', 'host tcp:bad tcp:333', 'host tcp:1', 'host tcp:1 tcp:2 extra',
     'host tcp:65536 tcp:2', 'host tcp:0 tcp:2', 'host tcp:32101 tcp:32101']) {
     assert.equal(enrollmentOwnedReversesAbsent(successful(output), owned), false);
   }

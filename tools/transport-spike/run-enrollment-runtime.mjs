@@ -39,7 +39,8 @@ export async function registerEnrollmentReverses(adb, metadata, owned) {
   }
 }
 export function enrollmentOwnedReversesAbsent(result, owned) {
-  if (!passed(result) || result.stderrBytes !== 0 || typeof result.output !== 'string') return false;
+  if (!passed(result) || result.stderrBytes !== 0 || typeof result.output !== 'string' ||
+      /[^\x09\x0a\x0d\x20-\x7e]/.test(result.output)) return false;
   const text = result.output.trim();
   if (!text) return true;
   const lines = text.split(/\r?\n/);
