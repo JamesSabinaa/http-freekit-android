@@ -29,10 +29,10 @@ npm --prefix tools/transport-spike ci --ignore-scripts --no-fund
 ./gradlew --no-daemon --console=plain \
   :core-protocol:test \
   :core-security:testDebugUnitTest :core-security:assembleDebugAndroidTest :core-security:lintDebug \
-  :app:testDebugUnitTest :app:assembleDebug :app:lintDebug
+  :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug
 ```
 
-Assembling the security module's Android instrumentation APK checks compilation only; no Keystore or device result is inferred from it.
+Assembling the app and security module's Android instrumentation APKs checks compilation only; no UI, Keystore, or device result is inferred from it.
 
 Unit-test/lint reports and resolved dependency inventories are retained for seven days, including on failed builds when reports exist. The upload paths exclude `dist/`, APK outputs, signing material, and the temporary TLS identities created by the host test. A green workflow establishes only these host checks; Android installation, UI behavior, Keystore use, VPN packet forwarding on Android, and physical-network acceptance remain independent evidence requirements. Workflow syntax is checked locally with actionlint; execution evidence is recorded separately. A hosted run is not claimed until its actual run result is recorded.
 
@@ -59,7 +59,17 @@ After a bounded boot wait and an API-level check, the job runs:
 
 The existing instrumented tests exercise identity reopen, challenge/CSR signing and deletion, refusal to replace an existing key, and concurrent key creation. Result validation requires nonempty instrumentation XML with no failures, errors, or skipped tests. Reports are retained for seven days; upload paths exclude APKs, emulator logs, keystores, snapshots, AVD directories, and userdata. Emulator shutdown preserves the test command's exit status.
 
-This workflow is prepared for a manual hosted run. Compilation and workflow lint do not count as device execution. Even a successful emulator run would establish only the tested Android Keystore behavior on those images; hardware-backed key protection, Android-to-Node mutual TLS, VPN routing, physical USB capture, and cellular WAN acceptance remain separate gates.
+[Hosted run 40091372512](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40091372512) passed at source commit `1b1b78c2c99d5020cbcc53a12ee27990a6eb09dc`. Downloaded XML reports independently confirmed all three original `AndroidDeviceIdentityStoreTest` cases on both API 26 (Android 8.0.0, AOSP x86_64 image revision 1) and API 37 (Android 17, image revision 6), with zero failures, errors, or skips:
+
+- `nonexportableIdentitySurvivesReopenSignsAndCanBeForgotten`
+- `creationNeverSilentlyReplacesAnExistingComputerKey`
+- `concurrentStoreInstancesCannotReplaceTheWinningKey`
+
+Both jobs used emulator 37.2.12.0 (build 16428233), reported KVM version 12 usable, and passed the boot-completion and actual API checks before testing. This establishes the tested Android Keystore behavior on those emulator images. Hardware-backed key protection, physical-phone behavior, Android-to-Node mutual TLS, VPN routing, physical USB capture, and cellular WAN acceptance remain separate gates.
+
+## Preview runtime evidence
+
+The separate [preview runtime workflow and evidence](android-preview-runtime.md) cover the actual sample-only `MainActivity` UI, simulated consent, Stop, and rotation. Its first hosted run passed four tests on API 26 and produced a visually reviewed sample PNG. API 37 booted but failed in Espresso initialization before any test body ran; that compatibility failure remains open. Neither result establishes real Android permissions, VPN service behavior, or capture.
 
 ## Dependency and licence evidence
 
