@@ -1,17 +1,19 @@
 # Agent work board
 
-Package A is assigned to Codex in `../http-freekit-android-a`. Other packages remain unclaimed; no parallel implementation agents have been started. The coordinating user or agent assigns unique ownership before concurrent work begins. Use separate branches and worktrees. Update this board through the coordinator to avoid agents racing to edit the same rows.
+Codex coordinates package A in `../http-freekit-android-a`, with uniquely assigned parallel packages B, D, and F below. Package C production integration and package E remain gated. Use separate branches and worktrees. Update this board through the coordinator to avoid agents racing to edit the same rows.
 
 ## Assignments
 
 | Package | Owner | Branch | Status | Dependencies |
 | --- | --- | --- | --- | --- |
 | A Foundation and contracts | Codex | plan/a-foundation | In progress: toolchain, build, and contract validation | None |
-| B Android interface and lifecycle | Unassigned | feat/b-android-shell | Ready for mocked work | A for final toolchain and interfaces |
+| B Android interface and lifecycle | Codex UI agent | feat/b-android-shell | In progress against mocks | A for final toolchain and interfaces |
 | C Capture engine and transport | Unassigned | feat/c-capture | Blocked for production integration | A engine choice and frozen protocol |
-| D Desktop gateway and ADB | Unassigned | feat/d-companion-gateway | Ready for design and spike | A for production protocol; C for end-to-end capture |
+| D Desktop gateway and ADB | Codex desktop agent | feat/d-companion-gateway | In progress: proxy compatibility and gateway design spike | A for production protocol; C for end-to-end capture |
 | E WAN and relay | Unassigned | feat/e-wan | Blocked | Authenticated USB milestone and destination policy |
-| F Integration and release | Unassigned | test/f-integration | Ready for planning and fixtures | A for stable fixtures; B C D for device acceptance |
+| F Integration and release | Codex validation agent | test/f-integration | In progress: host CI and reproducible validation | A for stable fixtures; B C D for device acceptance |
+
+Current ownership: A owns root Gradle configuration, shared protocol, Android manifest/security spike wiring, native-engine research, and decision records. B owns app UI/resources and mocked lifecycle models/tests; manifest and dependency changes go through A. D works only in `../http-freekit-companion-d` on desktop proxy compatibility tests and gateway design; production wire integration waits for freeze. F owns `.github/workflows`, new validation scripts, and `docs/validation.md`; existing build/export script changes go through A. The coordinator alone edits this board and merges reviewed commits.
 
 Package A checkpoint: pinned Kotlin/Compose Android build, draft pairing parser and fixtures, nine passing host tests including Node mutual-TLS/WebSocket interoperability, clean Android lint, verified debug APK export, and native candidate API 26 compilation on ARM64/x86_64. See [foundation evidence](../docs/decisions/0001-foundation.md) and [build commands](../docs/development.md). The emulator stayed offline; no device, Keystore, or packet-forwarding proof is claimed. Engine selection, authenticated Android interoperability, and protocol freeze remain open; A is not complete.
 
