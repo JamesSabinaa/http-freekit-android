@@ -118,6 +118,8 @@ jobs:
         run: node --test tools/transport-spike/research-websocket*.test.mjs
       - name: Test the authenticated draft-stream peer and owned cleanup
         run: node --test tools/transport-spike/companion-stream-peer*.test.mjs
+      - name: Collect bounded host TLS pressure diagnostics
+        run: timeout --kill-after=10s 180s node tools/transport-spike/companion-stream-peer-pressure.mjs
       - name: Test independent draft protocol codec and lifecycle
         run: |
           node --test tools/transport-spike/companion-protocol-codec.test.mjs \
@@ -174,6 +176,7 @@ jobs:
             tools/transport-spike/framing/build/test-results/test/
             tools/installed-app-fixture/build/reports/lint-results-*
             build/reports/draft-protocol/*-conformance.json
+            build/reports/draft-stream-pressure/pressure.json
             build/reports/dependencies/
 
   native-engine:
