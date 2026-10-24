@@ -17,6 +17,7 @@ Run the source checks locally:
 ```sh
 node --test scripts/tests/check-doc-links.test.mjs
 node scripts/check-doc-links.mjs
+python3 -m unittest discover -s scripts/tests -p 'test_keystore_results.py'
 git diff --check
 ```
 
@@ -38,13 +39,15 @@ node --test tools/transport-spike/instrumentation-results.test.mjs
 
 Assembling the app and security module's Android instrumentation APKs checks compilation only; no UI, Keystore, or device result is inferred from it.
 
-The host job checks OpenSSL 3 explicitly and runs the two loopback Node fixture tests for bounded CSR validation, certificate issuance, authenticated WebSocket echo, missing-client rejection, and temporary-file cleanup. Fifteen instrumentation-parser regressions separately cover exact start/end pairs, terminal status, crashes, missing/duplicate/skipped cases, bounded input, sanitized failure reports, and safe ADB exit/stderr categories. It also compiles and strictly lints the isolated transport module, retaining its lint reports. It does not run connected Android tests. A local Windows research check can select an installed OpenSSL 3 executable through `OPENSSL_BIN`; no system OpenSSL setting is changed.
+The host job checks OpenSSL 3 explicitly and runs the two loopback Node fixture tests for bounded CSR validation, certificate issuance, authenticated WebSocket echo, missing-client rejection, and temporary-file cleanup. Twenty-nine parser/ownership regressions separately cover exact start/end pairs, terminal status, crashes, missing/duplicate/skipped cases, bounded input, sanitized ADB/server-log diagnostics, explicit reverse-port collisions, and selective cleanup. It also compiles and strictly lints the isolated transport module, retaining its lint reports. It does not run connected Android tests. A local Windows research check can select an installed OpenSSL 3 executable through `OPENSSL_BIN`; no system OpenSSL setting is changed.
+
+The documentation job also runs fifteen stdlib Python regressions for the [exact Keystore result verifier](../scripts/verify-keystore-results.py). They cover the actual AGP wrapper/per-class formats, missing/duplicate/unexpected cases or suites, interrupted XML, skipped/crashed results, inconsistent counters, bounded reports, and CLI failures without dumping report messages.
 
 Unit-test/lint reports and resolved dependency inventories are retained for seven days, including on failed builds when reports exist. The upload paths exclude `dist/`, APK outputs, signing material, and the temporary TLS identities created by the host test. A green workflow establishes only these host checks; Android installation, UI behavior, Keystore use, VPN packet forwarding on Android, and physical-network acceptance remain independent evidence requirements. Workflow syntax is checked locally with actionlint; execution evidence is recorded separately. A hosted run is not claimed until its actual run result is recorded.
 
 The host artifact includes app JVM XML under `app/build/test-results/testDebugUnitTest/`, alongside protocol/security XML and the HTML reports, so individual cases can be audited directly.
 
-[Host run 40095826558](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40095826558) passed at source `89e5914e90f7a9827db52e7855d7191567a46092`. Downloaded XML confirms 69 unique JVM cases: 19 app, 10 protocol, and 40 security, with zero failures, errors, or skips. Its two Node fixture tests also passed, and the research module's strict lint report contains no issues.
+[Host run 40101590554](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40101590554) passed at source `bd7b67627d7382a16a32eeae5482b1fec0742c5a`. Downloaded XML confirms 91 unique JVM cases: 19 app, 10 protocol, and 62 security, with zero failures, errors, or skips. Logs confirm 31 Node cases (two peer, twenty-nine parser/ownership), nine documentation-checker cases, and 97 checked local links. App, security, and research lint reports all contain no issues; the hosted actionlint step also passed. The new fifteen-case Keystore verifier regression suite was added after that run and is locally validated, not attributed to this checkpoint.
 
 The separate Linux native-engine job checks the fixtures, fetches HevSocks5Tunnel root commit `c0dfc4b07baa5e48022f5f88ac90488601f05674` and its pinned submodules, then executes the worker. Reproduce both checks with:
 
@@ -55,7 +58,7 @@ python3 tools/engine-spike/run_linux.py --engine-root .gradle/engine-spike/hev-s
 
 The runner verifies its source checkout and builds the candidate locally. Its synthetic packet fixtures use a socket pair, a controlled SOCKS adapter, and an explicit-proxy peer. It needs GCC, make, and Python 3, with no sudo, TUN device, network-route changes, SDK, or phone. This isolates native packet-to-stream evidence from Android routing, protected sockets, real desktop proxy integration, and physical-device acceptance. It does not bundle the candidate into the APK or freeze the protocol.
 
-The same hosted run passed 14 Python fixture regressions and the actual native worker's four IPv4/IPv6 HTTP/CONNECT cases. Each transferred 16,421 upload bytes and 32,787 download bytes, with gated streaming and half-close checks, reply SHA-256 `62a22a63bb850ba7b263fccff99e868133570394d36d6ee16fd32e9d7c1a4601`, and the updated return source/destination address checks active. This is Linux synthetic-packet evidence; Android JNI execution and VPN routing remain separate.
+The same hosted run passed 27 Python fixture regressions and the actual native worker's four IPv4/IPv6 HTTP/CONNECT cases. Each transferred 16,421 upload bytes and 32,787 download bytes, with gated streaming and half-close checks, reply SHA-256 `62a22a63bb850ba7b263fccff99e868133570394d36d6ee16fd32e9d7c1a4601`, and the return source/destination address checks active. This is Linux synthetic-packet evidence; Android JNI execution and VPN routing require their own runtime evidence.
 
 ## Manual Keystore runtime workflow
 
@@ -69,7 +72,14 @@ After a bounded boot wait and an API-level check, the job runs:
 ./gradlew --no-daemon --console=plain :core-security:connectedDebugAndroidTest
 ```
 
-The existing instrumented tests exercise identity reopen, challenge/CSR signing and deletion, refusal to replace an existing key, and concurrent key creation. Result validation requires nonempty instrumentation XML with no failures, errors, or skipped tests. Reports are retained for seven days; upload paths exclude APKs, emulator logs, keystores, snapshots, AVD directories, and userdata. Emulator shutdown preserves the test command's exit status.
+The instrumented tests exercise identity reopen, challenge/CSR signing and deletion, refusal to replace an existing key, concurrent key creation, TLS digest authorization, enrolled-client binding, and public credential-record persistence. The Gradle test command must succeed before the [verifier](../scripts/verify-keystore-results.py) requires exactly twelve named `(class, method)` pairs once each across the three expected suites. It rejects empty, missing, extra, duplicate, malformed, truncated, failed, crashed, or skipped reports, and requires suite and aggregate counters to agree with actual cases. Reproduce that report check with:
+
+```sh
+python3 scripts/verify-keystore-results.py \
+  --results core-security/build/outputs/androidTest-results/connected --api 26
+```
+
+Use `--api 37` for that emulator's report directory. The API value labels the summary; the workflow independently checks the booted device API before Gradle runs. Reports are retained for seven days; upload paths exclude APKs, emulator logs, keystores, snapshots, AVD directories, and userdata. Emulator shutdown preserves the test command's exit status.
 
 [Hosted run 40091372512](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40091372512) passed at source commit `1b1b78c2c99d5020cbcc53a12ee27990a6eb09dc`. Downloaded XML reports independently confirmed all three original `AndroidDeviceIdentityStoreTest` cases on both API 26 (Android 8.0.0, AOSP x86_64 image revision 1) and API 37 (Android 17, image revision 6), with zero failures, errors, or skips:
 
@@ -88,13 +98,23 @@ Both jobs used emulator 37.2.12.0 (build 16428233), reported KVM version 12 usab
 
 The real Android-local mutual-TLS case passed after fresh keys authorized prehashed TLS signing and restricted legacy keys were rejected without replacement. The earlier five-case attempts at `d43c526` and `c0ed673` passed four methods but failed this TLS 1.2 handshake; diagnostic XML preserved both client I/O and server peer-close errors. The seven-case result supersedes those failures for the tested source. It does not establish Android-to-Node interoperability or hardware-backed key protection.
 
+[Run 40101596957](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40101596957) at `bd7b67627d7382a16a32eeae5482b1fec0742c5a` passed exactly twelve methods on each API 26/37: the seven above and five `AndroidEnrolledCredentialStoreTest` cases:
+
+- `reopenedPublicRecordUsesTheOriginalNonexportableKeyWithoutReplacingItsCertificate`
+- `missingReplacedAndLegacyKeysCannotReopenOrPreventForget`
+- `interruptedAndCorruptRecordsNeverGenerateOrReplaceTheExistingKey`
+- `failedMetadataCleanupLeavesTheDeletedKeyUnusableAndCanBeRetried`
+- `separateStoreInstancesSerializePublicationAndForgetWithTheIdentityMonitor`
+
+Independent artifact audit confirmed each full class/method identity once, three suites with counts 2/5/5, consistent aggregate counters, and zero failures, errors, or skips. The new verifier also accepts those downloaded reports locally; it was added after this runtime run. Both jobs used emulator 37.2.12, KVM version 12, and ADB 37.0.1-15733141. The persistence cases reopen stores within one process and use controlled interrupted-file/cleanup fixtures; they do not establish process-death, reboot, power-loss, backup/restore, multi-process, hardware-backed protection, or mutual TLS through a reopened record. See [the persistence evidence and limits](decisions/0008-enrolled-credential-persistence.md).
+
 ## Preview runtime evidence
 
 The separate [preview runtime workflow and evidence](android-preview-runtime.md) cover the actual sample-only `MainActivity` UI, simulated consent, Stop, and rotation. Run 40095827316 at `89e5914` passed all four named tests on each API; both original sample PNGs were visually inspected and show readable dark system-bar icons on the light background without header/card overlap. It supersedes the earlier API 37 status-bar contrast finding. These results do not establish real Android permissions, VPN service behavior, or capture.
 
 ## Manual Android-to-Node transport workflow
 
-The separate manual [Android-to-Node transport workflow](android-transport-runtime.md) runs A5's isolated Keystore/TLS/Node experiment. Its first attempt failed on both APIs with only one empty failed testcase reported and three required methods absent. Android-to-Node success remains unverified. The loopback fixture and ADB reverse mappings do not establish physical USB capture or a production gateway.
+The separate manual [Android-to-Node transport workflow](android-transport-runtime.md) runs A5's isolated Keystore/TLS/Node experiment. [Run 40101591378](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40101591378) at `bd7b676` executed all four named cases on each API with a usable ADB channel and intact mappings. It failed certificate-validity checks: API 26 failed all four cases; API 37 passed the three rejection cases but failed the positive exchange. Android-to-Node success remains unverified. The loopback fixture and ADB reverse mappings do not establish physical USB capture or a production gateway.
 
 The transport workflow prepares a private `ANDROID_ADB_LOG_PATH` under `RUNNER_TEMP` before its first ADB command. This raw server log can include kill-request command-line arguments and is excluded from console output and all artifact uploads. Only the driver's bounded, sanitized marker/source categories may enter test reports; see the [source-backed diagnostic limits](android-transport-runtime.md). No ADB version change or runtime success is implied by this diagnostic setup.
 
