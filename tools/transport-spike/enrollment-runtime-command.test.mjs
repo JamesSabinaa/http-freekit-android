@@ -98,3 +98,15 @@ test('pre-aborted private input and invalid observers never launch a command', a
     /^Error: research_run_cancelled$/);
   await assert.rejects(run(process.execPath, [], { onStdoutChunk: true }), /^Error: invalid_command_configuration$/);
 });
+
+test('aborting a fast child waits for actual close even when a native tree-kill races its exit', { timeout: 20000 }, async () => {
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const controller = new AbortController();
+    const pending = run(process.execPath, ['-e', 'process.exit(0)'], { abortSignal: controller.signal });
+    controller.abort();
+    const result = await pending;
+    assert.equal(result.reason, 'research_run_cancelled');
+    assert.equal(result.closeObserved, true);
+    assert.equal(result.processGroupClosed, true);
+  }
+});

@@ -54,7 +54,11 @@ export async function runDraftCommand(command, args, { cwd, env = process.env, t
       if (child.pid) {
         if (process.platform === 'win32') {
           try { execFileSync('taskkill.exe', ['/PID', String(child.pid), '/T', '/F'], { timeout: 10000, stdio: 'ignore', windowsHide: true }); }
-          catch { if (!closedObserved && child.exitCode === null && child.signalCode === null) throw Error('owned_child_cleanup_failed'); }
+          catch {
+            // A fast child may have exited while synchronous taskkill blocked delivery of its
+            // close event. Yield and observe actual closure before declaring cleanup failure.
+            if (!(await waitClosed(5000))) throw Error('owned_child_cleanup_failed');
+          }
         } else {
           try { process.kill(-child.pid, 'SIGTERM'); } catch (failure) { if (failure.code !== 'ESRCH') throw Error('owned_child_cleanup_failed'); }
           await waitClosed(2000);
