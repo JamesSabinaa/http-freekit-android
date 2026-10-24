@@ -1,0 +1,4 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Loopback mTLS tests only; the library and app manifests are unchanged. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+</manifest>

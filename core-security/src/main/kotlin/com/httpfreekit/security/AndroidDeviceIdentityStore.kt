@@ -9,6 +9,9 @@ import java.security.PrivateKey
 import java.security.PublicKey
 import java.security.Signature
 import java.security.spec.ECGenParameterSpec
+import java.security.cert.X509Certificate
+import java.time.Clock
+import javax.net.ssl.X509ExtendedKeyManager
 
 /** Call off the main thread. Missing entries require explicit re-pairing, never silent replacement. */
 class AndroidDeviceIdentityStore {
@@ -35,7 +38,14 @@ class AndroidDeviceIdentityStore {
         val entry = keyStore.getEntry(alias, null) as? KeyStore.PrivateKeyEntry
             ?: error("Device identity is unavailable; pair again")
         check(entry.privateKey.encoded == null) { "Device identity must be nonexportable" }
-        DeviceIdentity(entry.certificate.publicKey, entry.privateKey)
+        val publicKey = entry.certificate.publicKey
+        val expectedSpki = publicKey.encoded.copyOf()
+        DeviceIdentity(publicKey, entry.privateKey) {
+            synchronized(storeLock) {
+                val current = keyStore.getEntry(alias, null) as? KeyStore.PrivateKeyEntry
+                current != null && MessageDigest.isEqual(expectedSpki, current.certificate.publicKey.encoded)
+            }
+        }
     }
 
     fun delete(desktopId: String): Unit = synchronized(storeLock) {
@@ -55,18 +65,39 @@ class AndroidDeviceIdentityStore {
     }
 }
 
-class DeviceIdentity internal constructor(val publicKey: PublicKey, private val key: PrivateKey) {
-    fun enrollmentRequest(): ByteArray = EnrollmentRequest.create(publicKey, key)
+class DeviceIdentity internal constructor(
+    val publicKey: PublicKey,
+    private val key: PrivateKey,
+    private val isAvailable: () -> Boolean = { true },
+) {
+    fun enrollmentRequest(): ByteArray = EnrollmentRequest.create(publicKey, requiredKey())
+
+    /**
+     * Binds an issued chain to this original signing handle without changing any Keystore entry.
+     * The enrollment authority must already be authenticated for this computer. Call off the UI thread.
+     */
+    fun bindEnrolledClientCertificate(
+        certificateChain: List<X509Certificate>,
+        trustedEnrollmentAuthority: X509Certificate,
+        clock: Clock = Clock.systemUTC(),
+    ): X509ExtendedKeyManager = EnrolledClientKeyManager.bind(this, certificateChain, trustedEnrollmentAuthority, clock)
 
     /** Bounded key-possession challenge; signing never exposes the private key. */
     fun signChallenge(challenge: ByteArray): ByteArray {
         require(challenge.size in 1..16384) { "Invalid challenge size" }
         return Signature.getInstance("SHA256withECDSA").run {
-            initSign(key)
+            initSign(requiredKey())
             update(challenge)
             sign()
         }
     }
+
+    internal fun keyForClientAuthentication(): PrivateKey? = try {
+        if (isAvailable()) key else null
+    } catch (_: Exception) { null }
+
+    private fun requiredKey(): PrivateKey = keyForClientAuthentication()
+        ?: error("Device identity is unavailable; pair again")
 
     override fun toString(): String = "DeviceIdentity(key=[NONEXPORTABLE])"
 }
