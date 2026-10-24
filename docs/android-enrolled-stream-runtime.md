@@ -1,6 +1,6 @@
 # Enrolled stream runtime adapter contract
 
-This finite A22b test adapter implements the [enrolled lifetime profile](research-enrollment-https.md#a22b-enrolled-streaming-lifetime). It changes no production wire fields and claims no new runtime pass. Preserve the verified [A22a revision-1 contract](android-enrollment-runtime.md), default suite, paths and live-only callback behavior.
+This finite A22b test adapter implements the [enrolled lifetime profile](research-enrollment-https.md#a22b-enrolled-streaming-lifetime). It changes no production wire fields. Source 54edefd has [verified API 26/37 runtime evidence](validation.md#android-enrollment-https-runtime); this contract alone is not that evidence. Preserve the verified [A22a revision-1 contract](android-enrollment-runtime.md), default suite, paths and live-only callback behavior.
 
 ## Descriptor and live phases
 
