@@ -28,6 +28,26 @@ export const expectedDraftStreamingTests = Object.freeze([
   'malformedAndOversizedIngressFailBeforeForwarding',
   'prematureCloseCannotCompleteStream',
 ]);
+const scenarios = ['gated', 'backpressure', 'cancel', 'expiry', 'binding', 'malformed', 'premature'];
+const phases = new Set([
+  'setup', 'real-key-issuance', 'authenticated-control',
+  'gated-upload-prefix', 'gated-request-half-close', 'gated-response-prefix', 'gated-ordered-completion',
+  'paused-proxy-actual-write', 'paused-android-actual-write', 'resume-actual-proxy-reader', 'resumed-ordered-completion',
+  'cancel-observe-real-writers', 'cancel-independent-control', 'cancel-real-resource-joins',
+  'expiry-observe-real-writers', 'real-session-expiry', 'expiry-real-resource-joins',
+  'binding-wrong-token', 'binding-other-real-device', 'binding-negative-upgrade-headers', 'binding-original-owner-still-streams',
+  ...['json', 'header', 'oversized'].flatMap(kind => [`malformed-${kind}-actual-ingress`, `malformed-${kind}-no-forwarding`]),
+  'premature-prefix-before-real-close', 'premature-close-real-cleanup',
+]);
+const failureTypes = new Set(['AssertionError', 'IllegalStateException', 'IllegalArgumentException', 'IOException', 'EOFException',
+  'SocketException', 'SocketTimeoutException', 'SSLException', 'SSLHandshakeException', 'SSLPeerUnverifiedException',
+  'InterruptedException', 'CertificateException', 'JSONException']);
+function safeDraftFailure(stack, test) {
+  const match = /^java\.lang\.AssertionError: Draft streaming ([a-z]+) failed at ([a-z-]+) \(([A-Za-z]+)\)\r?$/m.exec(stack);
+  const phase = match && match[1] === scenarios[expectedDraftStreamingTests.indexOf(test)] && phases.has(match[2])
+    ? `Research phase: ${match[1]}/${match[2]} (${failureTypes.has(match[3]) ? match[3] : 'other_exception'}).\n` : '';
+  return phase + safeStack(stack);
+}
 const setupCodes = new Set([
   'selected_device_unavailable', 'research_apk_build_failed', 'research_apk_install_failed',
   'unexpected_research_apk_metadata', 'research_runner_not_registered', 'device_clock_probe_failed',
@@ -79,7 +99,7 @@ export function parseDraftStreamingInstrumentation(output, { exitCode = 0, signa
         else {
           if (pending.current !== undefined && pending.current !== String(active.ordinal)) problem('unexpected_case_ordinal');
           current.state = status === 0 ? 'passed' : 'failed';
-          current.detail = status === 0 ? '' : `Instrumentation status ${status}.\n${safeStack(pending.stack ?? '')}`;
+          current.detail = status === 0 ? '' : `Instrumentation status ${status}.\n${safeDraftFailure(pending.stack ?? '', current.name)}`;
           if (![0, -1, -2, -3, -4].includes(status)) problem('unknown_test_result_code');
           if (status === -3 || status === -4) problem('test_skip_or_assumption_failure');
           if (status === 0 && pending.stack) problem('failure_stack_with_success_status');

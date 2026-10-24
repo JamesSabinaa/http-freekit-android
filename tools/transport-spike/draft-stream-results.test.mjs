@@ -75,6 +75,21 @@ test('redacts failure messages and paths but retains permitted call sites and ty
   assert.match(reports, /DraftStreamingOwner.kt:12/); assert.match(reports, /javax.net.ssl.SSLException/);
   assert.doesNotMatch(reports, /DO_NOT_RETAIN|private\/key/);
 });
+test('only exact fixed research phases for the actual scenario survive wrapped failure redaction', () => {
+  const reports = message => {
+    const detail = `INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: ${message}\n`;
+    const output = bundle(names[0], 1) + bundle(names[0], -2, detail) + names.slice(1).map((name, index) => pair(name, index + 1)).join('') + terminal;
+    return xml(parse(output)) + html(parse(output));
+  };
+  assert.match(reports('Draft streaming gated failed at gated-upload-prefix (IllegalStateException)'), /Research phase: gated\/gated-upload-prefix \(IllegalStateException\)/);
+  for (const message of ['Draft streaming gated failed at PRIVATE_VALUE (IllegalStateException)',
+    'Draft streaming cancel failed at cancel-independent-control (IOException)',
+    'Draft streaming gated failed at gated-upload-prefix (IOException) PRIVATE_VALUE']) {
+    assert.doesNotMatch(reports(message), /Research phase:|PRIVATE_VALUE/);
+  }
+  const unknownType = reports('Draft streaming gated failed at gated-upload-prefix (PRIVATEException)');
+  assert.match(unknownType, /other_exception/); assert.doesNotMatch(unknownType, /PRIVATE/);
+});
 test('success with a failure stack and excessive status metadata fails closed', () => {
   assert.equal(parse(success.replace('current=1\n', 'current=1\nINSTRUMENTATION_STATUS: stack=SECRET\n')).ok, false);
   const fields = Array.from({ length: 35 }, (_, index) => `INSTRUMENTATION_STATUS: field${index}=SECRET\n`).join('');
