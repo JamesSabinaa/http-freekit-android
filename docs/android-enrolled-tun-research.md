@@ -13,9 +13,11 @@ Root owns this profile, the [finite descriptor](../tools/transport-spike/enrolle
 build/manifest integration, shared traffic-source extraction and the additive
 desktop fixture profile. UI owns only new `DraftEnrolledTun` Android test/service/
 consent files in the existing transport-interop research APK. D owns only the
-synthetic traffic app's new finite command and focused response-reader tests.
-F owns the finite report/driver/worker and hosted wiring after the ongoing C4
-host audit completes. Each source owner uses a separate branch/worktree from
+synthetic traffic app's new finite command and focused response-reader tests,
+plus the additive `startTunOrigin` operation in the existing private worker and
+parent wrapper with focused tests. F owns the finite report/driver, alias and
+acknowledgment ownership helpers, and hosted wiring after the C4 host audit.
+Each source owner uses a separate branch/worktree from
 this committed contract; root alone edits shared docs/build files.
 
 ## Actual destination and input
