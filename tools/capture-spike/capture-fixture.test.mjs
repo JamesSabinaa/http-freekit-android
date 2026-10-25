@@ -14,24 +14,29 @@ const http = Buffer.concat([Buffer.from('POST /capture-fixture HTTP/1.1\r\nHost:
 const digest = value => createHash('sha256').update(value).digest('hex');
 const exchange = async (port, payload) => {
   const socket = net.connect(port, '127.0.0.1'); socket.on('error', () => {});
-  const chunks = [];
-  socket.on('data', chunk => chunks.push(chunk));
-  const closed = once(socket, 'close');
-  await once(socket, 'connect'); socket.end(payload); await closed;
-  return Buffer.concat(chunks);
+  try {
+    socket.setTimeout(2000, () => socket.destroy(Error('test_exchange_deadline')));
+    const chunks = [];
+    socket.on('data', chunk => chunks.push(chunk));
+    const closed = once(socket, 'close');
+    await once(socket, 'connect'); socket.end(payload); await closed;
+    return Buffer.concat(chunks);
+  } finally { socket.destroy(); }
 };
 const packet = async (port, bytes) => {
   const socket = dgram.createSocket('udp4');
+  let timer;
   try {
-    const response = once(socket, 'message');
+    const response = Promise.race([once(socket, 'message'), new Promise((_, reject) => { timer = setTimeout(() => reject(Error('test_packet_deadline')), 2000); })]);
     socket.send(bytes, port, '127.0.0.1');
     return (await response)[0];
-  } finally { const closed = once(socket, 'close'); socket.close(); await closed; }
+  } finally { clearTimeout(timer); const closed = once(socket, 'close'); socket.close(); await closed; }
 };
 
 test('actual intercepted IPv4 HTTP/opaque and IPv6 roles preserve full bytes, EOF and reply digest', { timeout: 10000 }, async () => {
   const fixture = await createCaptureFixture({ ports });
   try {
+    assert.equal(captureFixtureDigests.tcpReply, '05dfd86ee3ecc0267ceb6234e1955c1e8c80e34b6323b2b1c87c7d1d84042255');
     for (const [role, bytes] of [[1, http], [2, body], [3, http]]) {
       const response = await exchange(fixture.ports.intercepted, Buffer.concat([Buffer.from([role]), bytes]));
       assert.equal(response.length, 32787); assert.equal(digest(response), captureFixtureDigests.tcpReply);
@@ -52,10 +57,12 @@ test('direct TCP, UDP and real DNS-shaped packets are independently counted with
     assert.equal(digest(await exchange(fixture.ports.opaque, body)), captureFixtureDigests.tcpReply);
     assert.equal(digest(await exchange(fixture.ports.direct, body)), captureFixtureDigests.tcpReply);
     const udp = Buffer.from(Array.from({ length: 256 }, (_, i) => (i * 13 + 5) & 255));
+    assert.equal(captureFixtureDigests.udp, 'ca8c15a2b7d76a0dc5c39dc35deffcfc596d14194b5c09a7513acb1577e99dbe');
     assert.deepEqual(await packet(fixture.ports.udp, udp), udp);
     assert.deepEqual(await packet(fixture.ports.quic, udp), udp);
     const query = Buffer.from('435001000001000000000000076669787475726507696e76616c69640000010001', 'hex');
     const response = await packet(fixture.ports.udp, query);
+    assert.equal(captureFixtureDigests.dns, 'ab8bd414e49bcfde5e1bcc7277d8947246a42dbd5802ee81db4cc4e90bddd8d3');
     assert.equal(response[2], 0x81); assert.equal(response[3], 0x80); assert.equal(digest(response), captureFixtureDigests.dns);
     const snap = fixture.snapshot();
     for (const key of ['directHttp', 'directOpaque', 'directTcp', 'udp', 'dns', 'udp443']) assert.equal(snap[key], 1);
