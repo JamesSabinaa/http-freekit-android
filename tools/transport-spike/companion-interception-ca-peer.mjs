@@ -242,17 +242,24 @@ export async function startInterceptionCaPeer({ scenario, openssl = process.env.
 
 async function main() {
   let owner, terminal = false, count = 0, bytes = Buffer.alloc(0), total = 0, chain = Promise.resolve(), startup;
-  const emit = value => { const output = Buffer.from(JSON.stringify({ format, revision: 1, ...value }) + '\n'); if (output.length > 16384) fail(); process.stdout.write(output); };
+  const emit = async value => {
+    const output = Buffer.from(JSON.stringify({ format, revision: 1, ...value }) + '\n'); if (output.length > 16384) fail();
+    const state = writerState();
+    try { for (let offset = 0; offset < output.length; offset += 8192) await bounded(write(process.stdout, output.subarray(offset, offset + 8192), state), 5000); }
+    catch (error) { process.stdout.destroy(); throw error; }
+    finally { await bounded(state.idle, 5000); if (state.pending !== 0) fail(); }
+  };
   const stop = async failed => {
     if (terminal) return; terminal = true; process.stdin.pause(); clearTimeout(deadline);
-    try { owner = owner ?? await startup; const snapshot = await owner?.close(); emit({ event: failed ? 'failed' : 'closed', snapshot: snapshot ?? null }); }
-    catch { failed = true; emit({ event: 'failed', snapshot: null }); }
+    try { owner = owner ?? await startup; const snapshot = await owner?.close(); await emit({ event: failed ? 'failed' : 'closed', snapshot: snapshot ?? null }); }
+    catch { failed = true; process.exitCode = 1; try { await emit({ event: 'failed', snapshot: null }); } catch { /* Failed output cannot acknowledge closure. */ } }
+    finally { process.stdin.destroy(); }
     if (failed) process.exitCode = 1;
   };
   const deadline = setTimeout(() => { void stop(true); }, 180000);
   try {
     if (process.argv.length !== 4 || process.argv[2] !== '--case') fail();
-    startup = startInterceptionCaPeer({ scenario: process.argv[3] }); owner = await startup; emit({ event: 'ready', ...owner.ready() });
+    startup = startInterceptionCaPeer({ scenario: process.argv[3] }); owner = await startup; await emit({ event: 'ready', ...owner.ready() });
     process.stdin.on('data', chunk => {
       if (terminal) return; total += chunk.length; if (total > 262144 || bytes.length + chunk.length > 8192) { void stop(true); return; }
       bytes = Buffer.concat([bytes, chunk]);
@@ -267,12 +274,12 @@ async function main() {
         if (Object.keys(value).join(',') === 'op' && value.op === 'stop') { void stop(false); return; }
         chain = chain.then(async () => {
           if (terminal) return;
-          if (Object.keys(value).join(',') === 'op,csrDer' && value.op === 'enroll') emit({ event: 'enrolled', ...await owner.enroll(value.csrDer) });
-          else if (Object.keys(value).join(',') === 'op' && value.op === 'snapshot') emit({ event: 'snapshot', snapshot: owner.snapshot() });
-          else if (Object.keys(value).join(',') === 'op' && value.op === 'pause') emit({ event: 'paused', snapshot: await owner.pause() });
-          else if (Object.keys(value).join(',') === 'op' && value.op === 'reopen') emit({ event: 'reopened', ...await owner.reopen() });
-          else if (Object.keys(value).join(',') === 'op' && value.op === 'revoke') emit({ event: 'revoked', ...owner.revoke() });
-          else if (Object.keys(value).join(',') === 'op' && value.op === 'status') emit({ event: 'status', ...owner.status() });
+          if (Object.keys(value).join(',') === 'op,csrDer' && value.op === 'enroll') await emit({ event: 'enrolled', ...await owner.enroll(value.csrDer) });
+          else if (Object.keys(value).join(',') === 'op' && value.op === 'snapshot') await emit({ event: 'snapshot', snapshot: owner.snapshot() });
+          else if (Object.keys(value).join(',') === 'op' && value.op === 'pause') await emit({ event: 'paused', snapshot: await owner.pause() });
+          else if (Object.keys(value).join(',') === 'op' && value.op === 'reopen') await emit({ event: 'reopened', ...await owner.reopen() });
+          else if (Object.keys(value).join(',') === 'op' && value.op === 'revoke') await emit({ event: 'revoked', ...owner.revoke() });
+          else if (Object.keys(value).join(',') === 'op' && value.op === 'status') await emit({ event: 'status', ...owner.status() });
           else fail();
         }).catch(() => stop(true));
       }

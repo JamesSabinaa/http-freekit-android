@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createHash, X509Certificate } from 'node:crypto';
+import { spawn, execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { startInterceptionCaPeer, interceptionCaCases } from './companion-interception-ca-peer.mjs';
 import { createCryptoFixture } from './companion-enrollment-crypto-fixtures.mjs';
@@ -96,5 +97,45 @@ test('an unjoined pre-open wrong-gateway initialization retains its owned direct
       assert.equal(path.dirname(directory), fs.realpathSync(os.tmpdir())); assert(path.basename(directory).startsWith('freekit-interception-ca-'));
       assert.equal(fs.realpathSync(directory), directory); fs.rmSync(directory, { recursive: true, force: true });
     }
+  }
+});
+
+test('valid CLI stop publishes joined closure and exits naturally while the parent input remains open', { timeout: 20000 }, async () => {
+  const child = spawn(process.execPath, [fileURLToPath(new URL('./companion-interception-ca-peer.mjs', import.meta.url)), '--case', 'reference'],
+    { cwd: fileURLToPath(new URL('../../', import.meta.url)), windowsHide: true, detached: process.platform !== 'win32', stdio: ['pipe','pipe','pipe'] });
+  let observed = false, total = 0, retained = Buffer.alloc(0), stderrBytes = 0, closed;
+  const events = [], receipt = new Promise(resolve => { closed = resolve; });
+  child.once('close', (code, signal) => { observed = true; closed({ code, signal }); });
+  child.stdin.on('error', () => {}); child.stderr.on('data', chunk => { stderrBytes += chunk.length; });
+  child.stdout.on('data', chunk => {
+    total += chunk.length; if (total > 32768) return;
+    retained = Buffer.concat([retained, chunk]);
+    while (true) {
+      const end = retained.indexOf(10); if (end < 0) return;
+      const line = retained.subarray(0, end); retained = retained.subarray(end + 1);
+      try {
+        const value = JSON.parse(line.toString('ascii')); events.push(value);
+        if (value.event === 'ready') child.stdin.write('{"op":"stop"}\n');
+      } catch { /* The bounded final assertions retain any malformed response as failure. */ }
+    }
+  });
+  try {
+    const result = await bounded(receipt, 12000);
+    assert.deepEqual(result, { code: 0, signal: null }); assert.equal(stderrBytes, 0); assert(total <= 32768 && retained.length === 0);
+    assert.equal(child.stdin.writableEnded, false); assert.deepEqual(events.map(value => value.event), ['ready','closed']);
+    const state = events[1].snapshot; assert.equal(state.privateDirectoryRemoved, true);
+    assert(state.fixture.closed && state.fixture.storeClosed && state.fixture.listenersClosed && state.fixture.issuerChildrenJoined);
+    for (const key of ['activeSockets','pendingCallbacks','pendingTimers','workers','issuerJobs','signerGroups']) assert.equal(state.fixture[key], 0, key);
+  } finally {
+    // Keep the direct test child until its actual close receipt; failure cleanup never supplies a passing receipt.
+    if (!observed) {
+      if (process.platform === 'win32') {
+        try { execFileSync('taskkill.exe', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore', timeout: 5000, windowsHide: true }); } catch { /* Actual close remains mandatory below. */ }
+      } else {
+        try { process.kill(-child.pid, 'SIGKILL'); } catch (error) { if (error.code !== 'ESRCH') throw error; }
+      }
+      await bounded(receipt, 5000);
+    }
+    child.stdin.destroy(); child.stdout.destroy(); child.stderr.destroy();
   }
 });
