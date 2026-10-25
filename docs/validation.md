@@ -94,6 +94,32 @@ fingerprints, private keys, identity values or provider messages enter that repo
 This proves software-key host behavior. Android Keystore execution, CA installation,
 production approval persistence and protocol freeze remain separate gates.
 
+The separate [A23 saved-credential profile](android-interception-ca-research.md)
+uses `--suite a23` with the original A22 prepare and reopen/Forget methods on either
+side of the new CA retrieval method. All three must run in that order on one fresh
+API 26 or 37 emulator against the same owned worker restart. The driver checks
+actual public-asset byte count and private SHA-256 against both approved results
+and fixture metadata before and after worker reopen. Only booleans and byte counts
+leave the process; the 17 Android CA facts include actual returned DER length and
+joined getter resources. The original A22 approval/drop, saved key, process
+absence, identity/port/result continuity and selective cleanup gates are reused
+without weakening their two-method projection.
+
+Select `--suite a23` with the existing enrollment CLI and independent verifier.
+Its four sanitized files are fixed under `interception-ca` for runtime/XML/HTML
+and `build/reports/interception-ca-runtime/host-cleanup.json` for host cleanup.
+The verifier requires current clean source, exact API and clock, three actual
+starts/completions, fresh bounded files and byte-exact XML/HTML projections plus
+joined emulator cleanup; it rejects desktop arguments. API 37 explicitly checks
+`ACCESS_LOCAL_NETWORK` in the installed self-instrumenting
+`com.httpfreekit.interop.test` package's requested permissions, grants it to that
+owned package for User 0 and requires the exact `granted` readback before
+invocation. The finite mode is `owned_ci_grant`, not a loopback exemption. API 26
+records `not_required` and null grant/readback commands. The developer must use
+the pinned Node 24.22.1, JDK 17, Android SDK and OpenSSL 3 toolchain; host guard
+checks alone are not emulator evidence. No A23 Android method has run at this
+checkpoint, and CA installation, target-app trust and physical USB remain open.
+
 ## Enrolled HTTP-origin factory research
 
 The [enrolled selected-UID TUN suite](android-enrolled-tun-research.md) is prepared
