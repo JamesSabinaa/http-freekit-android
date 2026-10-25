@@ -7,7 +7,7 @@ The original goal is active and incomplete.
 
 ## Current Linux resume position
 
-- Android public `main` is `6898ec8b08f4835e5ffa0b655ad53b94f2450610`.
+- Android public `main` is `cd36f4b560f0822571731dfc0859b3faca584195`.
   The original Windows F worktree and ignored archive below are absent here;
   no original unfinished files were overwritten. The eight-file A23 package
   was reconstructed in an isolated branch and merged through `91c2a85`.
@@ -36,8 +36,21 @@ The original goal is active and incomplete.
   once; reconnect/read share each original 30-second deadline and exact UID0/
   UID2000 admission remains required. Owner tests pass 78/78 plus nine extracted
   ShellCheck blocks; coordinator replay passes 56 clock/suite/cleanup cases.
-  Root owns this checkpoint, evidence documents and integration. Ordinary host
-  CI must precede another fresh full matrix.
+  Root owns this checkpoint, evidence documents and integration.
+- The transition-corrected source `cd36f4b` passes
+  [host run 40210625804](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40210625804):
+  318 JVM methods, 46/46 actual CA receipts and nine clean lint XMLs.
+  [Third matrix 40211577524](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40211577524)
+  again independently passes API26's three methods and cleanup. API37 now
+  completes clock setup, declaration and grant/readback commands (exit0 each),
+  but readbackGranted=false stops all three methods. All cleanup joins.
+- Independent public-AOSP source review reproduces a concrete parser defect:
+  a granted permission with zero flags ends `granted=true` plus LF/CRLF, which
+  the parser retained and rejected. The local one-line correction strips only
+  the line terminator; tests retain all exact package/User0/installed/unique
+  section/permission checks. The actual image's raw dump was not retained, so
+  this is not proof of its flags or cause. Root owns correction/tests/evidence
+  in the coordinator worktree. Ordinary host CI must precede a fresh full matrix.
 - User explicitly authorized continued publication of validated Android main
   checkpoints and existing hosted validation workflows for this goal without
   asking for every checkpoint. This does not authorize paid infrastructure,

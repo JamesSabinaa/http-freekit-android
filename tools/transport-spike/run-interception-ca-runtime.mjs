@@ -60,7 +60,7 @@ export function ownedCaPermissionGranted(output) {
   const runtime = /^((?:^[ \t]+android\.permission\.[A-Z_]+:[^\r\n]*(?:\r?\n|$))*)/m.exec(userSection.slice(headings[0].index + headings[0][0].length));
   if (runtime?.index !== 0) return false;
   const target = [...(runtime?.[1] ?? '').matchAll(/^[ \t]+android\.permission\.ACCESS_LOCAL_NETWORK:[^\r\n]*(?:\r?\n|$)/gm)];
-  return target.length === 1 && /^[ \t]+android\.permission\.ACCESS_LOCAL_NETWORK: granted=true(?:,|[ \t]|$)/.test(target[0][0]);
+  return target.length === 1 && /^[ \t]+android\.permission\.ACCESS_LOCAL_NETWORK: granted=true(?:,|[ \t]|$)/.test(target[0][0].replace(/\r?\n$/, ''));
 }
 
 export async function runInterceptionCaRuntime(options) {

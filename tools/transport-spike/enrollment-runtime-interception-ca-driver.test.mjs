@@ -22,6 +22,12 @@ test('API 37 reads an actual User 0 runtime grant from only the owned installed 
   const owned = `Package [com.httpfreekit.interop.test] (abc123):\n    requested permissions:\n      ${permission}\n`;
   const granted = `${owned}    install permissions:\n      android.permission.INTERNET: granted=true\n  User 0: installed=true\n    runtime permissions:\n      ${permission}: granted=true, flags=[ USER_SET ]\n`;
   assert.equal(ownedCaPermissionGranted(granted), true);
+  const noFlags = granted.replace(', flags=[ USER_SET ]', '');
+  assert.equal(ownedCaPermissionGranted(noFlags), true);
+  assert.equal(ownedCaPermissionGranted(noFlags.replaceAll('\n', '\r\n')), true);
+  assert.equal(ownedCaPermissionGranted(noFlags.replace(/\n$/, '')), true);
+  assert.equal(ownedCaPermissionGranted(noFlags.replace(`${permission}: granted=true\n`, `${permission}: granted=false\n`)), false);
+  assert.equal(ownedCaPermissionGranted(noFlags.replace(`${permission}: granted=true\n`, `${permission}: granted=trueExtra\n`)), false);
   assert.equal(ownedCaPermissionGranted(granted.replace('User 0: installed=true', 'User 0: installed=false hidden=true')), false);
   assert.equal(ownedCaPermissionGranted(granted.replace('User 0: installed=true', 'User 0: hidden=false')), false);
   assert.equal(ownedCaPermissionGranted(granted.replace('User 0: installed=true', 'User 0: installed=true installed=false')), false);

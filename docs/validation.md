@@ -143,7 +143,22 @@ stops earlier during `adb root` clock setup (`unable to connect for root: closed
 before driver admission. Its only retained report is host cleanup, with driver
 exit null, stop0, observed termination/join and emulator exit0. This run contains
 no API37 permission-readback or method result. The workflow's bounded observed-UID
-transition correction must pass host checks before another full matrix.
+transition correction is committed through `cd36f4b` and passes
+[host run 40210625804](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40210625804)
+with the same 318 JVM cases, 46/46 receipts and nine clean lint reports. The
+[third matrix 40211577524](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40211577524)
+again independently passes API26. API37 now completes clock setup, declaration,
+grant and readback commands (both exit0), but the parser records
+`readbackGranted=false`, so all three methods remain unstarted. Package/command
+and emulator cleanup join; no CA evidence exists for that API. Independent
+[public AOSP source](https://android.googlesource.com/platform/frameworks/base/+/refs/heads/main/services/core/java/com/android/server/pm/Settings.java)
+shows zero-flag granted permissions end immediately in LF; the parser retained
+that terminator and rejected `granted=true` with LF/CRLF. A focused correction
+removes only the final line terminator while retaining exact package/User0,
+installed=true, unique runtime section/permission and true-grant checks. Public
+source and host regressions prove that formatting defect, not the actual image's
+unretained flags or the cause of its rejection. New host CI and a fresh full
+matrix are required; A23 acceptance remains open.
 CA installation, target-app trust and physical USB remain open.
 
 ## Enrolled HTTP-origin factory research
