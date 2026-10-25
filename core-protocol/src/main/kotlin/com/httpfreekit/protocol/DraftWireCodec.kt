@@ -46,7 +46,8 @@ sealed class DraftMessage(val protocolVersion: Int, val type: String) {
     }
     class ControlCancel(version: Int = 1) : DraftMessage(version, "cancel")
     class ControlEnd(type: String, val code: String, version: Int = 1) : DraftMessage(version, type)
-    class Stream(type: String, val streamId: String, val code: String? = null, version: Int = 1) : DraftMessage(version, type)
+    class Stream(type: String, val streamId: String, val code: String? = null, version: Int = 1,
+        val proxyMode: String? = null) : DraftMessage(version, type)
 
     companion object {
         private fun immutable(values: Collection<String>): List<String> = Collections.unmodifiableList(ArrayList(values))
@@ -58,7 +59,7 @@ sealed interface DraftDecodeResult {
     data class Rejected(val code: String) : DraftDecodeResult
 }
 
-/** Draft 0.3 only. This codec neither authenticates a peer nor performs transport I/O. */
+/** Draft grammar with the additive 0.5 HTTP-origin mode. No authentication or transport I/O. */
 object DraftWireCodec {
     const val MAX_TEXT_BYTES = 16384
     private val json = Json { isLenient = false }
@@ -70,7 +71,7 @@ object DraftWireCodec {
     private val dateFormat = DateTimeFormatter.ofPattern("uuuu-MM-dd'T'HH:mm:ss'Z'").withResolverStyle(ResolverStyle.STRICT)
     internal val controlErrors = setOf("unsupported_version", "unsupported_capability", "authentication_failed", "device_revoked",
         "proxy_unavailable", "session_limit", "stream_limit", "invalid_message", "network_unreachable", "session_expired")
-    internal val streamErrors = setOf("proxy_unavailable", "stream_limit", "invalid_message", "network_unreachable", "device_revoked", "session_expired")
+    internal val streamErrors = setOf("proxy_unavailable", "stream_limit", "invalid_message", "network_unreachable", "device_revoked", "session_expired", "unsupported_capability")
     private val disconnects = setOf("desktop_stopped", "device_revoked", "session_expired")
 
     fun decode(channel: DraftChannel, bytes: ByteArray): DraftDecodeResult {
@@ -110,10 +111,14 @@ object DraftWireCodec {
                 }
                 DraftChannel.STREAM -> {
                     require(type in setOf("open", "ready", "end_write", "cancel", "error"))
-                    if (type == "error") root.exact("streamId", "code") else root.exact("streamId")
+                    if (type == "error") root.exact("streamId", "code")
+                    else if (type == "open" && "proxyMode" in root) root.exact("streamId", "proxyMode")
+                    else root.exact("streamId")
                     val id = root.string("streamId").also { require(streamIdentifier.matches(it)) }
                     val code = if (type == "error") root.string("code").also { require(it in streamErrors) } else null
-                    DraftMessage.Stream(type, id, code, version)
+                    val proxyMode = if (type == "open" && "proxyMode" in root)
+                        root.string("proxyMode").also { require(it == HttpOriginConnect.PROXY_MODE) } else null
+                    DraftMessage.Stream(type, id, code, version, proxyMode)
                 }
             }
             if (version != 1) DraftDecodeResult.Rejected("unsupported_version") else DraftDecodeResult.Accepted(message)
@@ -154,6 +159,7 @@ object DraftWireCodec {
             is DraftMessage.Stream -> {
                 fields["streamId"] = JsonPrimitive(message.streamId)
                 if (message.code != null) fields["code"] = JsonPrimitive(message.code)
+                if (message.proxyMode != null) fields["proxyMode"] = JsonPrimitive(message.proxyMode)
                 DraftChannel.STREAM
             }
         }

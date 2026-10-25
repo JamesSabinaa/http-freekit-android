@@ -81,6 +81,7 @@ class DraftSession(
     private var activity = longArrayOf(0, 0)
     private var offered = emptySet<String>()
     private var required = emptySet<String>()
+    private var negotiated = emptySet<String>()
     private var token: String? = null
     internal var limits = DraftLimits()
         private set
@@ -105,6 +106,11 @@ class DraftSession(
     fun snapshot() = DraftSessionSnapshot(phase, cause, lease, closure, wsClosedCode != null, streamLeases, chargedBytes, history.size)
     /** Explicit credential access for the authenticated upgrade header only. */
     fun sessionHeader(): String? = token
+    internal fun supportsProxyMode(mode: String?): Boolean = when (mode) {
+        HttpOriginConnect.PROXY_MODE -> HttpOriginConnect.CAPABILITY in negotiated
+        null -> negotiated.any { it == "tcp-http" || it == "tcp-https-connect" }
+        else -> false
+    }
 
     fun text(direction: DraftDirection?, bytes: ByteArray, now: DraftClock): DraftResult {
         observe(now)?.let { return DraftResult(it) }
@@ -127,10 +133,11 @@ class DraftSession(
                 if (now.utcMillis < end - 1800000) return fail("invalid_message")
                 if (!offered.containsAll(message.capabilities)) return fail("invalid_message")
                 if (!supported.containsAll(message.capabilities) || !message.capabilities.containsAll(required) ||
-                    message.capabilities.none { it == "tcp-http" || it == "tcp-https-connect" }) return fail("unsupported_capability")
+                    message.capabilities.none { it == "tcp-http" || it == "tcp-https-connect" || it == HttpOriginConnect.CAPABILITY }) return fail("unsupported_capability")
                 if (message.limits.maxFrameBytes > pool.maxBytes) return fail("invalid_message")
                 if (!pool.acquireSession(this, trustedDeviceId)) return fail("session_limit")
                 lease = true; token = message.sessionId; limits = message.limits
+                negotiated = message.capabilities.toSet()
                 readyMono = now.monotonicMillis; lifetime = end - now.utcMillis; expires = end
                 activity = longArrayOf(now.monotonicMillis, now.monotonicMillis)
                 phase = DraftControlPhase.ACTIVE
@@ -281,6 +288,7 @@ class DraftStream internal constructor(private val owner: DraftSession, private 
         if (direction == null) return fail("invalid_message")
         if (phase == DraftStreamPhase.AWAITING_OPEN) {
             if (message.type != "open" || direction != DraftDirection.CLIENT) return fail("invalid_message")
+            if (!owner.supportsProxyMode(message.proxyMode)) return fail("unsupported_capability")
             owner.claim(message.streamId)?.let { return fail(it) }
             id = message.streamId; phase = DraftStreamPhase.AWAITING_READY
         } else {
