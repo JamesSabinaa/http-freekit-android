@@ -17,10 +17,11 @@ export async function createCaptureFixture({ ports: requested = { http: 80, opaq
   if (Object.keys(requested).sort().join(',') !== 'http,opaque,quic,udp' ||
       Object.values(requested).some(port => !Number.isInteger(port) || port < 0 || port > 65535)) throw Error('invalid_capture_ports');
   const counters = Object.fromEntries(['directHttp', 'directOpaque', 'directTcp', 'udp', 'dns', 'udp443',
-    'interceptedHttp', 'interceptedOpaque', 'interceptedIpv6', 'uploadBytes', 'downloadBytes', 'invalidRequests', 'heldRequestsClosed', 'tcpConnections', 'udpDatagrams'].map(key => [key, 0]));
+    'interceptedHttp', 'interceptedOpaque', 'interceptedIpv6', 'uploadBytes', 'downloadBytes', 'invalidRequests', 'heldRequestsClosed', 'heldCloseRequests', 'tcpConnections', 'udpDatagrams'].map(key => [key, 0]));
   const sockets = new Map(), timers = new Set(), socketTimers = new Map(), listeners = [];
   let pendingCallbacks = 0, closed = false, closing, holdNext = false;
   const held = new Set();
+  let heldRecord = null, heldCloseRequested = false;
   const snapshot = () => Object.freeze({ ...counters, activeSockets: sockets.size, pendingCallbacks,
     timers: timers.size, listeners: closed ? 0 : listeners.length, heldConnections: held.size, closed });
   const own = socket => {
@@ -52,6 +53,7 @@ export async function createCaptureFixture({ ports: requested = { http: 80, opaq
       valid = true;
       if (kind === 'intercepted' && holdNext) {
         holdNext = false; held.add(socket); intentionallyHeld = true;
+        heldRecord = { socket, closed: sockets.get(socket) };
         const old = socketTimers.get(socket); clearTimeout(old); timers.delete(old);
         const timer = setTimeout(() => socket.destroy(), 60000); socketTimers.set(socket, timer); timers.add(timer);
         return;
@@ -115,18 +117,32 @@ export async function createCaptureFixture({ ports: requested = { http: 80, opaq
     ports.intercepted = await tcp('intercepted', 0);
     ports.udp = await datagram('udp', requested.udp);
     ports.quic = await datagram('udp443', requested.quic);
+    const sendSnapshot = response => {
+      if (response.destroyed) return;
+      const bytes = Buffer.from(JSON.stringify(snapshot()));
+      response.setHeader('Content-Type', 'application/json'); response.setHeader('Content-Length', bytes.length); response.end(bytes);
+    };
     const control = http.createServer((request, response) => {
       response.setHeader('Connection', 'close');
-      if (request.method !== 'GET' || !['/snapshot', '/hold-next'].includes(request.url) || request.headers['transfer-encoding'] ||
+      if (request.method !== 'GET' || !['/snapshot', '/hold-next', '/close-held'].includes(request.url) || request.headers['transfer-encoding'] ||
           (request.headers['content-length'] !== undefined && request.headers['content-length'] !== '0')) {
         response.writeHead(400); response.end(); return;
       }
       if (request.url === '/hold-next') {
-        if (holdNext || held.size || closing) { response.writeHead(409); response.end(); return; }
+        if (holdNext || heldRecord || closing) { response.writeHead(409); response.end(); return; }
         holdNext = true;
       }
-      const bytes = Buffer.from(JSON.stringify(snapshot()));
-      response.setHeader('Content-Type', 'application/json'); response.setHeader('Content-Length', bytes.length); response.end(bytes);
+      if (request.url === '/close-held') {
+        if (!heldRecord || heldCloseRequested || closing) {
+          response.writeHead(409, { 'Content-Length': '0' }); response.end(); return;
+        }
+        heldCloseRequested = true; counters.heldCloseRequests++;
+        // Explicit fixture cleanup, not evidence that a remote Stop closed its idle peer.
+        if (!heldRecord.socket.destroyed) heldRecord.socket.destroy();
+        heldRecord.closed.then(() => sendSnapshot(response));
+        return;
+      }
+      sendSnapshot(response);
     });
     control.on('connection', own);
     const controlReady = listen(control); control.listen(0, '127.0.0.1'); ports.control = await controlReady;

@@ -12,6 +12,23 @@ const ports = { http: 0, opaque: 0, udp: 0, quic: 0 };
 const body = Buffer.from(Array.from({ length: 16421 }, (_, i) => (i * 31 + 7) & 255));
 const http = Buffer.concat([Buffer.from('POST /capture-fixture HTTP/1.1\r\nHost: capture-fixture.invalid\r\nContent-Length: 16421\r\nConnection: close\r\n\r\n'), body]);
 const digest = value => createHash('sha256').update(value).digest('hex');
+const control = (fixture, path) => new Promise((resolve, reject) => {
+  const request = httpClient.get({ host: '127.0.0.1', port: fixture.ports.control, path, agent: false }, response => {
+    const chunks = [];
+    response.on('data', chunk => chunks.push(chunk));
+    response.once('error', reject);
+    response.once('end', () => {
+      try { resolve({ statusCode: response.statusCode, snapshot: chunks.length ? JSON.parse(Buffer.concat(chunks)) : null }); }
+      catch { reject(Error('test_control_response')); }
+    });
+  });
+  request.setTimeout(2000, () => request.destroy(Error('test_control_deadline'))); request.once('error', reject);
+});
+const until = async condition => {
+  const deadline = performance.now() + 2000;
+  while (!condition() && performance.now() < deadline) await new Promise(resolve => setTimeout(resolve, 5));
+  assert.ok(condition(), 'test_condition_deadline');
+};
 const exchange = async (port, payload) => {
   const socket = net.connect(port, '127.0.0.1'); socket.on('error', () => {});
   try {
@@ -119,4 +136,86 @@ test('a real TCP reset before payload cannot disappear into zero completed-messa
     assert.equal(fixture.snapshot().directTcp, 0);
     assert.equal(fixture.snapshot().activeSockets, 0);
   } finally { await fixture.close(); }
+});
+
+test('explicit held cleanup joins the real half-open receiver without claiming remote Stop closure', { timeout: 10000 }, async () => {
+  const fixture = await createCaptureFixture({ ports });
+  let socket;
+  try {
+    const missing = await control(fixture, '/close-held');
+    assert.equal(missing.statusCode, 409); assert.equal(missing.snapshot, null);
+    assert.equal(fixture.snapshot().heldCloseRequests, 0);
+    assert.equal((await control(fixture, '/hold-next')).statusCode, 200);
+    socket = net.connect({ port: fixture.ports.intercepted, host: '127.0.0.1', allowHalfOpen: true });
+    socket.on('error', () => {});
+    let responseBytes = 0; socket.on('data', chunk => { responseBytes += chunk.length; });
+    await once(socket, 'connect'); socket.end(Buffer.concat([Buffer.from([1]), http]));
+    await until(() => fixture.snapshot().heldConnections === 1 && fixture.snapshot().activeSockets === 1);
+    assert.equal(socket.destroyed, false); assert.equal(socket.readableEnded, false);
+    assert.equal(fixture.snapshot().heldRequestsClosed, 0);
+    const clientClosed = new Promise(resolve => socket.once('close', resolve));
+    const result = await control(fixture, '/close-held');
+    assert.equal(result.statusCode, 200); assert.equal(result.snapshot.heldCloseRequests, 1);
+    assert.equal(result.snapshot.heldRequestsClosed, 1); assert.equal(result.snapshot.heldConnections, 0);
+    assert.equal(result.snapshot.pendingCallbacks, 0);
+    await clientClosed;
+    assert.equal(responseBytes, 0);
+    const duplicate = await control(fixture, '/close-held');
+    assert.equal(duplicate.statusCode, 409); assert.equal(duplicate.snapshot, null);
+    assert.equal(fixture.snapshot().heldCloseRequests, 1); assert.equal(fixture.snapshot().heldRequestsClosed, 1);
+    assert.equal(fixture.snapshot().interceptedHttp, 0); assert.equal(fixture.snapshot().invalidRequests, 0);
+    assert.equal((await control(fixture, '/hold-next')).statusCode, 409);
+  } finally {
+    socket?.destroy(); const closed = await fixture.close();
+    for (const key of ['activeSockets', 'pendingCallbacks', 'timers', 'listeners', 'heldConnections']) assert.equal(closed[key], 0);
+  }
+});
+
+test('duplicate concurrent held cleanup admits one command and joins all real sockets and timers', { timeout: 10000 }, async () => {
+  const fixture = await createCaptureFixture({ ports });
+  let socket;
+  try {
+    await control(fixture, '/hold-next');
+    socket = net.connect({ port: fixture.ports.intercepted, host: '127.0.0.1', allowHalfOpen: true }); socket.on('error', () => {}); socket.resume();
+    await once(socket, 'connect'); socket.end(Buffer.concat([Buffer.from([1]), http]));
+    await until(() => fixture.snapshot().heldConnections === 1);
+    const clientClosed = new Promise(resolve => socket.once('close', resolve));
+    const results = await Promise.all([control(fixture, '/close-held'), control(fixture, '/close-held')]);
+    assert.deepEqual(results.map(result => result.statusCode).sort(), [200, 409]);
+    const acknowledged = results.find(result => result.statusCode === 200).snapshot;
+    assert.equal(acknowledged.heldRequestsClosed, 1); assert.equal(acknowledged.heldConnections, 0);
+    await clientClosed;
+    const snap = fixture.snapshot();
+    assert.equal(snap.heldCloseRequests, 1); assert.equal(snap.heldRequestsClosed, 1);
+  } finally {
+    socket?.destroy(); const closed = await fixture.close();
+    for (const key of ['activeSockets', 'pendingCallbacks', 'timers', 'listeners', 'heldConnections']) assert.equal(closed[key], 0);
+  }
+});
+
+test('already closed held record acknowledges one cleanup command without another close increment', { timeout: 70000 }, async () => {
+  const fixture = await createCaptureFixture({ ports });
+  let socket;
+  try {
+    await control(fixture, '/hold-next');
+    socket = net.connect({ port: fixture.ports.intercepted, host: '127.0.0.1', allowHalfOpen: true }); socket.on('error', () => {}); socket.resume();
+    await once(socket, 'connect'); socket.end(Buffer.concat([Buffer.from([1]), http]));
+    await until(() => fixture.snapshot().heldConnections === 1);
+    const clientClosed = new Promise(resolve => socket.once('close', resolve));
+    const started = performance.now(), deadline = started + 65000;
+    while (fixture.snapshot().heldConnections !== 0 && performance.now() < deadline) await new Promise(resolve => setTimeout(resolve, 25));
+    // Exercise the existing real 60-second fixture deadline, without shortening or replacing its timer.
+    assert.ok(performance.now() - started >= 59000);
+    assert.equal(fixture.snapshot().heldConnections, 0); assert.equal(fixture.snapshot().heldRequestsClosed, 1);
+    assert.equal(fixture.snapshot().heldCloseRequests, 0);
+    await clientClosed;
+    const result = await control(fixture, '/close-held');
+    assert.equal(result.statusCode, 200); assert.equal(result.snapshot.heldCloseRequests, 1);
+    assert.equal(result.snapshot.heldRequestsClosed, 1); assert.equal(result.snapshot.heldConnections, 0);
+    assert.equal((await control(fixture, '/close-held')).statusCode, 409);
+    assert.equal(fixture.snapshot().heldCloseRequests, 1); assert.equal(fixture.snapshot().heldRequestsClosed, 1);
+  } finally {
+    socket?.destroy(); const closed = await fixture.close();
+    for (const key of ['activeSockets', 'pendingCallbacks', 'timers', 'listeners', 'heldConnections']) assert.equal(closed[key], 0);
+  }
 });
