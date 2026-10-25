@@ -1,8 +1,10 @@
 # Delivery roadmap and progress
 
-Updated 25 October 2026. Implementation is paused at the user's request.
-The full scope remains the [implementation plan](implementation-plan.md).
-Start an interrupted session with the [resume checkpoint](resume-checkpoint.md).
+Updated 25 October 2026. Implementation has resumed from the [checkpoint](resume-checkpoint.md).
+The full scope remains the [implementation plan](implementation-plan.md). The
+recorded Windows F worktree and ignored backup are absent in this Linux checkout;
+the eight uncommitted A23b files have not been recovered here. Their assigned
+owner is reconstructing the package from checked source in an isolated worktree.
 
 ## Current position
 
@@ -17,7 +19,7 @@ and isolated research tests; those tests do not establish a finished capture app
 | Identity and enrollment | Keystore identity, scoped TLS, approval, saved credentials, restart/recovery, revocation and expiry research | Production credential/approval binding and remaining v1 decisions |
 | Capture and proxy transport | Native packet checks and local policy/HTTP/HTTPS H1/Upgrade composition | Actual enrolled selected-UID TUN execution, production integration and physical USB |
 | Public interception CA | Compiled getter and real Node TLS endpoint; 35 integrated JVM methods and 46 receipts in the actual TLS proof pass; APK assembly and strict lint pass | Execute the new Android saved-credential method on API 26/37 |
-| Android CA runtime driver | Eight local unfinished files preserved; 244 selected Node checks pass, including late-approval fences | Final review/commit, clean-source CLI check, workflow wiring and real emulator run |
+| Android CA runtime driver | The paused Windows worktree recorded 244 passing selected Node checks, but its eight uncommitted files and backup are unavailable in this checkout | Reconstruct and independently review/commit the driver, check clean-source CLI refusal, wire workflow and execute real emulator run |
 | Desktop dependency | Reviewed local ten-commit branch through `2ee70e86`; local integration checks pass | Separate publication approval; production desktop UI/gateway wiring |
 
 The latest completed code checkpoint is `94a47c7` (CA proof input/source binding).
