@@ -24,6 +24,8 @@ dependencies {
     androidTestImplementation(project(":core-security"))
     androidTestImplementation(project(":core-protocol"))
     androidTestImplementation(project(":transport-framing"))
+    androidTestImplementation(project(":core-capture"))
+    androidTestImplementation(project(":capture-transport-research"))
     androidTestImplementation(libs.android.test.runner)
     androidTestImplementation(libs.android.test.junit)
 }

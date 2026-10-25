@@ -14,18 +14,22 @@ import com.httpfreekit.interop.DraftEnrollmentResearchChecks.hash
 /** Shared research enrollment checks; no transport, key or certificate-entry replacement. */
 internal object DraftEnrollmentResearchChecks {
     val REQUESTED = listOf("tcp-http", "tcp-https-connect")
-    fun pair(seed: DraftEnrollmentSeed, identity: DeviceIdentity): DraftEnrollmentMessage {
+    fun pair(seed: DraftEnrollmentSeed, identity: DeviceIdentity,
+        requestedCapabilities: List<String> = REQUESTED): DraftEnrollmentMessage {
+        val requested = checkedCapabilities(requestedCapabilities)
         val csr = identity.enrollmentRequest().also { check(it.size in 1..4096) }
         return DraftEnrollmentCodec.message(DraftEnrollmentChannel.PAIR_REQUEST, linkedMapOf(
             "protocolVersion" to 1, "type" to "pair", "desktopId" to seed.desktopId, "invitationId" to seed.invitationId,
             "invitationSecret" to seed.secretForEnrollment(), "csrDer" to b64(csr), "deviceName" to "Android enrollment research",
-            "capabilities" to REQUESTED))
+            "capabilities" to requested))
     }
     fun validateApproved(value: DraftEnrollmentMessage.Approved, identity: DeviceIdentity, desktop: String,
-        enrollment: String, resultDeadline: String): Pair<X509Certificate, X509Certificate> {
+        enrollment: String, resultDeadline: String,
+        requestedCapabilities: List<String> = REQUESTED): Pair<X509Certificate, X509Certificate> {
+        val requested = checkedCapabilities(requestedCapabilities)
         check(value.desktopId == desktop && value.enrollmentId == enrollment && value.resultExpiresAt == resultDeadline &&
             Instant.now().isBefore(Instant.parse(value.resultExpiresAt)) && value.capabilities.isNotEmpty() &&
-            REQUESTED.containsAll(value.capabilities)) { "Approved enrollment context changed" }
+            requested.containsAll(value.capabilities)) { "Approved enrollment context changed" }
         val leaf = DraftEnrollmentHttpsClient.certificate(unb64(value.clientCertificateDer))
         val authority = DraftEnrollmentHttpsClient.certificate(unb64(value.enrollmentAuthorityDer))
         check(leaf.publicKey.encoded.contentEquals(identity.publicKey.encoded) && leaf.notAfter.toInstant() == Instant.parse(value.credentialExpiresAt) &&
@@ -34,6 +38,10 @@ internal object DraftEnrollmentResearchChecks {
         val alias = checkNotNull(manager.chooseClientAlias(arrayOf("EC"), null, null))
         check(checkNotNull(manager.getPrivateKey(alias)).encoded == null) { "Enrollment key was exportable" }
         return leaf to authority
+    }
+    private fun checkedCapabilities(values: List<String>): List<String> = values.toList().also { requested ->
+        check(requested.size in 1..16 && requested.distinct().size == requested.size &&
+            requested.all { it.matches(Regex("[a-z][a-z0-9-]{0,31}")) }) { "Invalid requested research capabilities" }
     }
     fun keyEvidence(identity: DeviceIdentity): List<ByteArray> {
         val keys = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
