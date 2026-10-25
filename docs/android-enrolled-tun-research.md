@@ -10,13 +10,13 @@ and production integration remain separate requirements. Do not infer those
 results from this method or freeze v1 before the remaining foundation gates.
 
 Root owns this profile, the [finite descriptor](../tools/transport-spike/enrolled-tun-descriptor.mjs),
-build/manifest integration, shared traffic-source extraction and the additive
-desktop fixture profile. UI owns only new `DraftEnrolledTun` Android test/service/
+build/manifest integration, shared traffic-source extraction, the additive
+desktop fixture profile and hosted workflow wiring. UI owns only new `DraftEnrolledTun` Android test/service/
 consent files in the existing transport-interop research APK. D owns only the
 synthetic traffic app's new finite command and focused response-reader tests,
 plus the additive `startTunOrigin` operation in the existing private worker and
 parent wrapper with focused tests. F owns the finite report/driver, alias and
-acknowledgment ownership helpers, and hosted wiring after the C4 host audit.
+acknowledgment ownership helpers after the C4 host audit.
 After the worker handoff, D also owns only the new fixed research-package owner
 helper and focused tests: verify all three APK signers, install/clean up the two
 extra packages and grant only the fixed research permissions. The existing host
