@@ -12,5 +12,7 @@ This independent implementation does not incorporate HTTP Toolkit Android source
 | JUnit 4, Hamcrest | Tests only | [EPL-1.0](https://github.com/junit-team/junit4/blob/main/LICENSE-junit.txt), [BSD-3-Clause](https://github.com/hamcrest/JavaHamcrest/blob/master/LICENSE.txt) |
 | ws | Node test peer only | [MIT](https://github.com/websockets/ws/blob/master/LICENSE) |
 | Bouncy Castle bcprov-jdk18on 1.86 | ASN.1 encoding for device PKCS#10 requests in core-security; not installed as a global provider | [Bouncy Castle licence](third-party/bouncycastle-LICENSE.txt), [upstream source](https://github.com/bcgit/bc-java) |
+| Java-WebSocket 1.6.0 | Public maintained engine in isolated capture transport research; caller owns sockets, queues and I/O workers | [MIT](https://github.com/TooTallNate/Java-WebSocket/blob/v1.6.0/LICENSE), [source](https://github.com/TooTallNate/Java-WebSocket/tree/v1.6.0) |
+| SLF4J API and NOP 2.0.13 | Engine logging facade with explicit no-op provider; no payload logger backend | [MIT](https://www.slf4j.org/license.html), [source](https://github.com/qos-ch/slf4j) |
 
 The Gradle distribution includes additional third-party licences. Native engine candidate licence findings are recorded in the [foundation decision](docs/decisions/0001-foundation.md); they are not shipped dependencies. A complete resolved runtime dependency inventory, bundled notices, and licence check remain release gates before distributing a production app.

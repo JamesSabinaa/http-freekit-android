@@ -2,6 +2,8 @@
 
 Status: normative appendix to [the canonical companion draft](protocol.md), revision **0.3**, not a frozen production contract. The existing pairing/enrollment proposal is unchanged. Kotlin and Node implement this appendix against one conformance corpus before an authenticated WebSocket streaming proof. No production gateway or capture integration may infer a full v1 freeze from those checks.
 
+The additive [draft-0.5 HTTP origin extension](protocol-http-origin.md) defines one optional open field and a third implemented traffic capability. Its explicit mode/capability rules apply where implemented; all base encodings and existing A19 expectations remain unchanged.
+
 ## Scope and transport boundary
 
 One mutually authenticated control WebSocket owns a short-lived session. Each proxy flow uses its own mutually authenticated stream WebSocket and the same registry-authorized device. The HTTP upgrade must validate `X-FreeKit-Session`, containing exactly the session ID below, against that device's active control session. Never accept it in a URL or as a desktop-management credential. Registry authorization, TLS, Origin rejection, gateway/proxy socket ownership and timers remain adapter responsibilities; a pure codec or lifecycle model does not establish them.
@@ -81,7 +83,7 @@ Control client cancellation invalidates owned streams as `cancelled` with local 
 
 | Type | Sender | Additional fields |
 | --- | --- | --- |
-| `open` | client | `streamId` |
+| `open` | client | `streamId`; optional draft-0.5 `proxyMode` as specified by the extension |
 | `ready` | gateway | `streamId` |
 | `end_write` | either | `streamId` |
 | `cancel` | either | `streamId` |
