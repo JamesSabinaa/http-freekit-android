@@ -121,3 +121,29 @@ test('wire snapshots and default diagnostics never expose retained identity mate
   code(() => encodeControl({ protocolVersion: 1, get type() { read = true; return 'cancel'; } }));
   assert.equal(read, false);
 });
+
+
+test('HTTP-origin open mode is explicit, canonical and additive to unchanged legacy bytes', () => {
+  const legacy = { protocolVersion: 1, type: 'open', streamId: 'flow' };
+  assert.equal(encodeStream(legacy).toString(), '{"protocolVersion":1,"streamId":"flow","type":"open"}');
+  const modern = { ...legacy, proxyMode: 'http-origin-connect' };
+  assert.deepEqual(decodeStream(encodeStream(modern)).toWire(), modern);
+  assert.equal(encodeStream(modern).toString(), '{"protocolVersion":1,"proxyMode":"http-origin-connect","streamId":"flow","type":"open"}');
+  const failed = { protocolVersion: 1, type: 'error', streamId: 'flow', code: 'unsupported_capability' };
+  assert.deepEqual(decodeStream(encodeStream(failed)).toWire(), failed);
+});
+
+test('mode schema does not infer support, permit unknown fields or mask defective versioned messages', () => {
+  const base = { protocolVersion: 1, type: 'open', streamId: 'flow' };
+  for (const proxyMode of [null, false, '', 'tcp-http', 'http-origin-connect\n', {}, []]) {
+    code(() => encodeStream({ ...base, proxyMode }));
+    code(() => encodeStream({ ...base, protocolVersion: 2, proxyMode }));
+  }
+  for (const type of ['ready', 'end_write', 'cancel', 'error']) code(() => encodeStream({ ...base, type, proxyMode: 'http-origin-connect' }));
+  code(() => encodeStream({ ...base, protocolVersion: 2, proxyMode: 'http-origin-connect' }), 'unsupported_version');
+  code(() => encodeStream({ ...base, proxyMode: 'http-origin-connect', address: 'private.example' }));
+  let invoked = false;
+  const accessor = { ...base };
+  Object.defineProperty(accessor, 'proxyMode', { enumerable: true, get() { invoked = true; throw Error('private'); } });
+  code(() => encodeStream(accessor)); assert.equal(invoked, false);
+});

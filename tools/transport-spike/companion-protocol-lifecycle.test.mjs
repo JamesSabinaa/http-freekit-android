@@ -359,3 +359,66 @@ test('readiness combined defects follow identity, expiry, capability negotiation
   assert.equal(attempt({ expiresAt: '2025-01-01T00:00:00Z', capabilities: ['unoffered'] }).code, 'session_expired');
   assert.equal(attempt({ expiresAt: '2026-01-01T00:30:01Z' }).code, 'invalid_message');
 });
+
+
+const originCapability = 'tcp-http-origin-connect';
+function c2Active({ supported = [originCapability], offered = supported, negotiated = supported, lifetime = 300000 } = {}) {
+  const pool = new CompanionBudgetPool();
+  const control = new CompanionControl({ pool, deviceId: 'c2-device', desktopId: 'c2-desktop', supportedCapabilities: supported, clock: clock() });
+  ok(control.text('client', controlWire({ type: 'hello', capabilities: offered, requiredCapabilities: [] }), clock()));
+  ok(control.text('gateway', controlWire({ type: 'session_ready', capabilities: negotiated, desktopId: 'c2-desktop', sessionId: token,
+    expiresAt: new Date(utc + lifetime).toISOString().replace('.000Z', 'Z'), limits }), clock()));
+  return { pool, control, allocate: () => { const result = control.allocateStream('c2-device', token, clock()); ok(result); return result.stream; } };
+}
+
+test('the third implemented traffic capability can establish a session and ordered HTTP-origin stream alone', () => {
+  const fixture = c2Active(), stream = fixture.allocate();
+  ok(stream.text('client', streamWire('open', 'c2', { proxyMode: 'http-origin-connect' }), clock()));
+  ok(stream.text('gateway', streamWire('ready', 'c2'), clock()));
+  ok(stream.binary('client', bytes('abcd'), clock()));
+  assert.deepEqual(stream.text('client', streamWire('end_write', 'c2'), clock()).effects, []);
+  assert.deepEqual(stream.drain('client', 4, clock()).effects.map(e => e.direction), ['client']);
+  ok(stream.text('gateway', streamWire('end_write', 'c2'), clock()));
+  ok(stream.wsClosed(1000, clock())); ok(stream.resourcesClosed(clock()));
+  assert.equal(stream.snapshot().phase, 'complete');
+  assert.deepEqual(fixture.pool.snapshot(), { sessionLeases: 1, streamLeases: 0, chargedBytes: 0 });
+  assert.deepEqual(Object.keys(fixture.control.snapshot()), ['phase','cause','sessionLease','webSocketClosed','resourcesReleased','historyCount','streamLeases','chargedBytes']);
+});
+
+test('unsupported mode keeps its pending lease until closure and never claims the requested stream ID', () => {
+  for (const modern of [false, true]) {
+    const fixture = c2Active({ supported: modern ? ['tcp-http'] : [originCapability] });
+    const denied = fixture.allocate();
+    assert.equal(denied.text('client', streamWire('open', 'reusable', modern ? { proxyMode: 'http-origin-connect' } : {}), clock()).code, 'unsupported_capability');
+    assert.equal(fixture.control.snapshot().historyCount, 0); assert.equal(fixture.pool.snapshot().streamLeases, 1);
+    ok(denied.resourcesClosed(clock())); assert.equal(fixture.pool.snapshot().streamLeases, 0);
+    const allowed = fixture.allocate();
+    ok(allowed.text('client', streamWire('open', 'reusable', modern ? {} : { proxyMode: 'http-origin-connect' }), clock()));
+    assert.equal(fixture.control.snapshot().historyCount, 1);
+  }
+});
+
+test('open support uses the actual negotiated subset, independently of offered and locally supported capabilities', () => {
+  for (const negotiated of [[originCapability], ['tcp-http']]) {
+    const fixture = c2Active({ supported: ['tcp-http', originCapability], negotiated });
+    const stream = fixture.allocate();
+    const unsupported = negotiated[0] === originCapability ? {} : { proxyMode: 'http-origin-connect' };
+    assert.equal(stream.text('client', streamWire('open', 'flow', unsupported), clock()).code, 'unsupported_capability');
+    assert.equal(fixture.control.snapshot().historyCount, 0);
+  }
+});
+
+test('role, phase and expiry checks precede unsupported mode; mode support precedes ID claim', () => {
+  const wrongRole = c2Active({ supported: ['tcp-http'] });
+  assert.equal(wrongRole.allocate().text('gateway', streamWire('open', 'flow', { proxyMode: 'http-origin-connect' }), clock()).code, 'invalid_message');
+  const expired = c2Active({ supported: ['tcp-http'], lifetime: 1000 });
+  const pending = expired.allocate();
+  assert.equal(pending.text('client', streamWire('open', 'flow', { proxyMode: 'http-origin-connect' }), clock(1000)).code, 'session_expired');
+  const repeated = c2Active(); const first = repeated.allocate();
+  ok(first.text('client', streamWire('open', 'claimed', { proxyMode: 'http-origin-connect' }), clock()));
+  assert.equal(first.text('client', streamWire('open', 'claimed'), clock()).code, 'invalid_message');
+  ok(first.resourcesClosed(clock()));
+  const second = repeated.allocate();
+  assert.equal(second.text('client', streamWire('open', 'claimed'), clock()).code, 'unsupported_capability');
+  assert.equal(repeated.control.snapshot().historyCount, 1);
+});

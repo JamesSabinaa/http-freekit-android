@@ -1,14 +1,15 @@
-// Research reference for docs/protocol-streams.md draft 0.3. No transport or authentication.
+// Research reference for stream draft0.3 plus HTTP-origin draft0.5. No transport or authentication.
 import { inspect } from 'node:util';
 
 export const MAX_TEXT_BYTES = 16384;
 export const CONTROL_ERRORS = Object.freeze(['unsupported_version', 'unsupported_capability', 'authentication_failed',
   'device_revoked', 'proxy_unavailable', 'session_limit', 'stream_limit', 'invalid_message', 'network_unreachable', 'session_expired']);
 export const STREAM_ERRORS = Object.freeze(['proxy_unavailable', 'stream_limit', 'invalid_message',
-  'network_unreachable', 'device_revoked', 'session_expired']);
+  'network_unreachable', 'device_revoked', 'session_expired', 'unsupported_capability']);
 export const DEFAULT_LIMITS = Object.freeze({ maxFrameBytes: 65536, maxQueuedBytesPerStream: 1048576,
   maxQueuedBytesPerDevice: 4194304, maxConcurrentStreams: 64, maxQueuedFramesPerStream: 64, maxOpenedStreamsPerSession: 4096 });
 export const DEFAULT_CAPABILITIES = Object.freeze(['tcp-http', 'tcp-https-connect']);
+export const TRAFFIC_CAPABILITIES = Object.freeze([...DEFAULT_CAPABILITIES, 'tcp-http-origin-connect']);
 
 const errorCodes = new Set([...CONTROL_ERRORS, 'message_too_large']);
 export class CompanionProtocolError extends Error {
@@ -112,10 +113,12 @@ function schema(channel, value) {
     cancel: [], disconnect: ['code'], error: ['code'],
   } : { open: ['streamId'], ready: ['streamId'], end_write: ['streamId'], cancel: ['streamId'], error: ['code', 'streamId'] };
   if (typeof type !== 'string' || !Object.hasOwn(fields, type)) invalid();
-  exact(value, ['protocolVersion', 'type', ...fields[type]]);
+  const originMode = channel === 'stream' && type === 'open' && Object.hasOwn(value, 'proxyMode');
+  exact(value, ['protocolVersion', 'type', ...fields[type], ...(originMode ? ['proxyMode'] : [])]);
   const protocolVersion = integer(value.protocolVersion, 1, 2147483647);
   const wire = { protocolVersion, type };
   if (channel === 'stream') wire.streamId = text(value.streamId, /^[A-Za-z0-9_-]{1,64}$/);
+  if (originMode) wire.proxyMode = text(value.proxyMode, /^http-origin-connect$/);
   if (type === 'hello') {
     wire.capabilities = validateCapabilities(value.capabilities);
     wire.requiredCapabilities = validateCapabilities(value.requiredCapabilities, true);

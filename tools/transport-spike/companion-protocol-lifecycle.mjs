@@ -1,7 +1,7 @@
-// Draft 0.3 model only. It starts no timer, authenticates no peer and closes no resource.
+// Draft0.3 plus additive0.5 model only. It starts no timer, authenticates no peer and closes no resource.
 import { timingSafeEqual } from 'node:crypto';
 import { inspect } from 'node:util';
-import { CompanionProtocolError, decodeControl, decodeStream, DEFAULT_CAPABILITIES,
+import { CompanionProtocolError, decodeControl, decodeStream, DEFAULT_CAPABILITIES, TRAFFIC_CAPABILITIES,
   expiryMillis, tokenBytes, validateCapabilities } from './companion-protocol-codec.mjs';
 
 const pools = new WeakMap(), controls = new WeakMap(), streams = new WeakMap();
@@ -119,7 +119,7 @@ export class CompanionControl {
     const valid = safeClock(clock);
     controls.set(this, { pool, deviceId, desktopId, supported, phase: valid ? 'awaiting_hello' : 'failed',
       cause: valid ? null : 'invalid_message', created: valid ? clock.monotonicMillis : 0,
-      watermark: valid ? clock.monotonicMillis : 0, activity: {}, offer: [], required: [],
+      watermark: valid ? clock.monotonicMillis : 0, activity: {}, offer: [], required: [], negotiated: [],
       lease: false, wsClosed: false, closeCode: null, released: false, children: new Set(), history: new Set(), bytes: 0 });
     Object.freeze(this);
   }
@@ -150,11 +150,12 @@ export class CompanionControl {
       else if (!message.capabilities.every(c => state.offer.includes(c))) cause = 'invalid_message';
       else if (!message.capabilities.every(c => state.supported.includes(c)) ||
           !state.required.every(c => message.capabilities.includes(c)) ||
-          !message.capabilities.some(c => DEFAULT_CAPABILITIES.includes(c))) cause = 'unsupported_capability';
+          !message.capabilities.some(c => TRAFFIC_CAPABILITIES.includes(c))) cause = 'unsupported_capability';
       else if (message.limits.maxFrameBytes > pool.maxBytes) cause = 'invalid_message';
       else if (pool.sessions.size >= pool.maxSessions || pool.devices.has(state.deviceId)) cause = 'session_limit';
       if (cause) { terminate(this, 'failed', cause); return result(cause); }
       state.token = tokenBytes(message.sessionId); state.limits = message.limits;
+      state.negotiated = Object.freeze([...message.capabilities]);
       state.expiry = expiry; state.activated = clock.monotonicMillis; state.lifetime = remaining;
       state.activity = { client: clock.monotonicMillis, gateway: clock.monotonicMillis };
       state.phase = 'active'; state.lease = true;
@@ -247,6 +248,10 @@ class CompanionStream {
     if (state.phase !== 'awaiting_open' && message.streamId !== state.id) return failStream(this);
     if (message.type === 'open') {
       if (direction !== 'client' || state.phase !== 'awaiting_open') return failStream(this);
+      const supported = message.proxyMode === 'http-origin-connect'
+        ? owner.negotiated.includes('tcp-http-origin-connect')
+        : owner.negotiated.some(capability => DEFAULT_CAPABILITIES.includes(capability));
+      if (!supported) return failStream(this, 'unsupported_capability');
       if (owner.history.has(message.streamId)) return failStream(this);
       if (owner.history.size >= owner.limits.maxOpenedStreamsPerSession) return failStream(this, 'stream_limit');
       owner.history.add(message.streamId); state.id = message.streamId; state.phase = 'awaiting_ready';
