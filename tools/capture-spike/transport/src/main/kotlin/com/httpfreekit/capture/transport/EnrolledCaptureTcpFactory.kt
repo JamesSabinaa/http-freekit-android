@@ -90,6 +90,7 @@ class EnrolledCaptureTcpFactory internal constructor(
     private var limits = DraftLimits()
     private var negotiated = emptySet<String>()
     private var admissionClosed = false
+    private var intentionalClosing = false
     private var workersStopping = false
     private var closed = false
     private var failureCode: String? = null
@@ -156,7 +157,8 @@ class EnrolledCaptureTcpFactory internal constructor(
 
     private fun failFactory(code: String) {
         val current = state.withLock {
-            if (failureCode == null) failureCode = model?.snapshot()?.cause ?: code
+            val prior = model?.snapshot()?.cause
+            if (failureCode == null && !(intentionalClosing && prior in setOf(null, "cancelled"))) failureCode = prior ?: code
             admissionClosed = true
             model?.webSocketClosed(1006, clock())
             changed.signalAll(); transports.toList()
@@ -165,14 +167,22 @@ class EnrolledCaptureTcpFactory internal constructor(
     }
 
     /** Seal and interrupt without joining; callbacks must still arrange actual [close] afterward. */
-    fun interrupt() {
+    fun interrupt() = interruptOwned(reportClosed = true, stopWorkers = false)
+
+    private fun interruptOwned(reportClosed: Boolean, stopWorkers: Boolean) {
         val current = state.withLock {
             admissionClosed = true
-            if (failureCode == null) failureCode = "closed"
+            intentionalClosing = true
+            if (stopWorkers) workersStopping = true
+            model?.tick(clock())
+            val prior = model?.snapshot()?.cause
+            if (failureCode == null && prior != null && prior != "cancelled") failureCode = prior
+            if (failureCode == null && control?.stopping == false && control?.backend?.snapshot()?.failureCode != null) failureCode = "connect_failed"
+            if (failureCode == null && reportClosed) failureCode = "closed"
             model?.cancelLocally(clock())
             changed.signalAll(); transports.toList()
         }
-        current.forEach { it.stop() }
+        current.forEach { it.stop(consumerInterrupt = true) }
     }
 
     private fun deadlineLoop() {
@@ -183,7 +193,7 @@ class EnrolledCaptureTcpFactory internal constructor(
                     val terminal = model?.snapshot()?.phase in setOf(DraftControlPhase.CLOSED, DraftControlPhase.FAILED)
                     if (terminal) {
                         admissionClosed = true
-                        if (failureCode == null) failureCode = model?.snapshot()?.cause
+                        if (failureCode == null && !intentionalClosing) failureCode = model?.snapshot()?.cause
                     }
                     val now = System.nanoTime()
                     transports.filter { transport ->
@@ -220,7 +230,7 @@ class EnrolledCaptureTcpFactory internal constructor(
 
     override fun close() {
         val deadline = System.nanoTime() + CLEANUP_NANOS
-        interrupt()
+        interruptOwned(reportClosed = false, stopWorkers = true)
         val acquired = try { teardown.tryLock(maxOf(0, deadline - System.nanoTime()), TimeUnit.NANOSECONDS) }
         catch (_: InterruptedException) { Thread.currentThread().interrupt(); throw CaptureException("cleanup_failed") }
         if (!acquired) throw CaptureException("cleanup_failed")
@@ -278,9 +288,10 @@ class EnrolledCaptureTcpFactory internal constructor(
         private var outputEnding = false
         private var closeSent = false
         private var frontendClosed = false
+        private var consumerInterrupted = false
         private val ioWriter = ReentrantLock()
         private val cleanup = ReentrantLock()
-        private val id = if (stream == null) null else UUID.randomUUID().toString().replace("-", "")
+        private var id: String? = null
         private val ack = HttpOriginConnect.Acknowledgement()
         private val egress = ProtectedEgressFactory(object : CaptureSocketGuard {
             override fun protect(socket: Socket): Boolean {
@@ -303,6 +314,8 @@ class EnrolledCaptureTcpFactory internal constructor(
 
         private fun run() {
             try {
+                // The retained worker owns potentially blocking entropy acquisition too.
+                if (stream != null) id = UUID.randomUUID().toString().replace("-", "")
                 val remaining = remainingMillis(openDeadline)
                 val factory = GatewayTlsConnectionFactory(record.gatewayCertificate, record.gatewaySpkiSha256, record.logicalServerName,
                     remaining, remaining, rawSocketFactory = egress.rawSocketFactory(), clientKeyManager = configuration.keyManager)
@@ -410,7 +423,7 @@ class EnrolledCaptureTcpFactory internal constructor(
                                 stream!!.webSocketClosed(if (message.normal) 1000 else 1006, clock())
                                 changed.signalAll()
                             }
-                            ready && message.normal && stream!!.snapshot().phase == DraftStreamPhase.CLOSING
+                            ready && message.normal && stream.snapshot().phase == DraftStreamPhase.CLOSING
                         }
                         if (!good) throw CaptureException("connect_failed")
                         return
@@ -477,9 +490,10 @@ class EnrolledCaptureTcpFactory internal constructor(
             if (stream == null) failFactory(code) else stop(cancel = false)
         }
 
-        fun stop(cancel: Boolean = true, retry: Boolean = false) {
+        fun stop(cancel: Boolean = true, retry: Boolean = false, consumerInterrupt: Boolean = false) {
             val retryClose = state.withLock {
                 val first = !stopping
+                if (consumerInterrupt) consumerInterrupted = true
                 stopping = true
                 if (cancel) stream?.cancelLocally(clock())
                 if (first || retry) cleanupGeneration++
@@ -602,18 +616,18 @@ class EnrolledCaptureTcpFactory internal constructor(
                 }
                 maybeClose()
             }
-            override fun interrupt() = stop()
+            override fun interrupt() = stop(consumerInterrupt = true)
             override fun close() {
                 val deadline = System.nanoTime() + CLEANUP_NANOS
                 val graceful = state.withLock {
-                    if (released) return
+                    if (released) { requireGracefulCompletion(); return }
                     frontendClosed = true
                     outputEnded && stream!!.snapshot().phase == DraftStreamPhase.CLOSING
                 }
                 if (graceful) maybeClose() else stop(retry = true)
                 try {
                     while (System.nanoTime() - deadline < 0) {
-                        if (reap(deadline)) return
+                        if (reap(deadline)) { state.withLock { requireGracefulCompletion() }; return }
                         state.withLock { if (!released) changed.awaitNanos(minOf(TICK_NANOS, maxOf(1, deadline - System.nanoTime()))) }
                     }
                 } catch (_: InterruptedException) {
@@ -622,6 +636,12 @@ class EnrolledCaptureTcpFactory internal constructor(
                 stop(retry = true); throw CaptureException("cleanup_failed")
             }
             override fun toString() = "EnrolledCaptureConnection([REDACTED])"
+        }
+
+        private fun requireGracefulCompletion() {
+            val snapshot = stream!!.snapshot()
+            if (!consumerInterrupted && snapshot.clientEof && snapshot.gatewayEof && snapshot.chargedBytes == 0L &&
+                snapshot.phase != DraftStreamPhase.COMPLETE) throw CaptureException("connect_failed")
         }
     }
 

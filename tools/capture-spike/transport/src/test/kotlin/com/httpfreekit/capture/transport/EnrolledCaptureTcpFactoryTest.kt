@@ -30,6 +30,7 @@ class EnrolledCaptureTcpFactoryTest {
         for (material in listOf(identity.record.desktopId, identity.record.gatewaySpkiSha256, identity.record.logicalServerName)) assertFalse(diagnostic.contains(material))
         factory.close(); factory.close(); assertTrue(factory.snapshot().closed); assertEquals(0, factory.snapshot().liveWorkers)
         failure("closed") { factory.open(loopback(), 80) }
+        assertEquals(null, factory.snapshot().failureCode)
     }
 
     @Test fun invalidTargetsAndConfigurationNeverAllocateTransportOrCallGuard() {
