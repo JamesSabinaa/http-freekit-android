@@ -31,16 +31,23 @@ export function enrollmentRuntimeOptions(args, env = process.env) {
   const seen = new Set();
   for (let i = 0; i < args.length; i += 2) {
     const name = args[i], value = args[i + 1];
-    if (!['--serial', '--adb', '--openssl', '--suite'].includes(name) || seen.has(name) || typeof value !== 'string' ||
+    if (!['--serial', '--adb', '--openssl', '--suite', '--desktop-root', '--desktop-commit'].includes(name) || seen.has(name) || typeof value !== 'string' ||
         !value || value.length > 4096 || /[\0\r\n]/.test(value)) throw Error('invalid_enrollment_arguments');
-    seen.add(name); options[name.slice(2)] = value;
+    seen.add(name); options[name === '--desktop-root' ? 'desktopRoot' : name === '--desktop-commit' ? 'desktopCommit' : name.slice(2)] = value;
   }
   if (!/^[A-Za-z0-9_.:-]{1,128}$/.test(options.serial ?? '')) throw Error('explicit_enrollment_serial_required');
-  if (!['a22a', 'a22b', 'a22c'].includes(options.suite)) throw Error('invalid_enrollment_arguments');
+  if (!['a22a', 'a22b', 'a22c', 'c2'].includes(options.suite)) throw Error('invalid_enrollment_arguments');
+  if (options.suite === 'c2') {
+    if (!options.desktopRoot || !path.isAbsolute(options.desktopRoot) || !/^[0-9a-f]{40}$/.test(options.desktopCommit ?? '') || options.desktopCommit.length !== 40) throw Error('invalid_enrollment_arguments');
+  } else if (seen.has('--desktop-root') || seen.has('--desktop-commit')) throw Error('invalid_enrollment_arguments');
   return Object.freeze(options);
 }
 
 export async function runEnrollmentRuntime(options) {
+  if (options.suite === 'c2') {
+    const { runCaptureFactoryRuntime } = await import('./run-capture-factory-runtime.mjs');
+    return runCaptureFactoryRuntime(options);
+  }
   if (options.suite === 'a22c') {
     const { runEnrollmentAdversarialRuntime } = await import('./run-enrollment-adversarial-runtime.mjs');
     return runEnrollmentAdversarialRuntime(options);

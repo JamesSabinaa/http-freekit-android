@@ -35,6 +35,7 @@ node --test tools/transport-spike/instrumentation-results.test.mjs
 node --test tools/transport-spike/draft-stream-results.test.mjs
 node --test tools/transport-spike/draft-stream-command.test.mjs tools/transport-spike/run-draft-streaming.test.mjs
 node --test tools/transport-spike/enrollment-runtime-*.test.mjs
+node --test tools/transport-spike/gateway-websocket-peer.test.mjs tools/transport-spike/companion-http-origin.test.mjs tools/transport-spike/capture-factory-results.test.mjs
 node --test tools/transport-spike/research-websocket*.test.mjs
 node --test tools/transport-spike/companion-stream-peer*.test.mjs
 node --test tools/capture-spike/*.test.mjs
@@ -50,6 +51,8 @@ node scripts/verify-enrollment-crash-report.mjs --source "$(git rev-parse HEAD)"
   :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug \
   :transport-interop:testDebugUnitTest :transport-interop:assembleDebugAndroidTest :transport-interop:lintDebug \
   :core-capture:testDebugUnitTest :core-capture:lintDebug \
+  :gateway-websocket:test \
+  :capture-transport-research:testDebugUnitTest :capture-transport-research:assembleDebug :capture-transport-research:lintDebug \
   :capture-runtime:testDebugUnitTest :capture-runtime:assembleDebug :capture-runtime:assembleDebugAndroidTest :capture-runtime:lintDebug \
   :capture-traffic:assembleDebug :capture-traffic:lintDebug \
   :installed-app-fixture:assembleDebug :installed-app-fixture:assembleRelease \
@@ -58,6 +61,50 @@ node scripts/compare-enrollment-conformance.mjs
 ```
 
 Assembling the app and security module's Android instrumentation APKs checks compilation only; no UI, Keystore, or device result is inferred from it.
+
+## Enrolled HTTP-origin factory research
+
+The [C2 contract](capture-transport.md), [small shared wire vectors](../protocol/fixtures/c2-draft-0.5/README.md)
+and [finite Android proof report](android-capture-factory-runtime.md) bind the optional
+http-origin-connect mode to its actual negotiated capability. Legacy A19 fixtures,
+reports and their digest stay unchanged. Default host checks include the independent
+HTTP preface/acknowledgement bytes, the owned Node TLS peer, maintained JVM WebSocket
+backend, self-contained enrolled transport seam, finite report/driver/worker tests
+and privacy/cleanup negatives. Backend checks use the real scoped TLS peer, actual
+write/flush receipts, bounded queues, peer-close evidence and actual worker joins.
+
+Default CI never silently skips or imports an unpublished desktop checkout.
+Explicit local suites require an absolute FREEKIT_DESKTOP_ROOT and a reviewed
+FREEKIT_DESKTOP_COMMIT. The reviewed desktop implementation for this package is
+fd63f6940226c8e3401a165082dfa9325abaca69. Their actual origin uses127.0.0.2:80 with
+collision refusal, so coordinate that port with other local factory checks. Run
+the gateway-origin-desktop.local.test.mjs, gateway-origin-fixture.local.test.mjs
+and gateway-origin-worker.local.test.mjs files explicitly with Node --test and
+--test-concurrency=1. They establish actual registry/mTLS, real desktop attachment
+and HTTP capture, numeric destination/logical Host separation, complete body/EOF,
+END_WRITE/tail ordering, denial/revoke and actual cleanup. The private CSR fixture
+transfers only public CSR/approved material while the JVM retains its software key.
+These host software-key results do not establish Android Keystore or protection.
+
+The separate mandatory :capture-transport-research:testDesktopIntegration task
+requires that same explicitly reviewed desktop source; missing source fails rather
+than uses an assumption/skip. It remains outside ordinary host CI. The existing
+[manual enrollment workflow](../.github/workflows/enrollment-runtime.yml) adds the
+finite c2 choice, keeps a22a as default, checks out only the pinned desktop commit
+for c2 and runs that explicit integration task after SDK setup. Dispatch depends
+on desktop publication authorization; no C2 device run is attributed to these
+local checks.
+
+The C2 driver reuses the existing owned device/worker/ADB/private-input lifecycle,
+one actual method and four fixed sanitized artifacts. Live phase3 authorizes
+approval; phase7 only schedules tail release after the child independently sees
+decoded/applied/drained END_WRITE. The verifier binds both exact source commits,
+API, the full strict clock interval, all30 Android facts, exactly one distinct
+actual HTTP capture, body hashes, actual normal closure and every resource,
+package, command and emulator join. Multiple updates of the same private capture
+ID are counted once; identities are never exported. Fixed failures cannot become
+passing evidence. These checks make no TUN, app-selection, production HTTPS, C1
+cold-reset resolution or protocol-freeze claim.
 
 ## Real TUN capture research
 

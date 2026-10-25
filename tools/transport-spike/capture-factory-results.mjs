@@ -91,7 +91,7 @@ export function verifyCaptureFactoryReport(value, { source, api, desktopCommit }
       !origin || !backend || !originBooleans.every(key => origin[key]) || origin.connections !== 1 || origin.requests !== 1 ||
       origin.requestBodyBytes !== captureFactoryPayload.requestBodyBytes || origin.requestBodySha256 !== captureFactoryPayload.requestBodySha256 ||
       origin.responseBodyBytesWritten !== captureFactoryPayload.responseBodyBytes || origin.responseBodySha256 !== captureFactoryPayload.responseBodySha256 ||
-      backend.activeOwners !== 0 || backend.admitted !== 1 || backend.settled !== 1 || backend.captures < 1 || backend.clientEndWrites !== 1 ||
+      backend.activeOwners !== 0 || backend.admitted !== 1 || backend.settled !== 1 || backend.captures !== 1 || backend.clientEndWrites !== 1 ||
       backend.proxyMode !== 'http-origin-connect' || backend.negotiatedCapabilities.length !== 1 || backend.negotiatedCapabilities[0] !== 'tcp-http-origin-connect') fail('runtime_capture_factory_host_failed');
   if (!resources || !V.workerPassed(resources.workerClosed) || !V.commandPassed(resources.workerCommand) || resources.reverseRemovalExitCodes.length !== 3 ||
       resources.reverseRemovalExitCodes.some(code => code !== 0) || !['ownedReversesAbsent', 'privateDirectoryRemoved', 'gatewayStreamComplete', 'ownedCommandsClosed', 'ownedCommandGroupsClosed'].every(key => resources[key])) fail('runtime_cleanup_failed');

@@ -74,16 +74,18 @@ test('failed B setup keeps three truthful unstarted methods and cannot produce a
 });
 
 const workflow = fs.readFileSync(new URL('../../.github/workflows/enrollment-runtime.yml', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
-const selection = /id: suite\n        run: \|\n([\s\S]*?)      - name: Require Linux KVM/.exec(workflow)?.[1].replace(/^ {10}/gm, '');
+const selection = /id: suite\n        run: \|\n([\s\S]*?)(?=      - name:)/.exec(workflow)?.[1].replace(/^ {10}/gm, '');
 assert.ok(selection);
 const bash = process.platform === 'win32' ? 'C:/Program Files/Git/bin/bash.exe' : '/bin/bash';
-for (const suite of ['a22a', 'a22b', 'a22c']) test(`actual workflow ${suite} selection exposes only the four fixed selected paths`, () => temporary(directory => {
+for (const suite of ['a22a', 'a22b', 'a22c', 'c2']) test(`actual workflow ${suite} selection exposes only the four fixed selected paths`, () => temporary(directory => {
   const paths = ['tools/transport-spike/run-enrollment-runtime.mjs', 'tools/transport-spike/companion-enrollment-worker.mjs',
     'tools/transport-spike/enrollment-runtime-results.mjs', 'scripts/verify-enrollment-runtime.mjs',
     ...(suite === 'a22b' ? ['tools/transport-spike/enrollment-runtime-stream-results.mjs', 'tools/transport-spike/run-enrolled-stream-runtime.mjs',
       'tools/transport-spike/android/src/androidTest/kotlin/com/httpfreekit/interop/DraftEnrolledStreamingInteropTest.kt'] :
       suite === 'a22c' ? ['tools/transport-spike/enrollment-runtime-adversarial-results.mjs', 'tools/transport-spike/run-enrollment-adversarial-runtime.mjs',
         'tools/transport-spike/android/src/androidTest/kotlin/com/httpfreekit/interop/DraftEnrollmentAdversarialInteropTest.kt'] :
+      suite === 'c2' ? ['tools/transport-spike/capture-factory-results.mjs', 'tools/transport-spike/run-capture-factory-runtime.mjs',
+        'tools/transport-spike/android/src/androidTest/kotlin/com/httpfreekit/interop/DraftCaptureFactoryInteropTest.kt'] :
       ['tools/transport-spike/android/src/androidTest/kotlin/com/httpfreekit/interop/DraftEnrollmentInteropTest.kt'])];
   for (const file of paths) { const absolute = path.join(directory, file); fs.mkdirSync(path.dirname(absolute), { recursive: true }); fs.writeFileSync(absolute, ''); }
   const output = path.join(directory, 'output');
@@ -92,5 +94,10 @@ for (const suite of ['a22a', 'a22b', 'a22c']) test(`actual workflow ${suite} sel
   const lines = fs.readFileSync(output, 'utf8').trim().split('\n'); assert.equal(lines.length, 4);
   if (suite === 'a22b') assert.deepEqual(Object.fromEntries(lines.map(line => line.split('='))), enrolledStreamingReportPaths);
   else if (suite === 'a22c') assert.deepEqual(Object.fromEntries(lines.map(line => line.split('='))), enrollmentAdversarialReportPaths);
+  else if (suite === 'c2') assert.deepEqual(Object.fromEntries(lines.map(line => line.split('='))), {
+    runtime: 'tools/transport-spike/android/build/outputs/androidTest-results/capture-factory/debug/runtime.json',
+    xml: 'tools/transport-spike/android/build/outputs/androidTest-results/capture-factory/debug/TEST-capture-factory-research.xml',
+    html: 'tools/transport-spike/android/build/reports/androidTests/capture-factory/debug/index.html', host: 'build/reports/capture-factory/host-cleanup.json',
+  });
   else assert.ok(lines.every(line => line.includes('enrollment-runtime')));
 }));

@@ -125,6 +125,7 @@ test('real enrolled mTLS origin mode routes numeric80, preserves logical HTTP an
   assert.deepEqual(response.subarray(headerEnd + 4), Buffer.from(Array.from({ length: 32787 }, (_, i) => (i * 7) % 253)));
   assert.deepEqual(f.observed.body, body); assert.equal(f.observed.requests, 1); assert.equal(f.observed.connections, 1);
   assert(f.observed.captures.some(capture => capture.url === `http://${logicalName}/factory-research`));
+  assert.equal(f.backend.snapshot().captures, 1); // Updates of the same actual capture are not new requests.
   await flow.ws.send('close', Buffer.from([3, 232]));
   const close = await nextApplication(flow); try { assert.equal(close.kind, 'close'); assert.equal(close.closeCode, 1000); } finally { close.release(); }
   await flow.ws.finish();

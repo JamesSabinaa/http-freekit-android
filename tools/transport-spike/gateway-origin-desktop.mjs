@@ -48,7 +48,15 @@ export async function createDesktopOriginBackend({ desktopRoot, desktopCommit, a
   } catch { throw safeError('desktop_origin_configuration'); }
   let closing = false, closeTask, admitted = 0, settled = 0, captures = 0, clientEndWrites = 0;
   let actualMode = null, actualCapabilities = Object.freeze([]);
-  const proxy = new ProxyServer(null, { onRequest: value => { captures++; onCapture(value); } });
+  const captureIds = new Set(); // Bounded private identities; never appear in snapshots/logs.
+  const proxy = new ProxyServer(null, { onRequest: value => {
+    if (typeof value?.id !== 'string' || value.id.length < 1 || value.id.length > 128 || /[^A-Za-z0-9_.-]/.test(value.id)) throw safeError('desktop_capture_invalid');
+    if (!captureIds.has(value.id)) {
+      if (captureIds.size >= 8) throw safeError('desktop_capture_bound');
+      captureIds.add(value.id); captures++;
+    }
+    onCapture(value);
+  } });
   const owners = new Set();
   const factory = context => {
     let capabilities;

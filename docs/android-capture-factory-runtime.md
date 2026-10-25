@@ -142,7 +142,7 @@ Backend retains closing, activeOwners, admitted, settled, captures,
 clientEndWrites, proxyMode and negotiatedCapabilities. The last two values are
 copied from the actual admitted trusted context, never replaced by driver
 constants. Success requires one admitted/settled owner, zero active owners,
-actual HTTP capture, one actual desktop-facing client EOF and exact origin mode
+exactly one actual HTTP capture, one actual desktop-facing client EOF and exact origin mode
 with the sole new capability.
 
 Resources retain workerClosed (the existing ten-field actual aggregate),
