@@ -86,6 +86,13 @@ Do not emit a successful observation after an assertion or cleanup failure.
 Finite safe failures retain the original phase/type and bounded project-only
 frames, without provider messages, causes, endpoints, headers or payloads. Failed
 and unstarted invocations retain their actual method truth and host cleanup.
+The C2 invocation's nullable failure object has only phase (one listed phase),
+type (AssertionError, IllegalArgumentException, IOException or IllegalStateException)
+and cleanup (boolean), parsed only from the exact fixed wrapper. It is never a
+positive observation and cannot coexist with a passing invocation. Factory frames
+are limited to the exact EnrolledCaptureTcpFactory root/basename in its own package;
+other retained frames use the finite known interop-file map, at most16 frames and
+line1–100000. Ordinary A22 schemas and frame maps remain unchanged.
 The descriptor is [capture-factory-descriptor.mjs](../tools/transport-spike/capture-factory-descriptor.mjs).
 
 ## Independent host evidence

@@ -4,6 +4,8 @@ import { enrolledStreamingClass, expectedEnrolledStreamingMethods, enrolledStrea
 import { decodeEnrolledObservation, validateEnrolledObservation } from './enrollment-runtime-stream-observation.mjs';
 import { enrollmentAdversarialClass, expectedEnrollmentAdversarialMethods, enrollmentAdversarialPhases } from './enrollment-runtime-adversarial-descriptor.mjs';
 import { decodeEnrollmentAdversarialObservation, validateEnrollmentAdversarialObservation } from './enrollment-runtime-adversarial-observation.mjs';
+import { captureFactoryClass, captureFactoryMethod, captureFactoryPhases } from './capture-factory-descriptor.mjs';
+import { decodeCaptureFactoryObservation, validateCaptureFactoryObservation } from './capture-factory-observation.mjs';
 
 export const enrollmentRuntimeClass = 'com.httpfreekit.interop.DraftEnrollmentInteropTest';
 export const expectedEnrollmentMethods = Object.freeze(['prepareApprovedCredentialForRestart', 'reopenApprovedCredentialAfterRestart']);
@@ -56,12 +58,20 @@ const adversarialFrameFiles = new Map([...frameFiles,
   ['DraftStreamingConnector.kt', new Set(['DraftStreamingConnectorKt'])],
   ['DraftStreamingFixture.kt', new Set(['DraftStreamingTls'])],
 ]);
+const factoryFrameFiles = new Map([...frameFiles,
+  ['DraftCaptureFactoryInteropTest.kt', new Set(['DraftCaptureFactoryInteropTest'])],
+  ['DraftCaptureFactoryConsentActivity.kt', new Set(['DraftCaptureFactoryConsentActivity'])],
+  ['DraftCaptureFactoryVpnService.kt', new Set(['DraftCaptureFactoryVpnService'])],
+  ['EnrolledCaptureTcpFactory.kt', new Set(['EnrolledCaptureTcpFactory'])],
+]);
 function suiteDescriptor(suite) {
   if (suite === 'a22a') return { className: enrollmentRuntimeClass, methods: expectedEnrollmentMethods, phases: enrollmentPhases, prefix: 'draftEnrollment', cap: 16, frames: frameFiles };
   if (suite === 'a22b') return { className: enrolledStreamingClass, methods: expectedEnrolledStreamingMethods, phases: enrolledStreamingPhases, prefix: 'draftEnrolled', cap: 40, frames: streamFrameFiles,
     decodeObservation: decodeEnrolledObservation, validateObservation: validateEnrolledObservation, observationPhase: () => 10 };
   if (suite === 'a22c') return { className: enrollmentAdversarialClass, methods: expectedEnrollmentAdversarialMethods, phases: enrollmentAdversarialPhases, prefix: 'draftAdversarial', cap: 24, frames: adversarialFrameFiles,
     decodeObservation: decodeEnrollmentAdversarialObservation, validateObservation: validateEnrollmentAdversarialObservation, observationPhase: method => enrollmentAdversarialPhases[method].length - 1 };
+  if (suite === 'c2') return { className: captureFactoryClass, methods: [captureFactoryMethod], phases: { [captureFactoryMethod]: captureFactoryPhases }, prefix: 'draftFactory', cap: 36, frames: factoryFrameFiles,
+    decodeObservation: decodeCaptureFactoryObservation, validateObservation: validateCaptureFactoryObservation, observationPhase: () => captureFactoryPhases.length - 1 };
   fail('invalid_parser_configuration');
 }
 export class EnrollmentRuntimeError extends Error { constructor(code = 'invalid_runtime_report') { super(code); this.name = 'EnrollmentRuntimeError'; this.code = code; } }
@@ -107,26 +117,40 @@ function sanitizeFailure(raw, suite = 'a22a') {
   for (const line of raw.split('\n')) {
     const type = /^(?:java\.lang\.|java\.io\.|java\.net\.|javax\.net\.ssl\.|java\.security\.cert\.|org\.json\.|org\.junit\.)?([A-Za-z]+)(?::|$)/.exec(line);
     if (failureType === null && type) failureType = failures.has(type[1]) ? type[1] : 'other_exception';
-    const frame = /^\s*at (com\.httpfreekit\.interop\.(Draft[A-Za-z0-9_$]{0,80}))\.([A-Za-z0-9_$<>]{1,80})\((Draft[A-Za-z0-9_]{0,80}\.kt):([1-9][0-9]{0,5})\)$/.exec(line.replace(/\r$/, ''));
-    if (frame && files.get(frame[4])?.has(frame[2].split('$')[0]) && frames.length < 16) frames.push({ className: frame[1], method: frame[3], file: frame[4], line: Number(frame[5]) });
+    const frame = /^\s*at (com\.httpfreekit\.[A-Za-z0-9_.$]{1,160})\.([A-Za-z0-9_$<>]{1,80})\(([A-Za-z0-9_]{1,100}\.kt):([1-9][0-9]{0,5})\)$/.exec(line.replace(/\r$/, ''));
+    if (frame && knownFrame(frame[1], frame[3], files, suite) && (suite !== 'c2' || Number(frame[4]) <= 100000) && frames.length < 16) frames.push({ className: frame[1], method: frame[2], file: frame[3], line: Number(frame[4]) });
   }
   return { failureType, frames };
+}
+function factoryFailure(raw) {
+  for (const line of raw.split('\n').slice(0, 128)) {
+    const found = /^(?:java\.lang\.AssertionError: )?Capture factory research failed at ([a-z-]{1,60}) \((AssertionError|IllegalArgumentException|IOException|IllegalStateException)\); cleanup=(true|false)\.$/.exec(line.replace(/\r$/, ''));
+    if (found && captureFactoryPhases.includes(found[1])) return { phase: found[1], type: found[2], cleanup: found[3] === 'true' };
+  }
+  return null;
+}
+function knownFrame(className, file, files, suite) {
+  if (/^com\.httpfreekit\.interop\.Draft[A-Za-z0-9_$]{0,80}$/.test(className) && !/[\r\n]/.test(className)) {
+    return files.get(file)?.has(className.slice('com.httpfreekit.interop.'.length).split('$')[0]) === true;
+  }
+  return suite === 'c2' && /^com\.httpfreekit\.capture\.transport\.EnrolledCaptureTcpFactory(?:\$[A-Za-z0-9_$]{1,80})?$/.test(className) &&
+    !/[\r\n]/.test(className) && file === 'EnrolledCaptureTcpFactory.kt';
 }
 function validateFrames(value, suite = 'a22a') {
   const files = suiteDescriptor(suite).frames;
   if (!Array.isArray(value) || value.length > 16) fail('invalid_runtime_report');
   for (const frame of value) {
     exact(frame, ['className', 'method', 'file', 'line']);
-    if (typeof frame.className !== 'string' || !/^com\.httpfreekit\.interop\.Draft[A-Za-z0-9_$]{0,80}$/.test(frame.className) || /[\r\n]/.test(frame.className) ||
+    if (typeof frame.className !== 'string' || !knownFrame(frame.className, frame.file, files, suite) ||
         typeof frame.method !== 'string' || !/^[A-Za-z0-9_$<>]{1,80}$/.test(frame.method) || /[\r\n]/.test(frame.method) ||
-        !files.get(frame.file)?.has(frame.className.slice('com.httpfreekit.interop.'.length).split('$')[0])) fail('invalid_runtime_report');
-    integer(frame.line, 1, 999999);
+        !files.has(frame.file)) fail('invalid_runtime_report');
+    integer(frame.line, 1, suite === 'c2' ? 100000 : 999999);
   }
 }
 function validateInvocation(value, method, suite = 'a22a') {
   const descriptor = suiteDescriptor(suite), requiredPhases = descriptor.phases[method];
   if (!requiredPhases) fail('invalid_runtime_report');
-  exact(value, ['method', 'state', 'actualStarted', 'actualCompleted', 'terminalCount', 'terminalCode', 'phases', 'command', 'problems', 'failureType', 'frames', ...(descriptor.decodeObservation ? ['observation'] : [])]);
+  exact(value, ['method', 'state', 'actualStarted', 'actualCompleted', 'terminalCount', 'terminalCode', 'phases', 'command', 'problems', 'failureType', 'frames', ...(descriptor.decodeObservation ? ['observation'] : []), ...(suite === 'c2' ? ['failure'] : [])]);
   if (value.method !== method) fail('invalid_runtime_report');
   enumeration(value.state, ['passed', 'failed', 'incomplete', 'not_started']);
   for (const field of ['actualStarted', 'actualCompleted', 'terminalCount']) integer(value[field], 0, 16);
@@ -137,6 +161,11 @@ function validateInvocation(value, method, suite = 'a22a') {
   codeList(value.problems, parserCodes);
   if (value.failureType !== null && !failures.has(value.failureType)) fail('invalid_runtime_report');
   validateFrames(value.frames, suite);
+  if (suite === 'c2' && value.failure !== null) {
+    exact(value.failure, ['phase', 'type', 'cleanup']); enumeration(value.failure.phase, captureFactoryPhases);
+    enumeration(value.failure.type, ['AssertionError', 'IllegalArgumentException', 'IOException', 'IllegalStateException']); boolean(value.failure.cleanup);
+    if (value.state === 'passed') fail('invalid_runtime_report');
+  }
   if (descriptor.decodeObservation && value.observation !== null) {
     try { descriptor.validateObservation(value.observation, method); } catch { fail('invalid_runtime_report'); }
     if (value.phases.length < descriptor.observationPhase(method)) fail('invalid_runtime_report');
@@ -157,7 +186,7 @@ export function createEnrollmentSuiteInvocationParser(method, { onPhase, suite =
   if (!descriptor.methods.includes(method) || (onPhase !== undefined && typeof onPhase !== 'function')) fail('invalid_parser_configuration');
   const decoder = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
   let bytes = 0, line = '', pending = Object.create(null), lastKey, active = false, starts = 0, ends = 0;
-  let terminalCount = 0, terminalCode = null, completedState, failureType = null, frames = [], finished = false, broken = false, observation = null;
+  let terminalCount = 0, terminalCode = null, completedState, failureType = null, frames = [], finished = false, broken = false, observation = null, safeFailure = null;
   const phases = [], problems = [];
   const problem = code => { if (!problems.includes(code) && problems.length < 16) problems.push(code); };
   const stop = code => { problem(code); broken = true; fail(code); };
@@ -222,6 +251,7 @@ export function createEnrollmentSuiteInvocationParser(method, { onPhase, suite =
         if (code === -3 || code === -4) problem('test_skip_or_assumption');
         if (pending.stack) {
           ({ failureType, frames } = sanitizeFailure(pending.stack, suite));
+          if (suite === 'c2') safeFailure ??= factoryFailure(pending.stack);
           if (code === 0) problem('failure_with_success');
         }
       }
@@ -239,6 +269,10 @@ export function createEnrollmentSuiteInvocationParser(method, { onPhase, suite =
     if (text.startsWith('INSTRUMENTATION_')) {
       if (!text.startsWith('INSTRUMENTATION_RESULT: stream=')) problem('invalid_status_bundle');
       lastKey = undefined; return;
+    }
+    if (suite === 'c2' && lastKey !== 'stack') {
+      const found = factoryFailure(text);
+      if (found) { safeFailure ??= found; problem('instrumentation_failure'); }
     }
     if (lastKey === 'stack') {
       if (Buffer.byteLength(pending.stack + '\n' + text) > 8192) stop('instrumentation_line_limit');
@@ -281,7 +315,7 @@ export function createEnrollmentSuiteInvocationParser(method, { onPhase, suite =
         : completedState === 'passed' && problems.length === 0 ? 'passed' : 'incomplete';
       // Invalid unmatched events remain explicit errors; counters are actual observations, not repaired claims.
       return copyFreeze({ method, state, actualStarted: starts, actualCompleted: ends, terminalCount, terminalCode, phases, command, problems, failureType, frames,
-        ...(descriptor.decodeObservation ? { observation } : {}) });
+        ...(descriptor.decodeObservation ? { observation } : {}), ...(suite === 'c2' ? { failure: safeFailure } : {}) });
     },
   });
 }
