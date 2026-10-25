@@ -23,7 +23,7 @@ function addresses(result) {
 
 /** Only this fixed Linux alias is owned. A successful add retains ownership even if verification fails. */
 export function createEnrolledTunAliasOwner(command, { platform = process.platform } = {}) {
-  let owned = false, removing;
+  let owned = false, removing, prepareStarted = false;
   const state = { platform: platform === 'linux' ? 'linux' : 'unsupported', initiallyAbsent: false, created: false,
     verified: false, removalRequested: false, removed: false, absenceConfirmed: false, refusal: null,
     commands: { before: null, create: null, verify: null, remove: null, after: null } };
@@ -36,6 +36,8 @@ export function createEnrolledTunAliasOwner(command, { platform = process.platfo
   const inspect = (key, cleanup = false) => run(key, ['ip', '-j', '-4', 'address', 'show', 'dev', 'lo'], cleanup);
   return Object.freeze({ snapshot,
     async prepare() {
+      if (prepareStarted) refuse('enrollment_fixture_failed');
+      prepareStarted = true;
       if (state.platform !== 'linux') fail('unsupported_platform');
       let before;
       try { before = addresses(await inspect('before')); } catch { fail('alias_probe_failed'); }

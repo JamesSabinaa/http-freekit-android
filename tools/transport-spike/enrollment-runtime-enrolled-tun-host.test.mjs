@@ -104,6 +104,20 @@ test('a pre-existing alias is refused and never removed', async () => {
   });
 });
 
+test('alias preparation is one-shot during creation and after successful cleanup', async () => {
+  await fixture({}, async ({ command, directory }) => {
+    const owner = createEnrolledTunAliasOwner(command, { platform: 'linux' });
+    const first = owner.prepare();
+    await assert.rejects(owner.prepare(), /enrollment_fixture_failed/);
+    await first; await owner.remove({ fixtureJoined: true });
+    const calls = fs.readFileSync(path.join(directory, 'calls'), 'utf8');
+    await assert.rejects(owner.prepare(), /enrollment_fixture_failed/);
+    assert.equal(fs.readFileSync(path.join(directory, 'calls'), 'utf8'), calls);
+    assert.equal(fs.existsSync(path.join(directory, 'created')), false);
+    assert(owner.snapshot().removed && owner.snapshot().absenceConfirmed);
+  });
+});
+
 test('concurrent alias cleanup calls share one actual deletion', async () => {
   await fixture({}, async ({ command, directory }) => {
     const owner = createEnrolledTunAliasOwner(command, { platform: 'linux' }); await owner.prepare();
