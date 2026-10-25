@@ -485,7 +485,7 @@ export async function createCompanionStreamServer({ tls, authorize, credentialAu
   function newRecord(owner, model, socket) {
     const record = { owner, model, socket, socketClosed: observeClose(socket), observedCloseCode: 1006,
       ws: null, proxy: null, fixtureSocket: null, proxyClosedPromise: null, fixtureClosedPromise: null,
-      trustedOwner: null, trustedStart: null, trustedClose: null, trustedClosed: null, proxyMode: undefined,
+      trustedOwner: null, trustedStart: null, trustedClose: null, trustedClosed: null, normalCloseWrite: null, proxyMode: undefined,
       workers: new Set(), changed: new Changed(), upgradeWriter: writerState(), proxyWriter: writerState(), fixtureWriter: writerState(),
       stopping: false, closed: false, cleanupFailed: false, cleanupTask: null, retained: false, id: null,
       pendingIngressBytes: 0, clientEof: null, gatewayEof: null,
@@ -571,6 +571,11 @@ export async function createCompanionStreamServer({ tls, authorize, credentialAu
     await record.ws.send(kind, bytes);
     record.io.wsWriteCompletions++;
   }
+  function writeNormalClose(record) {
+    // Server-initiated and peer-initiated paths share the same actual receipt.
+    record.normalCloseWrite ??= wsWrite(record, 'close', Buffer.from([3, 232]));
+    return record.normalCloseWrite;
+  }
   function effects(record, result) {
     for (const effect of result.effects) {
       if (record.stopping) return;
@@ -648,7 +653,8 @@ export async function createCompanionStreamServer({ tls, authorize, credentialAu
           const valid = event.closeCode === 1000 && state.phase === 'closing' && record.clientEof && record.gatewayEof;
           if (!valid) { stopStream(record); return; }
           await Promise.all([record.clientEof, record.gatewayEof]);
-          await wsWrite(record, 'close', Buffer.from([3, 232]));
+          if (trusted) await writeNormalClose(record);
+          else await wsWrite(record, 'close', Buffer.from([3, 232]));
           record.observedCloseCode = 1000;
           // Return first: the separate cleanup owner joins this reader without self-await.
           queueMicrotask(() => { stopStream(record, true); });
@@ -667,9 +673,16 @@ export async function createCompanionStreamServer({ tls, authorize, credentialAu
             const ready = encodeStream({ protocolVersion: 1, type: 'ready', streamId: record.id });
             check(record.model.text('gateway', ready, clock()));
             await wsWrite(record, 'text', ready); opened = true;
-            task(record, () => queueWriter(record, 'client'), () => stopStream(record));
-            task(record, () => queueWriter(record, 'gateway'), () => stopStream(record));
+            const clientWriter = task(record, () => queueWriter(record, 'client'), () => stopStream(record));
+            const gatewayWriter = task(record, () => queueWriter(record, 'gateway'), () => stopStream(record));
             task(record, () => proxyReader(record), () => stopStream(record));
+            if (trusted) task(record, async () => {
+              await Promise.all([clientWriter, gatewayWriter]); live(record);
+              if (record.model.snapshot().phase !== 'closing' || !record.clientEof || !record.gatewayEof) fail('invalid_close_state');
+              await Promise.all([record.clientEof, record.gatewayEof]); live(record);
+              await writeNormalClose(record);
+              // Only streamReader's actual valid peer Close may confirm closure.
+            }, () => stopStream(record));
           }
           effects(record, result);
         }

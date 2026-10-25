@@ -27,6 +27,13 @@ closure and gateway workers all precede model resource confirmation. Failed join
 retain the model lease and fail cleanup. The gateway snapshots validated methods
 before any asynchronous startup boundary.
 
+Only the trusted composition initiates a normal WebSocket Close after both queue
+writers and both typed END_WRITE tasks actually complete with model phase closing.
+Server- and peer-initiated paths share one owned close-write receipt. An actual
+valid peer Close response is still required before model confirmation; an EOF or
+abort cannot substitute for that response. The legacy finite fixture retains its
+existing peer-initiated close behavior.
+
 The frozen context has `proxyMode`, a copied frozen `negotiatedCapabilities`,
 `grant` and `admissionAllowed`. `grant` is the existing redacted public snapshot;
 its explicit defensive `material()` returns only the six validated registry grant

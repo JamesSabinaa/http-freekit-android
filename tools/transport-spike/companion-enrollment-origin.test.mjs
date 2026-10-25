@@ -139,7 +139,9 @@ test('registry revocation interrupts the actual injected owner and fresh exact c
   assert.equal((await upgradeEnrolled(f.owner, credential, '/companion/v1/control', { scenario: null })).status, 403);
 });
 
-test('injected real TCP byte transport preserves request/reply and both END_WRITE boundaries without fixed-fixture bytes', { timeout: 15000 }, async t => {
+for (const peerCloses of [true, false]) test(peerCloses
+  ? 'trusted gateway drains actual TCP and both END_WRITEs before initiating Close, and retains its lease until real peer Close'
+  : 'trusted gateway cannot complete an EOF-finished stream when the peer aborts without its Close response', { timeout: 15000 }, async t => {
   const request = Buffer.from(Array.from({ length: 9001 }, (_, i) => (i * 13 + 7) & 255));
   const response = Buffer.from(Array.from({ length: 5003 }, (_, i) => (i * 23 + 11) & 255));
   let upstreamRead = Buffer.alloc(0), upstreamEof = false;
@@ -172,8 +174,19 @@ test('injected real TCP byte transport preserves request/reply and both END_WRIT
     } finally { event.release(); }
   }
   assert(upstreamEof); assert.deepEqual(upstreamRead, request); assert.deepEqual(Buffer.concat(chunks), response);
-  await flow.ws.send('close', Buffer.from([3, 232]));
   const close = await nextApplication(flow); try { assert.equal(close.kind, 'close'); assert.equal(close.closeCode, 1000); } finally { close.release(); }
+  const waiting = f.owner.inspectEnrollment(credential.enrollmentId).probe;
+  assert.equal(waiting.stream.phase, 'closing'); assert.equal(waiting.stream.streamLease, true); assert.equal(waiting.stream.resourcesReleased, false);
+  assert.equal(waiting.stream.webSocketClosed, false); assert.equal(waiting.io.proxyWritePending, false);
+  assert.equal(waiting.stream.client.eofEmitted, true); assert.equal(waiting.stream.gateway.eofEmitted, true);
+  await new Promise(done => setTimeout(done, 100));
+  assert.equal(f.owner.inspectEnrollment(credential.enrollmentId).probe.stream.streamLease, true);
+  if (!peerCloses) {
+    await flow.ws.cancel();
+    const aborted = await until(() => f.owner.inspectEnrollment(credential.enrollmentId).probe.stream, state => state.resourcesReleased);
+    assert.equal(aborted.phase, 'failed'); assert.equal(aborted.streamLease, false); return;
+  }
+  await flow.ws.send('close', Buffer.from([3, 232]));
   await flow.ws.finish();
   const state = await until(() => f.owner.inspectEnrollment(credential.enrollmentId), s => s.probe.stream.phase === 'complete');
   assert.equal(state.probe.fixture.uploadBytesRead, 0); assert.equal(state.probe.fixture.responseBytesWritten, 0);
