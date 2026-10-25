@@ -35,4 +35,3 @@ export function report() {
 }
 export const clone = value => JSON.parse(JSON.stringify(value));
 export const verify = value => verifyCaptureFactoryReport(value, { source, api: 26, desktopCommit });
-
