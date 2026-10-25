@@ -49,12 +49,56 @@ function matchIdentity(directory, name, now) {
     !cert.verify(cert.publicKey) || cert.subject !== cert.issuer || now < Date.parse(cert.validFrom) || now >= Date.parse(cert.validTo)) fail();
   return cert;
 }
+// Bounded DER lengths and primitive encodings; X509Certificate then validates the
+// certificate structure and provider signature. No BER/trailing certificate input.
+function canonicalCertificate(bytes) {
+  let nodes = 0;
+  function item(start, limit, depth) {
+    if (++nodes > 512 || depth > 16 || start + 2 > limit) fail();
+    let at = start; const tag = bytes[at++];
+    if (tag === 0 || (tag & 31) === 31) fail();
+    let length = bytes[at++];
+    if (length & 128) {
+      const count = length & 127;
+      if (count < 1 || count > 2 || at + count > limit || bytes[at] === 0) fail();
+      length = 0; for (let index = 0; index < count; index++) length = length * 256 + bytes[at++];
+      if (length < 128) fail();
+    }
+    const end = at + length; if (end > limit) fail();
+    if (tag & 32) {
+      let previous;
+      while (at < end) {
+        const next = item(at, end, depth + 1), current = bytes.subarray(at, next);
+        if (tag === 49 && previous && Buffer.compare(previous, current) > 0) fail();
+        previous = current; at = next;
+      }
+    } else {
+      const content = bytes.subarray(at, end);
+      if (tag === 1 && (length !== 1 || ![0, 255].includes(content[0]))) fail();
+      if (tag === 2 && (!length || length > 1 && (content[0] === 0 && !(content[1] & 128) || content[0] === 255 && content[1] & 128))) fail();
+      if (tag === 3 && (!length || content[0] > 7 || length === 1 && content[0] !== 0 || content.at(-1) & ((1 << content[0]) - 1))) fail();
+      if (tag === 5 && length !== 0) fail();
+      if (tag === 6 && (!length || content.at(-1) & 128 || content.some((octet, index) => octet === 128 && (index === 0 || !(content[index - 1] & 128))))) fail();
+      if (tag === 12) new TextDecoder('utf-8', { fatal: true }).decode(content);
+      if (tag === 19 && !/^[A-Za-z0-9 '()+,\-./:=?]*$/.test(content.toString('latin1'))) fail();
+      if (tag === 22 && content.some(octet => octet > 127)) fail();
+      if (tag === 23 && !/^[0-9]{12}Z$/.test(content.toString('latin1'))) fail();
+      if (tag === 24 && !/^[0-9]{14}Z$/.test(content.toString('latin1'))) fail();
+    }
+    return end;
+  }
+  if (bytes[0] !== 48 || item(0, bytes.length, 0) !== bytes.length) fail();
+}
 function interceptionCertificate(value, now) {
   if (!(value instanceof Uint8Array) || value.byteLength < 1 || value.byteLength > 4096) fail();
-  const bytes = Buffer.from(value), cert = new X509Certificate(bytes), key = cert.publicKey;
+  const bytes = Buffer.from(value); canonicalCertificate(bytes);
+  const cert = new X509Certificate(bytes), key = cert.publicKey;
   const notBefore = Date.parse(cert.validFrom), notAfter = Date.parse(cert.validTo);
   const supportedKey = key.asymmetricKeyType === 'ec' && key.asymmetricKeyDetails?.namedCurve === 'prime256v1' ||
     key.asymmetricKeyType === 'rsa' && key.asymmetricKeyDetails?.modulusLength >= 2048 && key.asymmetricKeyDetails.modulusLength <= 4096;
+  // Node 24 ncrypto X509View::isCA requires X509_check_ca == 1. OpenSSL
+  // check_ca rejects a present KU lacking keyCertSign; keyUsage below is EKU.
+  // https://github.com/nodejs/node/blob/v24.22.1/deps/ncrypto/ncrypto.cc
   if (!cert.raw.equals(bytes) || !cert.ca || cert.subject !== cert.issuer || !cert.checkIssued(cert) || !cert.verify(key) || !supportedKey ||
       !Number.isSafeInteger(notBefore) || !Number.isSafeInteger(notAfter) || notBefore >= notAfter || now < notBefore || now >= notAfter ||
       cert.keyUsage !== undefined && (cert.keyUsage.length !== 1 || cert.keyUsage[0] !== '1.3.6.1.5.5.7.3.1')) fail();
@@ -65,6 +109,17 @@ class EnrollmentAssets {
   constructor(directory, material) { this.#directory = directory; this.#material = structuredClone(material); }
   metadata() { const { revision: _, ...material } = this.#material; return enrollmentPublicSnapshot(material); }
   authorityDer() { return this.#material.enrollmentAuthorityDer; }
+  interceptionCaDer() {
+    try {
+      const pem = read(this.#directory, 'interception.pem'), cert = new X509Certificate(pem);
+      // The owned OpenSSL writer uses platform line endings. Permit CRLF/LF,
+      // while refusing extra PEM blocks, private material or trailing content.
+      if (!Buffer.from(pem.toString('utf8').replace(/\r\n/g, '\n')).equals(Buffer.from(cert.toString()))) fail();
+      const validated = interceptionCertificate(cert.raw, Date.now());
+      if (hash(validated.raw) !== this.#material.interceptionCaCertificateSha256) fail();
+      return Buffer.from(validated.raw);
+    } catch { fail(); }
+  }
   tlsOptions() { return { key: read(this.#directory, 'gateway-key.pem', 4096), cert: read(this.#directory, 'gateway.pem'), minVersion: 'TLSv1.2', maxVersion: 'TLSv1.3', handshakeTimeout: 5000, ALPNProtocols: ['http/1.1'] }; }
   commitPorts(setupPort, credentialPort) {
     if (![setupPort, credentialPort].every(port => Number.isInteger(port) && port > 0 && port <= 65535) || setupPort === credentialPort) fail();

@@ -35,8 +35,14 @@ function policy(request, role, logicalName) {
     const name = request.rawHeaders[index].toLowerCase(); if (seen.has(name)) return false; seen.add(name);
   }
   if (['origin', 'cookie', 'authorization', 'transfer-encoding', 'expect', 'upgrade', 'trailer'].some(name => Object.hasOwn(request.headers, name))) return false;
-  if (role === 'credential') return request.method === 'GET' && request.url === '/research/enrollment/credential' &&
-    (request.headers['content-length'] === undefined || request.headers['content-length'] === '0');
+  if (role === 'credential') {
+    if (request.url === '/companion/v1/ca') return request.method === 'GET' &&
+      [...seen].every(name => ['host', 'accept', 'connection', 'content-length'].includes(name)) &&
+      request.headers.accept === 'application/pkix-cert' && request.headers.connection === 'close' &&
+      (request.headers['content-length'] === undefined || request.headers['content-length'] === '0');
+    return request.method === 'GET' && request.url === '/research/enrollment/credential' &&
+      (request.headers['content-length'] === undefined || request.headers['content-length'] === '0');
+  }
   return request.method === 'POST' && ['/companion/v1/pair', '/companion/v1/pair/status', '/companion/v1/pair/cancel'].includes(request.url) && request.headers['content-type'] === 'application/json';
 }
 function channel(request, body) {
@@ -187,10 +193,27 @@ class EnrollmentHttpsFixture {
     if (this.#service?.snapshot().unavailable) this.#unavailable = true;
     if (this.#unavailable) return this.#error(reply, 'pairing_unavailable');
     if (role === 'credential') {
+      const caRequest = request.url === '/companion/v1/ca';
+      if (caRequest) {
+        try { await this.#body(request, 0); }
+        catch (failure) { if (request.socket.destroyed) return; return this.#error(reply, failure.code === 'pairing_limit' ? 'pairing_limit' : 'invalid_message'); }
+        if (this.#closing) { request.socket.destroy(); return; }
+      }
       const cert = request.socket.getPeerX509Certificate(); let authorized;
       try { authorized = request.socket.authorized === true && cert && this.#store.authorizeCertificate(cert.raw); }
       catch { this.#unavailable = true; return this.#error(reply, 'pairing_unavailable'); }
       if (!authorized) return this.#error(reply, 'authentication_failed');
+      if (caRequest) {
+        let body;
+        try { body = this.#assets.interceptionCaDer(); }
+        catch { return this.#error(reply, 'pairing_unavailable'); }
+        return this.#write(request.socket, reply, callback => {
+          reply.on('error', () => {});
+          reply.writeHead(200, { 'content-type': 'application/pkix-cert', 'content-length': String(body.length),
+            'x-freekit-ca-sha256': metadata.interceptionCaCertificateSha256, 'cache-control': 'no-store', connection: 'close' });
+          reply.end(body, callback);
+        });
+      }
       return this.#reply(reply, 200, Buffer.from('{"type":"credential_admitted"}'));
     }
     const text = request.headers['content-length'];
