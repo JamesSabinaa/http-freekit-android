@@ -7,7 +7,8 @@ The original goal is active and incomplete.
 
 ## Current Linux resume position
 
-- Android public `main` is `cd36f4b560f0822571731dfc0859b3faca584195`.
+- Android public `main` is `02fbca2839198f8cc0d56b07703f0147bdbac160` before
+  this finite-diagnostics checkpoint.
   The original Windows F worktree and ignored archive below are absent here;
   no original unfinished files were overwritten. The eight-file A23 package
   was reconstructed in an isolated branch and merged through `91c2a85`.
@@ -46,11 +47,17 @@ The original goal is active and incomplete.
   but readbackGranted=false stops all three methods. All cleanup joins.
 - Independent public-AOSP source review reproduces a concrete parser defect:
   a granted permission with zero flags ends `granted=true` plus LF/CRLF, which
-  the parser retained and rejected. The local one-line correction strips only
+  the parser retained and rejected. Correction `02fbca2` strips only
   the line terminator; tests retain all exact package/User0/installed/unique
-  section/permission checks. The actual image's raw dump was not retained, so
-  this is not proof of its flags or cause. Root owns correction/tests/evidence
-  in the coordinator worktree. Ordinary host CI must precede a fresh full matrix.
+  section/permission checks. [Host run 40212541854](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40212541854)
+  passes with 318 JVM methods, 46/46 CA receipts and nine clean lint XMLs.
+  [Fourth matrix 40213602618](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40213602618)
+  passes API26 again, but API37 still stops before all methods with grant0,
+  readback0 and readbackGranted=false. All cleanup joins. No actual-image cause
+  is established. Root owns finite structural diagnostics/tests/evidence in
+  `.claude/worktrees/coord-a23-resume`; independent review found no privacy,
+  schema or admission defect. Only fixed counts/booleans are logged, never dump
+  text. Pinned host CI must precede the next fresh full diagnostic matrix.
 - User explicitly authorized continued publication of validated Android main
   checkpoints and existing hosted validation workflows for this goal without
   asking for every checkpoint. This does not authorize paid infrastructure,

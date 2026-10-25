@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ownedCaPermissionDeclared, ownedCaPermissionGranted } from './run-interception-ca-runtime.mjs';
+import { ownedCaPermissionDeclared, ownedCaPermissionGranted, ownedCaPermissionReadback } from './run-interception-ca-runtime.mjs';
 import { enrollmentRuntimeOptions } from './run-enrollment-runtime.mjs';
 import { createInterceptionCaInvocationParser } from './interception-ca-runtime-results.mjs';
 import { interceptionCaRuntimeMethod } from './interception-ca-runtime-descriptor.mjs';
@@ -41,6 +41,25 @@ test('API 37 reads an actual User 0 runtime grant from only the owned installed 
   assert.equal(ownedCaPermissionGranted(granted + '  User 0: installed=true\n    runtime permissions:\n      android.permission.INTERNET: granted=true\n'), false);
   assert.equal(ownedCaPermissionGranted(`${owned}  User 0: installed=true\n    runtime permissions:\n      ${permission}: granted=false\n  User 10: installed=true\n    runtime permissions:\n      ${permission}: granted=true\n`), false);
   assert.equal(ownedCaPermissionGranted(`${owned}  User 0: installed=true\n    runtime permissions:\n      android.permission.INTERNET: granted=true\nPackage [com.example.other] (def456):\n  User 0: installed=true\n    runtime permissions:\n      ${permission}: granted=true\n`), false);
+});
+test('permission diagnostics expose only fixed counts and booleans without admitting ambiguous output', () => {
+  const owned = `Package [com.httpfreekit.interop.test] (private-id):\n  User 0: installed=true dataDir=/private/data\n    runtime permissions:\n      ${permission}: granted=true\n`;
+  const expected = { ownedPackageCount: 1, user0Count: 1, installedFieldCount: 1, installedTrue: true,
+    runtimeSectionCount: 1, packageTargetCount: 1, userTargetCount: 1, runtimeTargetCount: 1,
+    runtimeGrantedTrue: true, targetHasFlags: false, targetHasTerminator: true, granted: true };
+  assert.deepEqual(ownedCaPermissionReadback(owned), expected);
+  const duplicate = ownedCaPermissionReadback(owned.replace('installed=true', 'installed=true installed=unknown'));
+  assert.equal(duplicate.installedFieldCount, 2); assert.equal(duplicate.granted, false);
+  const repeated = ownedCaPermissionReadback(owned + '  User 0: installed=true\n');
+  assert.equal(repeated.user0Count, 2); assert.equal(repeated.granted, false);
+  const blocked = ownedCaPermissionReadback(owned.replace(`      ${permission}`, `      com.example.permission.PRIVATE: granted=false\n      ${permission}`));
+  assert.equal(blocked.userTargetCount, 1); assert.equal(blocked.runtimeTargetCount, 0); assert.equal(blocked.granted, false);
+  for (const value of [owned, owned + owned, null, Buffer.alloc(262145, 65).toString()]) {
+    const facts = ownedCaPermissionReadback(value);
+    assert.deepEqual(Object.keys(facts), Object.keys(expected)); assert.ok(Object.isFrozen(facts));
+    assert.ok(Object.values(facts).every(v => typeof v === 'boolean' || Number.isSafeInteger(v) && v >= 0 && v <= 262144));
+    assert.doesNotMatch(JSON.stringify(facts), /private-id|private\/data|com\.example/);
+  }
 });
 test('A23 CLI accepts no desktop checkout or accidental fallback to A22a', () => {
   assert.equal(enrollmentRuntimeOptions(['--serial', 'emulator-5554']).suite, 'a22a');

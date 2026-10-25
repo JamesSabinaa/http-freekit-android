@@ -157,8 +157,25 @@ that terminator and rejected `granted=true` with LF/CRLF. A focused correction
 removes only the final line terminator while retaining exact package/User0,
 installed=true, unique runtime section/permission and true-grant checks. Public
 source and host regressions prove that formatting defect, not the actual image's
-unretained flags or the cause of its rejection. New host CI and a fresh full
-matrix are required; A23 acceptance remains open.
+unretained flags or the cause of its rejection. The correction `02fbca2` passes
+[host run 40212541854](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40212541854)
+with the same 318 JVM/46 CA receipts/nine clean lint reports. In the
+[fourth matrix 40213602618](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40213602618),
+API26 passes again, but API37 still records grant0/readback0/readbackGranted=false
+and three zero-start rows, with all cleanup joined. The LF/CRLF correction did
+not establish the image's rejection cause. Before another runtime, a finite
+parser diagnostic now emits only fixed integer counts and boolean structural
+facts for owned package, User0, installed status, runtime sections and the target
+permission. It emits no dump bytes, paths, package inventory or flags strings and
+changes no report schema or positive admission gate. The next checked-source
+runtime must establish the actual structural failure before another admission
+change. Local diagnostic validation passes 95 non-worker cases, syntax and 270
+local links. The initially selected worker file could not load missing `ws`;
+after locked `npm ci --ignore-scripts`, three worker cases fail with
+`pairing_unavailable` on Node22.22.2 (one passes). These are retained failures,
+not acceptance or proven baseline failures. Installing the pinned Node runtime
+was denied; the existing authorized pinned hosted workflow must resolve the
+full gate before any emulator dispatch. A23 acceptance remains open.
 CA installation, target-app trust and physical USB remain open.
 
 ## Enrolled HTTP-origin factory research

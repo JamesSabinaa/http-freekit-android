@@ -44,24 +44,43 @@ export function ownedCaPermissionDeclared(output) {
   const section = /^\s*requested permissions:\s*\r?\n((?:^[ \t]+android\.permission\.[A-Z_]+(?:\s*\r?\n|$))*)/im.exec(packageSection);
   return !!section && /^[ \t]+android\.permission\.ACCESS_LOCAL_NETWORK[ \t]*$/m.test(section[1]);
 }
-export function ownedCaPermissionGranted(output) {
+export function ownedCaPermissionReadback(output) {
+  const facts = { ownedPackageCount: 0, user0Count: 0, installedFieldCount: 0, installedTrue: false,
+    runtimeSectionCount: 0, packageTargetCount: 0, userTargetCount: 0, runtimeTargetCount: 0,
+    runtimeGrantedTrue: false, targetHasFlags: false, targetHasTerminator: false, granted: false };
+  const finish = () => Object.freeze(facts);
+  if (typeof output !== 'string' || Buffer.byteLength(output) > 262144) return finish();
+  facts.ownedPackageCount = [...output.matchAll(/^\s*Package \[com\.httpfreekit\.interop\.test\] \([^\r\n]*\):?\s*$/gm)].length;
   const packageSection = ownedCaPackageSection(output);
-  if (packageSection === null) return false;
+  if (packageSection === null) return finish();
+  const targetLines = text => [...text.matchAll(/^[ \t]+android\.permission\.ACCESS_LOCAL_NETWORK:[^\r\n]*(?:\r?\n|$)/gm)];
+  facts.packageTargetCount = targetLines(packageSection).length;
   const users = [...packageSection.matchAll(/^[ \t]*User ([0-9]+):[^\r\n]*(?:\r?\n|$)/gm)];
   const user = users.filter(match => match[1] === '0');
-  if (user.length !== 1) return false;
-  const installed = [...user[0][0].matchAll(/(?:^|[ \t])installed=(true|false)(?=[ \t\r\n]|$)/g)];
-  if (installed.length !== 1 || installed[0][1] !== 'true') return false;
+  facts.user0Count = user.length;
+  if (user.length !== 1) return finish();
+  const installed = [...user[0][0].matchAll(/(?:^|[ \t])installed=([^ \t\r\n]+)(?=[ \t\r\n]|$)/g)];
+  facts.installedFieldCount = installed.length;
+  facts.installedTrue = installed.length === 1 && installed[0][1] === 'true';
   const start = user[0].index + user[0][0].length;
   const next = users.find(match => match.index >= start);
   const userSection = packageSection.slice(start, next?.index ?? packageSection.length);
+  facts.userTargetCount = targetLines(userSection).length;
   const headings = [...userSection.matchAll(/^[ \t]*runtime permissions:[ \t]*\r?\n/gm)];
-  if (headings.length !== 1) return false;
+  facts.runtimeSectionCount = headings.length;
+  if (headings.length !== 1) return finish();
   const runtime = /^((?:^[ \t]+android\.permission\.[A-Z_]+:[^\r\n]*(?:\r?\n|$))*)/m.exec(userSection.slice(headings[0].index + headings[0][0].length));
-  if (runtime?.index !== 0) return false;
-  const target = [...(runtime?.[1] ?? '').matchAll(/^[ \t]+android\.permission\.ACCESS_LOCAL_NETWORK:[^\r\n]*(?:\r?\n|$)/gm)];
-  return target.length === 1 && /^[ \t]+android\.permission\.ACCESS_LOCAL_NETWORK: granted=true(?:,|[ \t]|$)/.test(target[0][0].replace(/\r?\n$/, ''));
+  if (runtime?.index !== 0) return finish();
+  const target = targetLines(runtime[1]);
+  facts.runtimeTargetCount = target.length;
+  if (target.length !== 1) return finish();
+  facts.runtimeGrantedTrue = /^[ \t]+android\.permission\.ACCESS_LOCAL_NETWORK: granted=true(?:,|[ \t]|$)/.test(target[0][0].replace(/\r?\n$/, ''));
+  facts.targetHasFlags = /, flags=/.test(target[0][0]);
+  facts.targetHasTerminator = /\r?\n$/.test(target[0][0]);
+  facts.granted = facts.installedTrue && facts.runtimeGrantedTrue;
+  return finish();
 }
+export const ownedCaPermissionGranted = output => ownedCaPermissionReadback(output).granted;
 
 export async function runInterceptionCaRuntime(options) {
   const caSuite = options.suite === 'a23';
@@ -117,7 +136,9 @@ export async function runInterceptionCaRuntime(options) {
         requirePass(grant, stage);
         const readback = await adb(['shell', 'pm', 'dump', PACKAGE]);
         report.permission.readbackCommand = enrollmentCommandObservation(readback);
-        report.permission.readbackGranted = passed(readback) && readback.stderrBytes === 0 && ownedCaPermissionGranted(readback.output);
+        const readbackFacts = ownedCaPermissionReadback(readback.output);
+        console.log('A23 owned permission readback: ' + JSON.stringify(readbackFacts));
+        report.permission.readbackGranted = passed(readback) && readback.stderrBytes === 0 && readbackFacts.granted;
         if (!report.permission.readbackGranted) throw Error(stage);
       }
     }
