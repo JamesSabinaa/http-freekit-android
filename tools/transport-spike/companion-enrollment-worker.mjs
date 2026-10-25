@@ -4,7 +4,7 @@ import path from 'node:path';
 
 const codes = new Set(['invalid_message', 'message_too_large', 'unsupported_version', 'unsupported_capability', 'authentication_failed', 'invitation_expired', 'invitation_used', 'pairing_limit', 'pairing_unavailable']);
 const schema = {
-  start: ['directory', 'mode', 'openssl', 'setupPort', 'credentialPort'], metadata: [], createInvitation: [],
+  start: ['directory', 'mode', 'openssl', 'setupPort', 'credentialPort'], metadata: [], createInvitation: [], interceptionCaEvidence: [],
   startAdversarial: ['directory', 'mode', 'openssl', 'setupPort', 'credentialPort'],
   startOrigin: ['desktopRoot', 'desktopCommit', 'openssl'], releaseOriginTail: [],
   startTunOrigin: ['desktopRoot', 'desktopCommit', 'openssl'],
@@ -38,7 +38,7 @@ function valid(message) {
   return true;
 }
 
-let fixture, starting, startAccepted = false, originFixture = false, closing = false, shutdown;
+let fixture, starting, startAccepted = false, originFixture = false, plainHttpsFixture = false, closing = false, shutdown;
 const pending = new Map(), sends = new Set();
 function send(reply) {
   if (!process.connected || typeof process.send !== 'function' || sends.size >= 4) return Promise.reject(Error('private_ipc_unavailable'));
@@ -64,6 +64,7 @@ async function invoke(op, args) {
   if (['start', 'startStreaming', 'startAdversarial', 'startOrigin', 'startTunOrigin'].includes(op)) {
     startAccepted = true;
     originFixture = op === 'startOrigin' || op === 'startTunOrigin';
+    plainHttpsFixture = op === 'start';
     starting = op === 'start' ? startEnrollmentHttpsFixture(args) : (async () => {
       if (op === 'startOrigin' || op === 'startTunOrigin') {
         const { startOriginGatewayFixture } = await import('./gateway-origin-fixture.mjs');
@@ -80,6 +81,10 @@ async function invoke(op, args) {
     return fixture.metadata().material();
   }
   if (!fixture) throw Object.assign(Error(), { code: 'pairing_unavailable' });
+  if (op === 'interceptionCaEvidence') {
+    if (!plainHttpsFixture) throw Object.assign(Error(), { code: 'pairing_unavailable' });
+    return fixture.interceptionCaEvidence().material();
+  }
   if (op === 'releaseOriginTail') {
     if (!originFixture) throw Object.assign(Error(), { code: 'pairing_unavailable' });
     return fixture.releaseTail();

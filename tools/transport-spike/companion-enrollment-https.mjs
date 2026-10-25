@@ -1,11 +1,12 @@
 // A22 loopback research only: no production endpoint or Android-accessible operator API.
 import https from 'node:https';
-import { constants as cryptoConstants, X509Certificate } from 'node:crypto';
+import { constants as cryptoConstants, createHash, X509Certificate } from 'node:crypto';
 import { inspect } from 'node:util';
 import { enrollmentFixtureAssets, EnrollmentFixtureError } from './companion-enrollment-https-assets.mjs';
 import { startEnrollmentIssuer, EnrollmentIssuerError } from './companion-enrollment-issuer.mjs';
 import { createEnrollmentStore, openEnrollmentStore } from './companion-enrollment-store.mjs';
 import { createEnrollmentAuthority } from './companion-enrollment-authority.mjs';
+import { enrollmentPublicSnapshot } from './companion-enrollment-crypto.mjs';
 import { decodeEnrollment, encodeEnrollment, enrollmentMessage } from './companion-enrollment-codec.mjs';
 import { validateCapabilities } from './companion-protocol-codec.mjs';
 
@@ -237,6 +238,12 @@ class EnrollmentHttpsFixture {
     if (selected === 'status_request' && material.type === 'pair_approved') { this.#delivered++; if (this.#dropped > 0) this.#deliveredAfterDrop++; }
   }
   metadata() { return this.#assets.metadata(); }
+  interceptionCaEvidence() {
+    this.#healthy();
+    if (this.#service || this.#listening.size !== 2) fail();
+    const der = this.#assets.interceptionCaDer();
+    return enrollmentPublicSnapshot({ certificateBytes: der.length, certificateSha256: createHash('sha256').update(der).digest('base64url') });
+  }
   createInvitation() {
     this.#healthy(); const now = this.#store.now().utcMillis;
     for (const [invitationId, expires] of this.#invitations) if (now >= expires && !this.#registrations.has(invitationId) && ![...this.#waiters].some(waiter => waiter.invitationId === invitationId)) this.#invitations.delete(invitationId);
