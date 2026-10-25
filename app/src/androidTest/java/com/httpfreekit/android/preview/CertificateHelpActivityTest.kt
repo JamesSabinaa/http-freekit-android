@@ -3,6 +3,7 @@ package com.httpfreekit.android.preview
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.graphics.Bitmap
+import android.os.SystemClock
 import androidx.activity.compose.setContent
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
@@ -131,12 +132,25 @@ class CertificateHelpActivityTest {
     private fun saveHelpScreenshot() {
         compose.waitForIdle()
         val instrumentation = InstrumentationRegistry.getInstrumentation()
-        val screenshot = requireNotNull(instrumentation.uiAutomation.takeScreenshot())
+        var screenshot: Bitmap? = null
         try {
+            // Compose idle does not include a platform dialog's window animation.
+            // Observe three equal rendered frames before exporting the actual image.
+            val deadline = SystemClock.uptimeMillis() + 3_000
+            var equalPairs = 0
+            do {
+                val next = requireNotNull(instrumentation.uiAutomation.takeScreenshot())
+                equalPairs = if (screenshot?.sameAs(next) == true) equalPairs + 1 else 0
+                screenshot?.recycle(); screenshot = next
+                if (equalPairs >= 2) break
+                SystemClock.sleep(200)
+            } while (SystemClock.uptimeMillis() < deadline)
+            assertTrue("Help window did not settle to three equal rendered frames", equalPairs >= 2)
             val output = File(instrumentation.targetContext.filesDir, "certificate-help.png")
-            output.outputStream().use { assertTrue(screenshot.compress(Bitmap.CompressFormat.PNG, 100, it)) }
+            val settled = requireNotNull(screenshot)
+            output.outputStream().use { assertTrue(settled.compress(Bitmap.CompressFormat.PNG, 100, it)) }
             assertTrue(output.length() > 0)
-        } finally { screenshot.recycle() }
+        } finally { screenshot?.recycle() }
     }
 
     private fun label(resource: Int) = compose.activity.getString(resource)
