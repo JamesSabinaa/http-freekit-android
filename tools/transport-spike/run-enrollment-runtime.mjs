@@ -36,14 +36,19 @@ export function enrollmentRuntimeOptions(args, env = process.env) {
     seen.add(name); options[name === '--desktop-root' ? 'desktopRoot' : name === '--desktop-commit' ? 'desktopCommit' : name.slice(2)] = value;
   }
   if (!/^[A-Za-z0-9_.:-]{1,128}$/.test(options.serial ?? '')) throw Error('explicit_enrollment_serial_required');
-  if (!['a22a', 'a22b', 'a22c', 'c2'].includes(options.suite)) throw Error('invalid_enrollment_arguments');
-  if (options.suite === 'c2') {
+  if (!['a22a', 'a22b', 'a22c', 'c2', 'c5'].includes(options.suite)) throw Error('invalid_enrollment_arguments');
+  if (options.suite === 'c2' || options.suite === 'c5') {
     if (!options.desktopRoot || !path.isAbsolute(options.desktopRoot) || !/^[0-9a-f]{40}$/.test(options.desktopCommit ?? '') || options.desktopCommit.length !== 40) throw Error('invalid_enrollment_arguments');
+    if (options.suite === 'c5' && options.desktopCommit !== '2ee70e86b17e2feb2fd2bf4842a85c66671eb4c6') throw Error('invalid_enrollment_arguments');
   } else if (seen.has('--desktop-root') || seen.has('--desktop-commit')) throw Error('invalid_enrollment_arguments');
   return Object.freeze(options);
 }
 
 export async function runEnrollmentRuntime(options) {
+  if (options.suite === 'c5') {
+    const { runEnrolledTunRuntime } = await import('./run-enrolled-tun-runtime.mjs');
+    return runEnrolledTunRuntime(options);
+  }
   if (options.suite === 'c2') {
     const { runCaptureFactoryRuntime } = await import('./run-capture-factory-runtime.mjs');
     return runCaptureFactoryRuntime(options);
