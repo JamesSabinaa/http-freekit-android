@@ -319,21 +319,45 @@ jobs:
           printf 'Booted enrollment emulator API=%s\n' "$actual_api"
           # BEGIN A22 FRESH AVD CLOCK ALIGNMENT
           align_enrollment_clock() {
-            local clock_uid automatic_time host_time
-            timeout --kill-after=1s 10s adb -s emulator-5554 root >/dev/null || return "$?"
+            local clock_uid automatic_time host_time root_status=0 root_deadline unroot_status=0 shell_deadline remaining
+            # adbd can close its transport while root is taking effect. Verify the resulting identity.
+            timeout --kill-after=1s 10s adb -s emulator-5554 root >/dev/null || root_status=$?
+            printf 'Enrollment ADB root transition exit: %s\n' "$root_status"
+            root_deadline=$((SECONDS + 30))
             timeout --kill-after=1s 30s adb -s emulator-5554 wait-for-device >/dev/null || return "$?"
-            clock_uid="$(timeout --kill-after=1s 10s adb -s emulator-5554 shell id -u)" || return "$?"
-            if [[ "${clock_uid//$'\r'/}" != 0 ]]; then return 1; fi
+            while true; do
+              remaining=$((root_deadline - SECONDS))
+              if (( remaining <= 0 )); then return 1; fi
+              if (( remaining > 10 )); then remaining=10; fi
+              clock_uid="$(timeout --kill-after=1s "${remaining}s" adb -s emulator-5554 shell id -u)" || return "$?"
+              clock_uid="${clock_uid//$'\r'/}"
+              if (( SECONDS >= root_deadline )); then return 1; fi
+              if [[ "$clock_uid" == 0 ]]; then break; fi
+              if [[ "$clock_uid" != 2000 ]]; then return 1; fi
+              sleep 1
+            done
             timeout --kill-after=1s 10s adb -s emulator-5554 shell settings put global auto_time 0 >/dev/null || return "$?"
             automatic_time="$(timeout --kill-after=1s 10s adb -s emulator-5554 shell settings get global auto_time)" || return "$?"
             if [[ "${automatic_time//$'\r'/}" != 0 ]]; then return 1; fi
             host_time="$(date +%s.%N)" || return "$?"
             if [[ ! "$host_time" =~ ^[0-9]{10}\.[0-9]{9}$ ]]; then return 1; fi
             timeout --kill-after=1s 10s adb -s emulator-5554 shell /system/bin/toybox date -u "@$host_time" >/dev/null || return "$?"
-            timeout --kill-after=1s 10s adb -s emulator-5554 unroot >/dev/null || return "$?"
+            # adbd can close its transport while unroot is taking effect. Verify the resulting identity.
+            timeout --kill-after=1s 10s adb -s emulator-5554 unroot >/dev/null || unroot_status=$?
+            printf 'Enrollment ADB unroot transition exit: %s\n' "$unroot_status"
+            shell_deadline=$((SECONDS + 30))
             timeout --kill-after=1s 30s adb -s emulator-5554 wait-for-device >/dev/null || return "$?"
-            clock_uid="$(timeout --kill-after=1s 10s adb -s emulator-5554 shell id -u)" || return "$?"
-            if [[ "${clock_uid//$'\r'/}" != 2000 ]]; then return 1; fi
+            while true; do
+              remaining=$((shell_deadline - SECONDS))
+              if (( remaining <= 0 )); then return 1; fi
+              if (( remaining > 10 )); then remaining=10; fi
+              clock_uid="$(timeout --kill-after=1s "${remaining}s" adb -s emulator-5554 shell id -u)" || return "$?"
+              clock_uid="${clock_uid//$'\r'/}"
+              if (( SECONDS >= shell_deadline )); then return 1; fi
+              if [[ "$clock_uid" == 2000 ]]; then break; fi
+              if [[ "$clock_uid" != 0 ]]; then return 1; fi
+              sleep 1
+            done
             echo 'Fresh AVD clock alignment completed; ordinary ADB shell restored.'
           }
           # END A22 FRESH AVD CLOCK ALIGNMENT
