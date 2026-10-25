@@ -12,6 +12,7 @@ import { createDesktopOriginBackend, createDesktopOriginAuthorities, C3_CAPABILI
 import { startEnrollmentOriginFixture } from './companion-enrollment-origin.mjs';
 import { enrollOriginCsr } from './companion-enrollment-origin-client.mjs';
 import { captureFactoryPayload as payload } from './capture-factory-descriptor.mjs';
+import { enrolledTunPayload as tunPayload } from './enrolled-tun-descriptor.mjs';
 import { observeClose, bounded, safeError, write, endWrite, writerState } from './companion-stream-peer-io.mjs';
 import { ResearchWebSocket } from './research-websocket.mjs';
 
@@ -20,7 +21,7 @@ const requestBody = () => Buffer.from(Array.from({ length: payload.requestBodyBy
 const responseBody = () => Buffer.from(Array.from({ length: payload.responseBodyBytes }, (_, i) => (i * 7) % 253));
 const retainedFailures = new Set();
 const failure = () => safeError('origin_fixture_failed');
-export const c3Profiles = Object.freeze(['https-h1', 'http-upgrade', 'wss-h1', 'http-h1']);
+export const c3Profiles = Object.freeze(['https-h1', 'http-upgrade', 'wss-h1', 'http-h1', 'tun-http-h1']);
 export const c3Upgrade = Object.freeze({ path: '/factory-upgrade', initialText: 'origin-ready', clientText: 'capture-upgrade-€', binaryBytes: 4097 });
 const upgradeBinary = () => Buffer.from(Array.from({ length: c3Upgrade.binaryBytes }, (_, i) => (i * 29 + 3) & 255));
 const unexpectedTransportHeader = request => Object.keys(request.headers).some(name => name.startsWith('x-freekit-') ||
@@ -28,13 +29,17 @@ const unexpectedTransportHeader = request => Object.keys(request.headers).some(n
 
 export async function startOriginGatewayFixture({ desktopRoot, desktopCommit, openssl = process.env.OPENSSL_BIN ?? 'openssl', profile, family } = {}) {
   const c3 = profile !== undefined;
+  const tun = profile === 'tun-http-h1';
   if (retainedFailures.size || c3 && (!c3Profiles.includes(profile) || !['ipv4', 'ipv6'].includes(family) || desktopCommit !== C3_DESKTOP_COMMIT ||
-      profile === 'http-h1' && family !== 'ipv4') ||
+      (profile === 'http-h1' || tun) && family !== 'ipv4') ||
       !c3 && family !== undefined) throw failure();
-  const gatedHttp = !c3 || profile === 'http-h1';
-  const ordinaryHttp = profile === 'https-h1' || profile === 'http-h1';
-  const originalAddress = c3 && family === 'ipv6' ? '::1' : '127.0.0.2';
-  const originalPort = c3 && ['https-h1', 'wss-h1'].includes(profile) ? 443 : 80;
+  // The external driver owns setup/removal; never remap an unowned original destination.
+  if (tun && (process.platform !== 'linux' || !os.networkInterfaces().lo?.some(value =>
+    value.family === 'IPv4' && value.internal === true && value.address === tunPayload.address && value.cidr === `${tunPayload.address}/${tunPayload.prefix}`))) throw failure();
+  const gatedHttp = !c3 || profile === 'http-h1' || tun;
+  const ordinaryHttp = profile === 'https-h1' || profile === 'http-h1' || tun;
+  const originalAddress = tun ? tunPayload.address : c3 && family === 'ipv6' ? '::1' : '127.0.0.2';
+  const originalPort = tun ? tunPayload.port : c3 && ['https-h1', 'wss-h1'].includes(profile) ? 443 : 80;
   const logicalHost = c3 ? C3_LOGICAL_HOST : payload.logicalHost;
   const temporaryRoot = fs.realpathSync(os.tmpdir()), directory = fs.mkdtempSync(path.join(temporaryRoot, 'freekit-origin-gateway-'));
   fs.chmodSync(directory, 0o700);
@@ -191,7 +196,7 @@ export async function startOriginGatewayFixture({ desktopRoot, desktopCommit, op
         if (capture.protocol === 'ws-frame') return; // Frame rows reference the captured Upgrade parent, not another HTTP request.
         if (!c3) { if (capture.url === `http://${payload.logicalHost}${payload.path}`) origin.captureMatched = true; }
         else {
-          const url = new URL(capture.url), protocols = profile === 'http-h1' ? ['http:'] : profile === 'https-h1' ? ['https:'] : profile === 'wss-h1' ? ['https:', 'wss:'] : ['http:', 'ws:'];
+          const url = new URL(capture.url), protocols = profile === 'http-h1' || tun ? ['http:'] : profile === 'https-h1' ? ['https:'] : profile === 'wss-h1' ? ['https:', 'wss:'] : ['http:', 'ws:'];
           if (protocols.includes(url.protocol) && url.hostname === logicalHost && (Number(url.port) || (originalPort === 443 ? 443 : 80)) === originalPort &&
               url.pathname === (ordinaryHttp ? payload.path : c3Upgrade.path)) origin.captureMatched = true;
         }

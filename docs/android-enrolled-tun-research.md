@@ -24,8 +24,10 @@ The traffic UID opens exactly `198.18.0.2:80`. The desktop fixture must bind and
 dial that same numeric destination. Never substitute `127.0.0.2`, rewrite the
 original destination or use Android loopback as the capture proof. The initial
 Linux host driver checks the exact `/32` alias absent before setup, creates only
-that alias on loopback and records ownership only after the command succeeds and
-the address is observed. It removes only its owned alias after fixture/process
+that alias on loopback and records creation ownership after the command succeeds.
+Acceptance separately requires the exact address to be observed; failed
+verification does not discard the created alias's cleanup ownership. It removes
+only its owned alias after fixture/process
 joins and confirms absence. A pre-existing alias, missing bind permission,
 unsupported platform or failed setup is an explicit refusal, never an optional
 pass. Every external setup/cleanup command has a deadline and kill-after bound.
@@ -93,7 +95,10 @@ the fixture still requires actual decoded/drained client END_WRITE. At
 `local-stream-drained`, the driver independently polls the existing actual
 `gatewayStreamComplete` fact and verifies exact origin/capture/body/destination
 facts. Only then may it write the descriptor's fixed one-shot acknowledgment
-through bounded existing `run-as` stdin. Android validates the app-private
+through bounded existing `run-as` stdin. Write an absent-before-use owned private
+temporary entry, finish and close the write with mode0600, then atomically rename
+within that directory to the absent fixed gate. Never expose a partial final
+file or replace a prior acknowledgment. Android validates the app-private
 directory/file owner, no symlink, permissions and exact bounded bytes, consumes
 that fixed file once, then emits `gateway-complete-acknowledged` before Stop.
 Android does not fabricate a remote COMPLETE observation from local counters.

@@ -241,7 +241,7 @@ test('C3 private CSR CLI binds actual public CA, exact capabilities and all clos
 test('C3 profiles and source pins are finite and failures never echo supplied configuration', async () => {
   for (const extra of [{ profile: 'CANARY_private', family: 'ipv4' }, { profile: 'https-h1', family: 'CANARY_private' },
     { profile: 'https-h1', family: 'ipv4', desktopCommit: 'fd63f6940226c8e3401a165082dfa9325abaca69' },
-    { profile: 'http-h1', family: 'ipv6' }, { family: 'ipv4' }]) {
+    { profile: 'http-h1', family: 'ipv6' }, { profile: 'tun-http-h1', family: 'ipv6' }, { family: 'ipv4' }]) {
     await assert.rejects(startOriginGatewayFixture({ desktopRoot, desktopCommit, ...extra }), error => error.code === 'origin_fixture_failed' && !String(error).includes('CANARY_private'));
   }
 });
