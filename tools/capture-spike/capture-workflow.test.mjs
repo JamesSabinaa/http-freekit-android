@@ -56,27 +56,55 @@ case "$3" in
  *) exit 99 ;;
 esac
 printf '%s\\n' "$step" >> "$TEST_LOG"
+if [[ "$step" == unroot && "$TEST_RESTORE_MODE" == nonzero_verified ]]; then
+ printf '%s\\n' "$mode" > "$TEST_STATE"; exit 9
+fi
+if [[ "$step" == shell_identity ]]; then
+ case "$TEST_RESTORE_MODE" in
+  unknown) echo unknown; exit 0 ;;
+  read_failure) exit 9 ;;
+  root_once) if [[ ! -f "$TEST_STATE.transitional" ]]; then touch "$TEST_STATE.transitional"; echo 0; exit 0; fi ;;
+ esac
+fi
 if [[ "$step" == "$TEST_FAIL_AT" ]]; then
  case "$step" in root_identity) echo 2000; exit 0 ;; shell_identity) echo 0; exit 0 ;; auto_read) echo 1; exit 0 ;; *) exit 9 ;; esac
 fi
 printf '%s\\n' "$mode" > "$TEST_STATE"
 case "$step" in root_identity) echo 0 ;; shell_identity) echo 2000 ;; auto_read) echo 0 ;; esac
 `;
-const clock = (failAt = '', badTime = false) => temporary(directory => {
+const clock = (failAt = '', badTime = false, restoreMode = '') => temporary(directory => {
   fs.writeFileSync(path.join(directory, 'adb'), fakeAdb, { mode: 0o700 });
   fs.writeFileSync(path.join(directory, 'date'), '#!/usr/bin/env bash\nif [[ "$TEST_BAD_TIME" == 1 ]]; then printf \'1792879320.123456789;false\\n\'; else exec /usr/bin/date "$@"; fi\n', { mode: 0o700 });
   const script = setup + 'export TEST_LOG="$test_bin/order" TEST_STATE="$test_bin/state"\n' + alignment + '\nalign_capture_clock\nprintf "DRIVER_ALLOWED\\n"\n';
-  const result = spawnSync(bash, ['-c', script], { cwd: directory, encoding: 'utf8', timeout: 15000, windowsHide: true,
-    env: { ...process.env, TEST_DIRECTORY: directory, TEST_NODE_DIRECTORY: path.dirname(process.execPath), TEST_FAIL_AT: failAt, TEST_BAD_TIME: badTime ? '1' : '0' } });
+  const result = spawnSync(bash, ['-c', script], { cwd: directory, encoding: 'utf8', timeout: 45000, windowsHide: true,
+    env: { ...process.env, TEST_DIRECTORY: directory, TEST_NODE_DIRECTORY: path.dirname(process.execPath), TEST_FAIL_AT: failAt, TEST_BAD_TIME: badTime ? '1' : '0', TEST_RESTORE_MODE: restoreMode } });
   assert.equal(result.error, undefined);
   return { ...result, order: fs.existsSync(path.join(directory, 'order')) ? fs.readFileSync(path.join(directory, 'order'), 'utf8').trim().split('\n') : [] };
 });
 test('actual capture clock function validates the setter and restores ordinary shell before driver admission', () => {
   const result = clock(); assert.equal(result.status, 0, result.stderr); assert.deepEqual(result.order, order); assert.match(result.stdout, /DRIVER_ALLOWED/);
 });
-for (const step of order) test(`capture clock refuses ${step} failure/readback before the driver`, () => {
+for (const step of order.filter(value => value !== 'unroot')) test(`capture clock refuses ${step} failure/readback before the driver`, () => {
   const result = clock(step); assert.equal(result.status, ['root_identity', 'shell_identity', 'auto_read'].includes(step) ? 1 : 9, result.stderr);
-  assert.deepEqual(result.order, order.slice(0, order.indexOf(step) + 1)); assert.doesNotMatch(result.stdout, /DRIVER_ALLOWED/);
+  if (step === 'shell_identity') {
+    assert.deepEqual(result.order.slice(0, 8), order.slice(0, 8));
+    assert.ok(result.order.length > 9 && result.order.slice(8).every(value => value === 'shell_identity'));
+  } else assert.deepEqual(result.order, order.slice(0, order.indexOf(step) + 1));
+  assert.doesNotMatch(result.stdout, /DRIVER_ALLOWED/);
+});
+test('nonzero unroot transport response admits the driver only after actual ordinary UID verification', () => {
+  const result = clock('', false, 'nonzero_verified');
+  assert.equal(result.status, 0, result.stderr); assert.deepEqual(result.order, order);
+  assert.match(result.stdout, /Capture ADB unroot transition exit: 9/); assert.match(result.stdout, /DRIVER_ALLOWED/);
+});
+test('a transient root identity is polled within the shared bound before actual ordinary UID admission', () => {
+  const result = clock('', false, 'root_once');
+  assert.equal(result.status, 0, result.stderr); assert.deepEqual(result.order, [...order, 'shell_identity']);
+  assert.match(result.stdout, /DRIVER_ALLOWED/);
+});
+for (const mode of ['unknown', 'read_failure']) test(`capture clock refuses ${mode} restored identity before the driver`, () => {
+  const result = clock('', false, mode); assert.equal(result.status, mode === 'unknown' ? 1 : 9, result.stderr);
+  assert.deepEqual(result.order, order); assert.doesNotMatch(result.stdout, /DRIVER_ALLOWED/);
 });
 test('capture clock rejects noncanonical host time before its actual setter', () => {
   const result = clock('', true); assert.equal(result.status, 1); assert.deepEqual(result.order, order.slice(0, 5)); assert.doesNotMatch(result.stdout, /DRIVER_ALLOWED/);

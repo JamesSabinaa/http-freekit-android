@@ -162,7 +162,7 @@ jobs:
           test "$actual_api" = "$API_LEVEL"
           # BEGIN C1 FRESH AVD CLOCK ALIGNMENT
           align_capture_clock() {
-            local clock_uid automatic_time host_time
+            local clock_uid automatic_time host_time unroot_status=0 shell_deadline remaining
             timeout --kill-after=1s 10s adb -s emulator-5554 root >/dev/null || return "$?"
             timeout --kill-after=1s 30s adb -s emulator-5554 wait-for-device >/dev/null || return "$?"
             clock_uid="$(timeout --kill-after=1s 10s adb -s emulator-5554 shell id -u)" || return "$?"
@@ -173,10 +173,22 @@ jobs:
             host_time="$(date +%s.%N)" || return "$?"
             if [[ ! "$host_time" =~ ^[0-9]{10}\.[0-9]{9}$ ]]; then return 1; fi
             timeout --kill-after=1s 10s adb -s emulator-5554 shell /system/bin/toybox date -u "@$host_time" >/dev/null || return "$?"
-            timeout --kill-after=1s 10s adb -s emulator-5554 unroot >/dev/null || return "$?"
+            # adbd can close its transport while unroot is taking effect. Verify the resulting identity.
+            timeout --kill-after=1s 10s adb -s emulator-5554 unroot >/dev/null || unroot_status=$?
+            printf 'Capture ADB unroot transition exit: %s\n' "$unroot_status"
+            shell_deadline=$((SECONDS + 30))
             timeout --kill-after=1s 30s adb -s emulator-5554 wait-for-device >/dev/null || return "$?"
-            clock_uid="$(timeout --kill-after=1s 10s adb -s emulator-5554 shell id -u)" || return "$?"
-            if [[ "${clock_uid//$'\r'/}" != 2000 ]]; then return 1; fi
+            while true; do
+              remaining=$((shell_deadline - SECONDS))
+              if (( remaining <= 0 )); then return 1; fi
+              if (( remaining > 10 )); then remaining=10; fi
+              clock_uid="$(timeout --kill-after=1s "${remaining}s" adb -s emulator-5554 shell id -u)" || return "$?"
+              clock_uid="${clock_uid//$'\r'/}"
+              if [[ "$clock_uid" == 2000 ]]; then break; fi
+              if [[ "$clock_uid" != 0 ]]; then return 1; fi
+              if (( SECONDS >= shell_deadline )); then return 1; fi
+              sleep 1
+            done
             echo 'Fresh capture AVD clock aligned; ordinary ADB shell restored.'
           }
           # END C1 FRESH AVD CLOCK ALIGNMENT
