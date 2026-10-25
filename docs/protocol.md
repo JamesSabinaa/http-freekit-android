@@ -10,6 +10,8 @@ Draft revision 0.4 adds the [bounded enrollment/approval/recovery contract](prot
 
 Draft revision 0.5 adds the [original-destination HTTP transport](protocol-http-origin.md): explicit `tcp-http-origin-connect` negotiation and optional `open.proxyMode="http-origin-connect"`, followed by a bounded numeric CONNECT80 preface and unchanged origin-form application bytes. It preserves the legacy absolute-form HTTP and CONNECT443 modes. The new capability is advertised only when implemented; this extension does not freeze v1 or resolve the recorded capture/physical-device limitations.
 
+Draft revision 0.6 specifies [authenticated public interception-CA retrieval](protocol-interception-ca.md) for the existing GET endpoint: bounded DER, current device-registry authorization and binding to the saved approval fingerprint. Existing enrollment/control/stream encodings remain unchanged; production integration and v1 freeze remain open.
+
 The [A22 live enrollment research profile](research-enrollment-https.md) defines the isolated HTTPS, host-operator, private input and process-reopen proof. It preserves draft 0.4 body/proof bytes. Full A22 additionally requires active WSS revocation and credential/session-expiry teardown; a credential probe alone does not clear those gates.
 
 ## Encoding and identity
