@@ -22,6 +22,7 @@ import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.atomic.AtomicLong
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -36,6 +37,7 @@ class CapturePolicyInteropTest {
     private var phase = "setup"
     private var starts = 0
     private var stops = 0
+    private var routeChecks = 0
     private var consentDialog = false
     private var consentActivity: Activity? = null
     private val firstFailure = AtomicReference<Pair<String, Throwable>?>(null)
@@ -86,7 +88,7 @@ class CapturePolicyInteropTest {
         val uid = context.packageManager.getApplicationInfo(ResearchCaptureService.TRAFFIC, 0).uid
         check(uid != Process.myUid() && uid != context.packageManager.getApplicationInfo(ResearchCaptureService.INERT, 0).uid) { "separate_uid" }
         withTraffic { traffic ->
-            start()
+            start(traffic)
             phase = "local-auth-baseline"
             val (admissions, guards) = authenticationBaseline()
             phase = "local-auth-refusal"
@@ -102,7 +104,7 @@ class CapturePolicyInteropTest {
             delta(selected, selectedAfter, "interceptedHttp", 1); delta(selected, selectedAfter, "interceptedOpaque", 1)
             delta(selected, selectedAfter, "directHttp", 0); delta(selected, selectedAfter, "directOpaque", 0)
             stop()
-            start(bypass = true)
+            start(traffic, bypass = true)
             phase = "nonselected-traffic"
             val bypass = receiver.snapshot()
             tcp(traffic, 10); tcp(traffic, 11)
@@ -118,10 +120,11 @@ class CapturePolicyInteropTest {
     @Test(timeout = 120000)
     fun directTcpUdpDnsAndUdp443Policy() = runCase("direct") { facts ->
         withTraffic { traffic ->
+            route(traffic, expectedVpn = false)
             phase = "udp443-positive-control"
             val control = traffic.command(15)
             check(control.status == 0 && control.bytes == 256 && control.sha256 == UDP_HASH) { "udp_positive_control" }
-            start()
+            start(traffic)
             val before = receiver.snapshot()
             val drops = snapshot().capture!!.udp443Drops
             phase = "direct-protocols"
@@ -141,7 +144,7 @@ class CapturePolicyInteropTest {
     @Test(timeout = 120000)
     fun selectedIpv6UsesTun() = runCase("ipv6") { facts ->
         withTraffic { traffic ->
-            start()
+            start(traffic)
             phase = "selected-ipv6"
             val before = receiver.snapshot()
             tcp(traffic, 16)
@@ -156,19 +159,24 @@ class CapturePolicyInteropTest {
     @Test(timeout = 120000)
     fun stopJoinsCaptureAndAllowsFreshStart() = runCase("stop") { facts ->
         withTraffic { traffic ->
-            start()
+            start(traffic)
             phase = "held-intercepted-request"
             val heldBaseline = receiver.armHeld()
             val result = AtomicReference<TrafficClient.Result?>()
             val failure = AtomicReference<Throwable?>()
-            val request = Thread({ try { result.set(traffic.command(10)) } catch (caught: Throwable) { failure.set(caught) } }, "capture-held-fixture-command")
+            val requestCompleted = AtomicLong()
+            val request = Thread({
+                try { result.set(traffic.command(10)) } catch (caught: Throwable) { failure.set(caught) }
+                finally { requestCompleted.set(SystemClock.elapsedRealtime()) }
+            }, "capture-held-fixture-command")
             val requestStarted = SystemClock.elapsedRealtime()
             request.start()
             try {
                 await { receiver.snapshot().getValue("heldConnections") == 1 && snapshot().capture!!.activeFlows > 0 }
                 stop(notification = true)
                 request.join(2500)
-                check(!request.isAlive && SystemClock.elapsedRealtime() - requestStarted < 4000) { "stop_did_not_interrupt_before_request_deadline" }
+                val completed = requestCompleted.get()
+                check(!request.isAlive && completed >= requestStarted && completed - requestStarted < 4000) { "stop_did_not_interrupt_before_request_deadline" }
                 failure.get()?.let { throw it }
                 check(result.get()?.status in setOf(2, 3)) { "held_request_completed" }
                 phase = "held-fixture-cleanup"
@@ -190,7 +198,7 @@ class CapturePolicyInteropTest {
                 if (request.isAlive) { stop(); request.join(12000) }
                 check(!request.isAlive) { "fixture_request_not_joined" }
             }
-            start()
+            start(traffic)
             phase = "fresh-restart-traffic"
             tcp(traffic, 10)
             stop()
@@ -202,7 +210,7 @@ class CapturePolicyInteropTest {
     fun protectAndBindFailuresFailClosed() = runCase("guards") { facts ->
         withTraffic { traffic ->
             for (mode in listOf(ResearchCaptureService.Mode.REFUSE_PROTECT, ResearchCaptureService.Mode.FAIL_BIND)) {
-                start(mode = mode)
+                start(traffic, mode = mode)
                 phase = if (mode == ResearchCaptureService.Mode.REFUSE_PROTECT) "protect-refusal" else "bind-refusal"
                 val before = receiver.snapshot()
                 check(traffic.command(12).status in setOf(2, 3)) { "refused_flow_connected" }
@@ -233,6 +241,7 @@ class CapturePolicyInteropTest {
             phase = "final-cleanup"
             stop()
             check(starts > 0 && starts == stops) { "start_stop_count" }
+            check(routeChecks == starts * 2 + (if (scenario == "direct") 1 else 0)) { "route_transition_count" }
             val bundle = Bundle().apply {
                 putString("captureVersion", "1"); putString("captureScenario", scenario)
                 putString("captureStarts", starts.toString()); putString("captureStops", stops.toString())
@@ -240,6 +249,7 @@ class CapturePolicyInteropTest {
                 putString("captureTunAndNativeObserved", "true"); putString("captureAllStopsJoined", "true")
                 putString("captureTrafficWorkerJoined", "true")
                 putString("captureNotificationObserved", "true")
+                putString("captureRouteTransitionsObserved", "true")
                 putString("captureLocalNetworkPermission", if (Build.VERSION.SDK_INT >= 37) "granted" else "not_required")
                 facts.forEach { (key, value) -> putString("capture$key", value) }
             }
@@ -280,7 +290,8 @@ class CapturePolicyInteropTest {
         } catch (_: Exception) { /* Diagnostic failure never replaces the original failed assertion. */ }
     }
 
-    private fun start(bypass: Boolean = false, mode: ResearchCaptureService.Mode = ResearchCaptureService.Mode.NORMAL) {
+    private fun start(traffic: TrafficClient, bypass: Boolean = false, mode: ResearchCaptureService.Mode = ResearchCaptureService.Mode.NORMAL) {
+        route(traffic, expectedVpn = false)
         phase = "tun-start"
         val old = ResearchCaptureService.current
         check(old == null || old.awaitStopped(1000)) { "previous_owner_live" }
@@ -291,6 +302,7 @@ class CapturePolicyInteropTest {
         check(state.state == "active" && state.tunEstablished && state.selectedPackageCount == 1 && state.underlyingNetworkPresent && state.capture?.nativeRunning == true) { "tun_not_active" }
         stopAction()
         starts++
+        route(traffic, expectedVpn = !bypass)
     }
 
     private fun stop(notification: Boolean = false) {
@@ -399,7 +411,17 @@ class CapturePolicyInteropTest {
         }
     }
 
-    private fun tcp(traffic: TrafficClient, command: Int) { check(traffic.command(command).let { it.status == 0 && it.bytes == 32787 && it.sha256 == TCP_HASH }) { "tcp_bytes" } }
+    private fun route(traffic: TrafficClient, expectedVpn: Boolean) {
+        phase = "route-readiness"
+        val result = traffic.command(if (expectedVpn) 17 else 18)
+        check(result.status == 0 && result.bytes == 0 && result.sha256 == null && result.failureCode == null) { result.failureCode ?: "traffic_invalid_reply" }
+        routeChecks++
+    }
+    private fun tcp(traffic: TrafficClient, command: Int) {
+        val result = traffic.command(command)
+        check(result.status == 0) { result.failureCode ?: "tcp_bytes" }
+        check(result.bytes == 32787 && result.sha256 == TCP_HASH) { "tcp_bytes" }
+    }
     private fun current(): ResearchCaptureService = checkNotNull(ResearchCaptureService.current) { "service_missing" }
     private fun snapshot() = current().captureSnapshot()
     private fun port(name: String): Int = arguments.getString(name)?.takeIf { it.matches(Regex("[1-9][0-9]{0,4}")) }?.toIntOrNull()?.takeIf { it in 1024..65535 } ?: error("research_port")

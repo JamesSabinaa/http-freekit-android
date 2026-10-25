@@ -9,7 +9,7 @@ export const captureCases = Object.freeze([
 export const capturePermissionCase = Object.freeze({ method: 'localNetworkDenialPreventsTun', scenario: 'permission' });
 export const captureCasesForApi = api => api === 37 ? [capturePermissionCase, ...captureCases] : [...captureCases];
 const definitionFor = method => [capturePermissionCase, ...captureCases].find(value => value.method === method);
-const phases = new Set(['setup', 'platform-consent', 'tun-start', 'local-auth-baseline', 'local-auth-refusal', 'selected-traffic', 'nonselected-traffic',
+const phases = new Set(['setup', 'platform-consent', 'route-readiness', 'tun-start', 'local-auth-baseline', 'local-auth-refusal', 'selected-traffic', 'nonselected-traffic',
   'udp443-positive-control', 'direct-protocols', 'blocked-udp443', 'selected-ipv6', 'held-intercepted-request', 'held-fixture-cleanup', 'fresh-restart-traffic',
   'protect-refusal', 'bind-refusal', 'final-cleanup', 'actual-stop-join', 'local-network-denial']);
 const safeTypes = new Set(['AssertionError', 'IllegalArgumentException', 'IOException', 'IllegalStateException']);
@@ -22,7 +22,13 @@ const fixedFailure = (line, scenario) => {
   return failure && failure[1] === scenario && phases.has(failure[2]) && safeTypes.has(failure[3])
     ? { phase: failure[2], type: failure[3], cleanupCompleted: failure[4] === 'true' } : null;
 };
-const failureChecks = new Set(('other separate_uid auth_egress auth_guard_admission uid_changed udp_positive_control udp_bytes dns_bytes udp443_not_blocked policy_drop_not_observed ipv6_policy_admission stop_did_not_interrupt_before_request_deadline held_request_completed fixture_request_not_joined refused_flow_connected refused_socket_not_closed guard_order failure_route_not_retained local_network_permission start_stop_count previous_owner_live tun_not_active lifecycle_not_joined capture_snapshot_missing capture_resources_not_closed foreground_notification_missing platform_consent_missing consent_touch consent_bounds local_listener_missing missing_auth_accepted auth_negotiation wrong_auth_accepted tcp_bytes service_missing research_port receiver_path_count research_condition_timeout traffic_bind traffic_configure traffic_closed traffic_disconnected traffic_reply_timeout traffic_invalid_reply traffic_worker_not_joined traffic_reply_worker_not_joined receiver_port receiver_response_bound receiver_http receiver_length receiver_schema receiver_counter research_configuration research_original_tuple research_factory_closed research_factory_cleanup local_permission_not_denied denied_permission_created_capture denied_stop_not_joined').split(' ').concat(['invalid_request', 'capacity', 'closed', 'protect_failed', 'bind_failed', 'connect_failed', 'cleanup_failed', 'native_failed'].map(value => 'capture_' + value)));
+const failureChecks = new Set(('other route_transition_count separate_uid auth_egress auth_guard_admission uid_changed udp_positive_control udp_bytes dns_bytes udp443_not_blocked policy_drop_not_observed ipv6_policy_admission stop_did_not_interrupt_before_request_deadline held_request_completed fixture_request_not_joined refused_flow_connected refused_socket_not_closed guard_order failure_route_not_retained local_network_permission start_stop_count previous_owner_live tun_not_active lifecycle_not_joined capture_snapshot_missing capture_resources_not_closed foreground_notification_missing platform_consent_missing consent_touch consent_bounds local_listener_missing missing_auth_accepted auth_negotiation wrong_auth_accepted tcp_bytes service_missing research_port receiver_path_count research_condition_timeout traffic_bind traffic_configure traffic_closed traffic_disconnected traffic_reply_timeout traffic_invalid_reply traffic_worker_not_joined traffic_reply_worker_not_joined receiver_port receiver_response_bound receiver_http receiver_length receiver_schema receiver_counter research_configuration research_original_tuple research_factory_closed research_factory_cleanup local_permission_not_denied denied_permission_created_capture denied_stop_not_joined').split(' ').concat(['invalid_request', 'capacity', 'closed', 'protect_failed', 'bind_failed', 'connect_failed', 'cleanup_failed', 'native_failed'].map(value => 'capture_' + value)));
+for (const stage of ['connect', 'write', 'shutdown', 'reply', 'eof', 'close'])
+  for (const category of ['timeout', 'io', 'protocol', 'other']) failureChecks.add(`traffic_tcp_${stage}_${category}`);
+for (const expected of ['vpn', 'nonvpn']) for (const present of [0, 1]) for (const internet of [0, 1]) for (const vpn of [0, 1])
+  failureChecks.add(`traffic_route_${expected}_timeout_p${present}_i${internet}_v${vpn}`);
+for (const category of ['timeout', 'io', 'protocol', 'other']) failureChecks.add(`traffic_datagram_${category}`);
+for (const code of ['traffic_route_unavailable', 'traffic_command_failed', 'traffic_close_io']) failureChecks.add(code);
 const failureBooleans = ['servicePresent', 'tunEstablished', 'underlyingNetworkPresent', 'lifecycleThreadAlive', 'capturePresent', 'started', 'admissionClosed', 'nativeRunning', 'nativeStopJoined', 'tunClosed', 'configurationPresent', 'failed', 'guardRejectedSocketsClosed', 'interceptedFactoryClosed'];
 const failureNumbers = ['trafficCommand', 'trafficStatus', 'trafficBytes', 'selectedPackageCount', 'activeFlows', 'ownedSockets', 'liveWorkers', 'pendingOpens', 'interceptedTcpFlows', 'directTcpFlows', 'udpTargets', 'udp443Drops', 'protectFailures', 'bindFailures', 'guardProtects', 'guardBinds', 'guardRejected', 'captureRequestCalls'];
 const failureNames = ['version', 'scenario', 'phase', 'type', 'check', 'serviceState', 'serviceFailureCode', ...failureBooleans, ...failureNumbers];
@@ -42,11 +48,11 @@ function decodeFailure(bundle, scenario) {
   }
   if (values.version !== '1' || values.scenario !== scenario || !phases.has(values.phase) || !safeTypes.has(values.type) || !failureChecks.has(values.check) ||
       ![true, false].includes(values.servicePresent) || ![true, false].includes(values.capturePresent) ||
-      ![0, 10, 11, 12, 13, 14, 15, 16].includes(values.trafficCommand) || ![-1, 0, 1, 2, 3].includes(values.trafficStatus) ||
-      !Number.isInteger(values.trafficBytes) || values.trafficBytes < 0 || values.trafficBytes > 65507 || values.trafficCommand === 0 && (values.trafficStatus !== -1 || values.trafficBytes !== 0)) return null;
+      ![0, 10, 11, 12, 13, 14, 15, 16, 17, 18].includes(values.trafficCommand) || ![-1, 0, 1, 2, 3].includes(values.trafficStatus) ||
+      !Number.isInteger(values.trafficBytes) || values.trafficBytes < 0 || values.trafficBytes > 65507 || values.trafficCommand === 0 && (values.trafficStatus !== -1 || values.trafficBytes !== 0) || values.trafficCommand >= 17 && values.trafficBytes !== 0) return null;
   if (values.servicePresent) {
     if (!['idle', 'starting', 'active', 'disconnected', 'stopping', 'stopped', 'failed'].includes(values.serviceState) ||
-      ![null, 'foreground_unavailable', 'capture_runtime_failed', 'consent_required', 'local_network_permission', 'network_lost', 'capture_start_failed', 'capture_cleanup_failed'].includes(values.serviceFailureCode) ||
+      ![null, 'foreground_unavailable', 'capture_runtime_failed', 'consent_required', 'local_network_permission', 'network_lost', 'capture_start_failed', 'capture_cleanup_failed', 'vpn_framework_unavailable', 'vpn_framework_cleanup_failed'].includes(values.serviceFailureCode) ||
       !Number.isInteger(values.selectedPackageCount) || values.selectedPackageCount < 0 || values.selectedPackageCount > 64 ||
       ['tunEstablished', 'underlyingNetworkPresent', 'lifecycleThreadAlive', 'guardRejectedSocketsClosed', 'interceptedFactoryClosed'].some(name => ![true, false].includes(values[name])) ||
       ['guardProtects', 'guardBinds', 'guardRejected', 'captureRequestCalls'].some(name => !Number.isInteger(values[name]) || values[name] < 0)) return null;
@@ -74,7 +80,7 @@ export function captureFactExpectations(method, consentDialogObserved = 'false',
     captureTunEstablished: 'false', captureCaptureOwnerAbsent: 'true', captureStopJoined: 'true' });
   return Object.freeze({ captureVersion: '1', captureScenario: item.scenario, captureStarts: String(item.starts), captureStops: String(item.starts),
     captureConsentGranted: 'true', captureConsentDialogObserved: consentDialogObserved, captureTunAndNativeObserved: 'true',
-    captureAllStopsJoined: 'true', captureTrafficWorkerJoined: 'true', captureNotificationObserved: 'true', captureLocalNetworkPermission: localNetworkPermission,
+    captureAllStopsJoined: 'true', captureRouteTransitionsObserved: 'true', captureTrafficWorkerJoined: 'true', captureNotificationObserved: 'true', captureLocalNetworkPermission: localNetworkPermission,
     ...Object.fromEntries(Object.entries(item.facts).map(([key, value]) => [`capture${key}`, value])) });
 }
 

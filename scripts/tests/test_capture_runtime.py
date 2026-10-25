@@ -99,6 +99,7 @@ class CaptureRuntimeTests(unittest.TestCase):
 
     def test_clock_source_permission_and_cleanup_cannot_be_asserted_by_summary(self):
         changes = [lambda r, h: r['source'].__setitem__('trackedDirty', True), lambda r, h: r['clock'].__setitem__('upperBoundMillis', 2001),
+                   lambda r, h: r['methods'][0]['invocation']['observation'].__setitem__('captureRouteTransitionsObserved', 'false'),
                    lambda r, h: r['cleanup']['uninstallExitCodes'].__setitem__(2, 124), lambda r, h: r['cleanup']['receivers'].__setitem__('pendingCallbacks', 1),
                    lambda r, h: h.__setitem__('terminationObserved', False), lambda r, h: h.__setitem__('emulatorExitCode', 127)]
         for change in changes:

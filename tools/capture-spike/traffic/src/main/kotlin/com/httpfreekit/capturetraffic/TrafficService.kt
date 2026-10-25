@@ -3,6 +3,9 @@ package com.httpfreekit.capturetraffic
 import android.app.Service
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -11,7 +14,9 @@ import android.os.Looper
 import android.os.Message
 import android.os.Messenger
 import android.os.RemoteException
+import android.os.SystemClock
 import java.io.Closeable
+import java.io.IOException
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
@@ -64,6 +69,7 @@ class TrafficService : Service() {
                 var status = FAILED
                 var size = 0
                 var digest: String? = null
+                var failureCode: String? = null
                 try {
                     val bytes = when (command) {
                         HTTP -> tcp(HOST, 80, HTTP_BYTES)
@@ -73,19 +79,25 @@ class TrafficService : Service() {
                         DNS -> udp(53, DNS_BYTES, DNS_REPLY)
                         UDP_443 -> udp(443, UDP_BYTES, UDP_BYTES)
                         IPV6_HTTP -> tcp(IPV6, 80, HTTP_BYTES)
+                        WAIT_VPN -> { awaitRoute(true); ByteArray(0) }
+                        WAIT_NON_VPN -> { awaitRoute(false); ByteArray(0) }
                         else -> error("finite_command")
                     }
-                    status = OK; size = bytes.size; digest = hash(bytes)
-                } catch (_: SocketTimeoutException) {
-                    status = TIMEOUT
-                } catch (_: Exception) {
-                    status = FAILED
+                    status = OK; size = bytes.size; digest = if (command in WAIT_VPN..WAIT_NON_VPN) null else hash(bytes)
+                } catch (failure: TrafficCommandFailure) {
+                    status = failure.status; failureCode = failure.code
+                } catch (failure: Exception) {
+                    status = if (failure is SocketTimeoutException) TIMEOUT else FAILED
+                    failureCode = if (command in UDP..UDP_443) "traffic_datagram_${category(failure)}" else "traffic_command_failed"
                 } finally {
-                    try { owned?.close() } catch (_: Exception) { status = FAILED; size = 0; digest = null }
+                    try { owned?.close() } catch (failure: Exception) {
+                        status = FAILED; size = 0; digest = null
+                        if (failureCode == null) failureCode = if (failure is IOException) "traffic_close_io" else "traffic_command_failed"
+                    }
                     owned = null
                     busy.set(false)
                 }
-                respond(reply, id, status, size, digest)
+                respond(reply, id, status, size, digest, failureCode)
             }
             true
         }
@@ -100,18 +112,66 @@ class TrafficService : Service() {
     private fun tcp(address: ByteArray, port: Int, payload: ByteArray): ByteArray {
         val socket = Socket()
         owned = socket
-        socket.use {
-            it.soTimeout = 5000
-            it.connect(InetSocketAddress(InetAddress.getByAddress(address), port), 5000)
-            it.getOutputStream().write(payload)
-            it.getOutputStream().flush()
-            it.shutdownOutput()
-            val response = it.getInputStream().readNBytesBounded(REPLY.size)
+        var stage = "connect"
+        try {
+            socket.soTimeout = 5000
+            socket.connect(InetSocketAddress(InetAddress.getByAddress(address), port), 5000)
+            stage = "write"
+            socket.getOutputStream().write(payload)
+            socket.getOutputStream().flush()
+            stage = "shutdown"
+            socket.shutdownOutput()
+            stage = "reply"
+            val response = socket.getInputStream().readNBytesBounded(REPLY.size)
             check(response.contentEquals(REPLY)) { "fixture_reply" }
-            check(it.getInputStream().read() == -1) { "fixture_trailing" }
+            stage = "eof"
+            check(socket.getInputStream().read() == -1) { "fixture_trailing" }
+            stage = "close"
+            socket.close()
             return response
+        } catch (failure: Exception) {
+            throw TrafficCommandFailure("traffic_tcp_${stage}_${category(failure)}", if (failure is SocketTimeoutException) TIMEOUT else FAILED)
         }
     }
+
+    /** Observe this traffic UID's default network only; never bind, connect or send a probe packet. */
+    private fun awaitRoute(expectedVpn: Boolean) {
+        val deadline = SystemClock.elapsedRealtimeNanos() + 5_000_000_000L
+        var candidate: Network? = null
+        var since = 0L
+        var present = false
+        var internet = false
+        var vpn = false
+        try {
+            val manager = checkNotNull(getSystemService(ConnectivityManager::class.java))
+            while (true) {
+                val queryStarted = SystemClock.elapsedRealtimeNanos()
+                val network = manager.activeNetwork
+                val capabilities = network?.let(manager::getNetworkCapabilities)
+                present = network != null
+                internet = capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+                vpn = capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_VPN) == true
+                val now = SystemClock.elapsedRealtimeNanos()
+                if (now >= deadline) break
+                if (network != null && internet && vpn == expectedVpn) {
+                    if (candidate != network) { candidate = network; since = now }
+                    // The network sample occurred within this query; a slow reply cannot inflate its age.
+                    if (queryStarted - since >= 250_000_000L) return
+                } else { candidate = null; since = 0L }
+                Thread.sleep(25)
+            }
+        } catch (_: Exception) { throw TrafficCommandFailure("traffic_route_unavailable", FAILED) }
+        val expected = if (expectedVpn) "vpn" else "nonvpn"
+        throw TrafficCommandFailure("traffic_route_${expected}_timeout_p${if (present) 1 else 0}_i${if (internet) 1 else 0}_v${if (vpn) 1 else 0}", TIMEOUT)
+    }
+
+    private fun category(failure: Exception): String = when (failure) {
+        is SocketTimeoutException -> "timeout"
+        is IOException -> "io"
+        is IllegalStateException, is IllegalArgumentException -> "protocol"
+        else -> "other"
+    }
+    private class TrafficCommandFailure(val code: String, val status: Int) : Exception()
 
     private fun udp(port: Int, payload: ByteArray, expected: ByteArray): ByteArray {
         val socket = DatagramSocket()
@@ -139,9 +199,9 @@ class TrafficService : Service() {
         return result
     }
 
-    private fun respond(reply: Messenger, id: Int, status: Int, bytes: Int, digest: String?) {
+    private fun respond(reply: Messenger, id: Int, status: Int, bytes: Int, digest: String?, failureCode: String? = null) {
         val result = Message.obtain(null, RESULT, id, status)
-        result.data = Bundle().apply { putInt("bytes", bytes); putString("sha256", digest) }
+        result.data = Bundle().apply { putInt("bytes", bytes); putString("sha256", digest); putString("failureCode", failureCode) }
         try { reply.send(result) } catch (_: RemoteException) { /* No payload or external error logging. */ }
     }
 
@@ -155,12 +215,14 @@ class TrafficService : Service() {
         const val DNS = 14
         const val UDP_443 = 15
         const val IPV6_HTTP = 16
+        const val WAIT_VPN = 17
+        const val WAIT_NON_VPN = 18
         const val RESULT = 100
         const val OK = 0
         const val INVALID = 1
         const val TIMEOUT = 2
         const val FAILED = 3
-        private val COMMANDS = setOf(CONFIGURE, FINISH, HTTP, HTTPS_OPAQUE, DIRECT_TCP, UDP, DNS, UDP_443, IPV6_HTTP)
+        private val COMMANDS = setOf(CONFIGURE, FINISH, HTTP, HTTPS_OPAQUE, DIRECT_TCP, UDP, DNS, UDP_443, IPV6_HTTP, WAIT_VPN, WAIT_NON_VPN)
         private val HOST = byteArrayOf(10, 0, 2, 2)
         private val IPV6 = byteArrayOf(0x20, 0x01, 0x0d, 0xb8.toByte(), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x80.toByte())
         private val BODY = ByteArray(16_421) { ((it * 31 + 7) and 255).toByte() }

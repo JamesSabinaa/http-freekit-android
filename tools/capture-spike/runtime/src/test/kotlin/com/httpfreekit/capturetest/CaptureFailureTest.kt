@@ -29,6 +29,13 @@ class CaptureFailureTest {
         assertEquals("other", value["captureFailureCheck"]); assertFalse(value.toString().contains("CANARY"))
         assertThrows(IllegalArgumentException::class.java) { CaptureFailure.values("uid", "CANARY", secret, null, null, null, null, CaptureTrafficOutcome(0, -1, 0)) }
         assertThrows(IllegalArgumentException::class.java) { CaptureFailure.values("uid", "setup", secret, null, null, null, null, CaptureTrafficOutcome(99, 0, 0)) }
+        for (code in listOf("vpn_framework_unavailable", "vpn_framework_cleanup_failed")) {
+            val state = CaptureServiceSnapshot("failed", false, 0, false, false, null, code)
+            val retained = CaptureFailure.values("uid", "tun-start", secret, state, ResearchCaptureService.GuardObservation(0, 0, 0, false), 0, true, CaptureTrafficOutcome(0, -1, 0))
+            assertEquals(code, retained["captureFailureServiceFailureCode"]); assertEquals(39, retained.size)
+            val foreign = CaptureServiceSnapshot("failed", false, 0, false, false, null, "$code CANARY")
+            assertThrows(IllegalArgumentException::class.java) { CaptureFailure.values("uid", "tun-start", secret, foreign, null, null, null, CaptureTrafficOutcome(0, -1, 0)) }
+        }
     }
 
     @Test fun OriginalFramesAreExactProjectRootsBoundedAndExcludeProviderCauses() {

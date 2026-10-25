@@ -152,6 +152,34 @@ test('digit-containing failure scenarios/phases retain only finite typed facts a
   }
 });
 
+test('route and TCP stages retain only finite failure codes while route success never replaces data proof', () => {
+  const method = captureCases[0].method;
+  for (const code of ['traffic_route_vpn_timeout_p1_i1_v0', 'traffic_route_nonvpn_timeout_p1_i1_v1', 'traffic_tcp_eof_protocol']) {
+    const value = failureFacts('uid', 'route-readiness'); value.captureFailureCheck = code; value.captureFailureTrafficCommand = '17';
+    const actual = parseCaptureInvocation(failedOutput(method, 'uid', 'route-readiness', value), method, command);
+    assert.equal(actual.state, 'failed'); assert.equal(actual.failure.diagnostic.check, code);
+  }
+  for (const code of ['traffic_route_vpn_timeout_p2_i1_v0', 'traffic_tcp_eof_protocol CANARY']) {
+    const value = failureFacts('uid', 'route-readiness'); value.captureFailureCheck = code;
+    assert.equal(parseCaptureInvocation(failedOutput(method, 'uid', 'route-readiness', value), method, command).failure.diagnostic, null);
+  }
+  const value = failureFacts('uid', 'route-readiness'); value.captureFailureTrafficCommand = '17'; value.captureFailureTrafficBytes = '1';
+  assert.equal(parseCaptureInvocation(failedOutput(method, 'uid', 'route-readiness', value), method, command).failure.diagnostic, null);
+  for (const code of ['vpn_framework_unavailable', 'vpn_framework_cleanup_failed']) {
+    const values = { ...failureFacts('uid', 'tun-start'), captureFailureServicePresent: 'true', captureFailureServiceState: 'failed', captureFailureServiceFailureCode: code,
+      captureFailureTunEstablished: 'false', captureFailureSelectedPackageCount: '0', captureFailureUnderlyingNetworkPresent: 'false', captureFailureLifecycleThreadAlive: 'false',
+      captureFailureGuardProtects: '0', captureFailureGuardBinds: '0', captureFailureGuardRejected: '0', captureFailureGuardRejectedSocketsClosed: 'false', captureFailureCaptureRequestCalls: '0', captureFailureInterceptedFactoryClosed: 'true' };
+    const actual = parseCaptureInvocation(failedOutput(method, 'uid', 'tun-start', values), method, command);
+    assert.equal(actual.failure.diagnostic.serviceFailureCode, code); assert.equal(actual.state, 'failed');
+    values.captureFailureServiceFailureCode += ' CANARY';
+    assert.equal(parseCaptureInvocation(failedOutput(method, 'uid', 'tun-start', values), method, command).failure.diagnostic, null);
+  }
+  const positive = report(); positive.methods[0].invocation.observation.captureRouteTransitionsObserved = 'false';
+  assert.equal(captureReportAccepted(positive), false);
+  const missingData = report(); missingData.methods[0].receiversAfter.interceptedHttp = 0;
+  assert.equal(captureReportAccepted(missingData), false);
+});
+
 test('unknown/duplicate/mismatched/nonprimitive failure bundles cannot become retained observations', () => {
   const method = captureCases[2].method;
   for (const change of [v => { v.captureFailureExtra = 'CANARY'; }, v => { v.captureFailureScenario = 'uid'; }, v => { v.captureFailureActiveFlows = 'true'; },

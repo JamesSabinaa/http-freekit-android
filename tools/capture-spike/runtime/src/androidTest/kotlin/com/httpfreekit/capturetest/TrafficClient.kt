@@ -22,14 +22,15 @@ internal class TrafficClient(context: Context, directPort: Int) : AutoCloseable 
     private var nextId = 1
     private var bound = false
     @Volatile private var waitingId = 0
+    @Volatile private var waitingCommand = 0
     @Volatile private var waiting = CountDownLatch(0)
     @Volatile private var received: Result? = null
     private val replies = Messenger(Handler(thread.looper) { reply ->
-        if (reply.what == 100 && reply.arg1 == waitingId && reply.arg2 in 0..3 && reply.data.keySet() == setOf("bytes", "sha256")) {
-            val count = reply.data.getInt("bytes", -1)
-            val hash = reply.data.getString("sha256")
-            if (count in 0..65507 && (hash == null || hash.matches(Regex("[0-9a-f]{64}")))) {
-                received = Result(reply.arg2, count, hash)
+        if (reply.what == 100 && reply.arg1 == waitingId) {
+            val data = reply.data
+            val decoded = CaptureTrafficReply.decode(waitingCommand, reply.arg2, data.keySet(), data.get("bytes"), data.get("sha256"), data.get("failureCode"))
+            if (decoded != null) {
+                received = Result(decoded.status, decoded.bytes, decoded.sha256, decoded.failureCode)
                 waiting.countDown()
             }
         }
@@ -56,13 +57,13 @@ internal class TrafficClient(context: Context, directPort: Int) : AutoCloseable 
 
     @Synchronized fun command(code: Int, data: Bundle = Bundle()): Result {
         check(!thread.isInterrupted && nextId <= 1_000_000) { "traffic_closed" }
-        if (code in 10..16) lastData.set(CaptureTrafficOutcome(code, -1, 0))
+        if (code in 10..18) lastData.set(CaptureTrafficOutcome(code, -1, 0))
         val request = Message.obtain(null, code, nextId++, 0)
-        waitingId = request.arg1; waiting = CountDownLatch(1); received = null
+        waitingCommand = code; waitingId = request.arg1; waiting = CountDownLatch(1); received = null
         request.data = data; request.replyTo = replies
         checkNotNull(remote.get()) { "traffic_disconnected" }.send(request)
         check(waiting.await(12000, TimeUnit.MILLISECONDS)) { "traffic_reply_timeout" }
-        return checkNotNull(received) { "traffic_invalid_reply" }.also { if (code in 10..16) lastData.set(CaptureTrafficOutcome(code, it.status, it.bytes)) }
+        return checkNotNull(received) { "traffic_invalid_reply" }.also { if (code in 10..18) lastData.set(CaptureTrafficOutcome(code, it.status, it.bytes)) }
     }
 
     override fun close() {
@@ -74,7 +75,7 @@ internal class TrafficClient(context: Context, directPort: Int) : AutoCloseable 
         if (failure != null) throw failure
     }
 
-    data class Result(val status: Int, val bytes: Int, val sha256: String?)
+    data class Result(val status: Int, val bytes: Int, val sha256: String?, val failureCode: String?)
     companion object {
         private val lastData = AtomicReference(CaptureTrafficOutcome(0, -1, 0))
         fun resetObservation() { lastData.set(CaptureTrafficOutcome(0, -1, 0)) }

@@ -67,7 +67,7 @@ def facts(definition, api, dialog):
     if definition == PERMISSION:
         return dict(common, captureLocalNetworkPermission='denied', captureFactoryCalls='0', captureTunEstablished='false', captureCaptureOwnerAbsent='true', captureStopJoined='true')
     return dict(common, captureStarts=str(starts), captureStops=str(starts), captureLocalNetworkPermission='granted' if api == 37 else 'not_required',
-                captureTunAndNativeObserved='true', captureAllStopsJoined='true', captureTrafficWorkerJoined='true', captureNotificationObserved='true',
+                captureTunAndNativeObserved='true', captureAllStopsJoined='true', captureRouteTransitionsObserved='true', captureTrafficWorkerJoined='true', captureNotificationObserved='true',
                 **{'capture' + key: value for key, value in extra.items()})
 
 
