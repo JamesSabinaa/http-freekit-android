@@ -41,6 +41,8 @@ jobs:
         run: |
           node --test scripts/tests/enrollment-*.test.mjs
           node scripts/check-enrollment-corpus.mjs
+      - name: Test independent capture runtime evidence verification
+        run: python3 -m unittest discover -s scripts/tests -p 'test_capture_runtime.py'
       - name: Check committed whitespace
         run: git diff --check --no-renames "$(git hash-object -t tree --stdin </dev/null)" HEAD
       - name: Validate workflow syntax
@@ -100,7 +102,7 @@ jobs:
           answers="$RUNNER_TEMP/android-sdk-license-answers.txt"
           printf 'y\n%.0s' {1..100} > "$answers"
           sdkmanager --sdk_root="$ANDROID_HOME" --licenses < "$answers" > "$RUNNER_TEMP/android-sdk-licenses.log"
-          sdkmanager --sdk_root="$ANDROID_HOME" 'platforms;android-37.0' 'build-tools;36.0.0'
+          sdkmanager --sdk_root="$ANDROID_HOME" 'platforms;android-37.0' 'build-tools;36.0.0' 'ndk;28.2.13676358'
       - name: Install locked transport test dependencies
         run: npm --prefix tools/transport-spike ci --ignore-scripts --no-fund
       - name: Check the research fixture's OpenSSL prerequisite
@@ -124,6 +126,8 @@ jobs:
         run: node --test tools/transport-spike/research-websocket*.test.mjs
       - name: Test the authenticated draft-stream peer and owned cleanup
         run: node --test tools/transport-spike/companion-stream-peer*.test.mjs
+      - name: Test finite capture receivers, execution gates and owned cleanup
+        run: node --test tools/capture-spike/*.test.mjs
       - name: Collect bounded host TLS pressure diagnostics
         run: timeout --kill-after=10s 180s node tools/transport-spike/companion-stream-peer-pressure.mjs
       - name: Test independent draft protocol codec and lifecycle
@@ -148,6 +152,9 @@ jobs:
           :core-security:testDebugUnitTest :core-security:assembleDebugAndroidTest :core-security:lintDebug
           :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug
           :transport-interop:testDebugUnitTest :transport-interop:assembleDebugAndroidTest :transport-interop:lintDebug
+          :core-capture:testDebugUnitTest :core-capture:lintDebug
+          :capture-runtime:assembleDebug :capture-runtime:assembleDebugAndroidTest :capture-runtime:lintDebug
+          :capture-traffic:assembleDebug :capture-traffic:lintDebug
           :installed-app-fixture:assembleDebug :installed-app-fixture:assembleRelease
           :installed-app-fixture:lintDebug :installed-app-fixture:lintRelease
       - name: Compare complete independent protocol outcomes
@@ -193,6 +200,11 @@ jobs:
             tools/transport-spike/framing/build/reports/tests/
             tools/transport-spike/framing/build/test-results/test/
             tools/installed-app-fixture/build/reports/lint-results-*
+            core-capture/build/reports/tests/
+            core-capture/build/test-results/testDebugUnitTest/
+            core-capture/build/reports/lint-results-debug.*
+            tools/capture-spike/runtime/build/reports/lint-results-debug.*
+            tools/capture-spike/traffic/build/reports/lint-results-debug.*
             build/reports/draft-protocol/*-conformance.json
             build/reports/draft-enrollment/*-conformance.json
             build/reports/enrollment-store/crash.json

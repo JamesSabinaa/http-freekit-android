@@ -8,7 +8,7 @@ Documentation-only changes require local Markdown link validation, consistency r
 
 ## Host validation workflow
 
-[Android host validation](../.github/workflows/android.yml) runs on pushes, pull requests, and manual dispatch with read-only repository permissions. It uses Ubuntu 24.04, Temurin JDK 17, Node 24.22.1, SDK platform 37.0, and build tools 36.0.0. GitHub Actions are pinned to commit IDs, and the workflow linter download has a pinned SHA-256. Gradle and app dependencies retain the versions committed in the wrapper and catalogue. The workflow does not request release secrets, publish APKs, or run an emulator.
+[Android host validation](../.github/workflows/android.yml) runs on pushes, pull requests, and manual dispatch with read-only repository permissions. It uses Ubuntu 24.04, Temurin JDK 17, Node 24.22.1, SDK platform 37.0, build tools 36.0.0 and NDK 28.2.13676358 for the pinned capture library. GitHub Actions are pinned to commit IDs, and the workflow linter download has a pinned SHA-256. Gradle and app dependencies retain the versions committed in the wrapper and catalogue. The workflow does not request release secrets, publish APKs, or run an emulator.
 
 The Android job bootstraps command-line tools build `15859902` into a fresh SDK directory under the runner's temporary directory, verifies the Linux archive SHA-256 against the [official download page](https://developer.android.com/studio#command-tools), and exports the SDK paths before accepting SDK licences and installing the pinned packages. It does not rely on `sdkmanager` or SDK environment variables being preinstalled by the runner image.
 
@@ -37,6 +37,8 @@ node --test tools/transport-spike/draft-stream-command.test.mjs tools/transport-
 node --test tools/transport-spike/enrollment-runtime-*.test.mjs
 node --test tools/transport-spike/research-websocket*.test.mjs
 node --test tools/transport-spike/companion-stream-peer*.test.mjs
+node --test tools/capture-spike/*.test.mjs
+python3 -m unittest discover -s scripts/tests -p 'test_capture_runtime.py'
 node tools/transport-spike/companion-stream-peer-pressure.mjs
 FREEKIT_ENROLLMENT_CRASH_REPORT=build/reports/enrollment-store/crash.json \
   node --test tools/transport-spike/companion-enrollment-*.test.mjs
@@ -47,12 +49,25 @@ node scripts/verify-enrollment-crash-report.mjs --source "$(git rev-parse HEAD)"
   :core-security:testDebugUnitTest :core-security:assembleDebugAndroidTest :core-security:lintDebug \
   :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug \
   :transport-interop:testDebugUnitTest :transport-interop:assembleDebugAndroidTest :transport-interop:lintDebug \
+  :core-capture:testDebugUnitTest :core-capture:lintDebug \
+  :capture-runtime:assembleDebug :capture-runtime:assembleDebugAndroidTest :capture-runtime:lintDebug \
+  :capture-traffic:assembleDebug :capture-traffic:lintDebug \
   :installed-app-fixture:assembleDebug :installed-app-fixture:assembleRelease \
   :installed-app-fixture:lintDebug :installed-app-fixture:lintRelease
 node scripts/compare-enrollment-conformance.mjs
 ```
 
 Assembling the app and security module's Android instrumentation APKs checks compilation only; no UI, Keystore, or device result is inferred from it.
+
+## Real TUN capture research
+
+The [C1 profile](capture-policy-runtime.md) and [controlled host/traffic applications](../tools/capture-spike/README.md) implement a separate research path through actual selected-UID TUN packets, the pinned native engine and authenticated local SOCKS policy. The production app remains a simulation. Local receiver/parser/verifier tests and APK compilation do not establish device capture; the first real API 26/37 result is still pending.
+
+The [manual capture workflow](../.github/workflows/capture-runtime.yml) invokes five exact standalone policy methods on API 26. API 37 first invokes the actual denied-local-network preflight, then grants that permission to its two owned APKs before the same five methods. The tests require real platform VPN consent, a distinct traffic UID, a second nonempty allowlist, exact TCP bytes/EOF, direct UDP/DNS positive controls, UDP443 no-delivery plus policy drops, preserved original IPv6, notification Stop with a held live flow and fresh restart, and per-flow protect/bind refusal after TUN start. Actual platform events are not inferred from injected guards. Always-on/lockdown support is explicitly disabled for this research service.
+
+The independent gate checks the actual method pairs, finite facts, full measured clock interval, exact host TCP-accept/UDP-receipt and completed-path counter deltas, cumulative continuity, source, permission provenance and all owned cleanup. Missing/wrong local SOCKS authentication must allocate no egress. The host and signature-protected traffic service share only fixed synthetic commands and count/digest results. Controlled listeners fail on collisions; no arbitrary target RPC, map-DNS, companion wire revision or TLS-interception claim is introduced by the raw injected receiver.
+
+Only `runtime.json`, `TEST-capture-research.xml` and `host-cleanup.json` under `build/reports/capture-runtime/` are uploaded. Raw instrumentation, receiver/configuration credentials, APKs, ADB/emulator logs and packet bodies remain private. Overall acceptance additionally requires actual receiver/command/package cleanup and emulator termination/join; a later host failure preserves the actual method results while failing the gate.
 
 The host job checks OpenSSL 3 explicitly and runs five loopback Node fixture tests for bounded CSR validation, certificate issuance, authenticated WebSocket echo, missing-client rejection, temporary-file cleanup, bounded research certificate times and clock probes, and normal TLS rejection of future or expired gateway certificates. Twenty-nine parser/ownership regressions separately cover exact start/end pairs, terminal status, crashes, missing/duplicate/skipped cases, bounded input, sanitized ADB/server-log diagnostics, explicit reverse-port collisions, and selective cleanup. It also compiles and strictly lints the isolated transport module, retaining its lint reports. It does not run connected Android tests. A local Windows research check can select an installed OpenSSL 3 executable through `OPENSSL_BIN`; no system OpenSSL setting is changed.
 
