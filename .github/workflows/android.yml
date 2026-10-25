@@ -126,6 +126,8 @@ jobs:
         run: node --test tools/transport-spike/enrollment-runtime-*.test.mjs
       - name: Test bounded research WebSocket framing
         run: node --test tools/transport-spike/research-websocket*.test.mjs
+      - name: Test maintained-backend TLS peer and HTTP origin wire cases
+        run: node --test tools/transport-spike/gateway-websocket-peer.test.mjs tools/transport-spike/companion-http-origin.test.mjs
       - name: Test the authenticated draft-stream peer and owned cleanup
         run: node --test tools/transport-spike/companion-stream-peer*.test.mjs
       - name: Test finite capture receivers, execution gates and owned cleanup
@@ -151,10 +153,12 @@ jobs:
           ./gradlew --no-daemon --console=plain
           :core-protocol:test
           :transport-framing:test
+          :gateway-websocket:test
           :core-security:testDebugUnitTest :core-security:assembleDebugAndroidTest :core-security:lintDebug
           :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug
           :transport-interop:testDebugUnitTest :transport-interop:assembleDebugAndroidTest :transport-interop:lintDebug
           :core-capture:testDebugUnitTest :core-capture:lintDebug
+          :capture-transport-research:testDebugUnitTest :capture-transport-research:assembleDebug :capture-transport-research:lintDebug
           :capture-runtime:testDebugUnitTest :capture-runtime:assembleDebug :capture-runtime:assembleDebugAndroidTest :capture-runtime:lintDebug
           :capture-traffic:testDebugUnitTest :capture-traffic:assembleDebug :capture-traffic:lintDebug
           :installed-app-fixture:assembleDebug :installed-app-fixture:assembleRelease
@@ -178,6 +182,8 @@ jobs:
             > build/reports/dependencies/core-test-runtime.txt
           ./gradlew --no-daemon --console=plain :core-security:dependencies --configuration debugUnitTestRuntimeClasspath \
             > build/reports/dependencies/security-test-runtime.txt
+          ./gradlew --no-daemon --console=plain :gateway-websocket:dependencies --configuration testRuntimeClasspath \
+            > build/reports/dependencies/gateway-test-runtime.txt
           npm --prefix tools/transport-spike ls --all --json > build/reports/dependencies/node-test-runtime.json
       # Publish reports only. APKs, local debug keys, temporary TLS keys, and dist/ are excluded.
       - name: Retain host validation reports
@@ -201,10 +207,15 @@ jobs:
             tools/transport-spike/android/build/test-results/testDebugUnitTest/
             tools/transport-spike/framing/build/reports/tests/
             tools/transport-spike/framing/build/test-results/test/
+            tools/transport-spike/gateway-websocket/build/reports/tests/
+            tools/transport-spike/gateway-websocket/build/test-results/test/
             tools/installed-app-fixture/build/reports/lint-results-*
             core-capture/build/reports/tests/
             core-capture/build/test-results/testDebugUnitTest/
             core-capture/build/reports/lint-results-debug.*
+            tools/capture-spike/transport/build/reports/tests/
+            tools/capture-spike/transport/build/test-results/testDebugUnitTest/
+            tools/capture-spike/transport/build/reports/lint-results-debug.*
             tools/capture-spike/runtime/build/reports/lint-results-debug.*
             tools/capture-spike/runtime/build/reports/tests/
             tools/capture-spike/runtime/build/test-results/testDebugUnitTest/
