@@ -7,7 +7,7 @@ import { inspect } from 'node:util';
 import { randomBytes, X509Certificate } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { gatewayPeerScenarios, startGatewayWebSocketPeer } from './gateway-websocket-peer.mjs';
-import { headers, bounded, observeClose } from './companion-stream-peer-io.mjs';
+import { headers, bounded, observeClose, pull } from './companion-stream-peer-io.mjs';
 import { ResearchWebSocket } from './research-websocket.mjs';
 import { runDraftCommand } from './draft-stream-command.mjs';
 
@@ -94,11 +94,37 @@ test('actual private CLI emits only finite public metadata and joined release/st
 });
 
 test('finite CLI/options reject supplied text and startup failure removes only its owned private directory', { timeout: 10000 }, async () => {
-  assert.equal(gatewayPeerScenarios.length,15);
+  assert.equal(gatewayPeerScenarios.length,17);
   const command=await runDraftCommand(process.execPath,[fileURLToPath(new URL('./gateway-websocket-peer.mjs',import.meta.url)),'--scenario','CANARY_private'],{timeoutMillis:5000});
   assert.equal(command.code,1);assert.equal(command.closeObserved,true);assert.equal(command.processGroupClosed,true);
   assert.equal((command.output+command.stderr).includes('CANARY'),false);
   const before=new Set(fs.readdirSync(os.tmpdir()).filter(name=>name.startsWith('freekit-gateway-ws-')));
   await assert.rejects(startGatewayWebSocketPeer({scenario:'echo',openssl:process.execPath}));
   const after=fs.readdirSync(os.tmpdir()).filter(name=>name.startsWith('freekit-gateway-ws-')&&!before.has(name));assert.deepEqual(after,[]);
+});
+
+
+test('server Text actual write completes before normal Close and input order survives queued terminal delivery', { timeout: 15000 }, async () => {
+  const peer=await startGatewayWebSocketPeer({scenario:'queued-text-close'});let connection;
+  try {
+    connection=await connect(peer);
+    let event=await next(connection.ws);
+    try { assert.equal(event.kind,'text');assert.equal(event.copyBytes().toString(),'queued-before-close'); } finally { event.release(); }
+    event=await next(connection.ws);
+    try { assert.equal(event.kind,'close');assert.equal(event.closeCode,1000); } finally { event.release(); }
+    await connection.ws.send('close',Buffer.from([3,232]));
+    const deadline=Date.now()+2000;
+    while(!peer.snapshot().clientCloseObserved&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,10));
+    assert.equal(peer.snapshot().clientCloseObserved,true);
+  } finally { connection?.socket.destroy();if(connection)await observeClose(connection.socket);joined(await peer.close()); }
+});
+
+
+test('actual client Close can be followed by TLS EOF without any peer WebSocket Close bytes', { timeout: 15000 }, async () => {
+  const peer=await startGatewayWebSocketPeer({scenario:'local-close-eof'});let connection;
+  try {
+    connection=await connect(peer);await connection.ws.send('close',Buffer.from([3,232]));
+    assert.equal(await bounded(pull(connection.socket,1),5000),null);
+    assert.equal(peer.snapshot().clientCloseObserved,true);
+  } finally { connection?.socket.destroy();if(connection)await observeClose(connection.socket);joined(await peer.close()); }
 });

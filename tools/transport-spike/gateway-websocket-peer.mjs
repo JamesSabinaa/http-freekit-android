@@ -12,7 +12,7 @@ import { bounded, observeClose, write, writerState, endWrite } from './companion
 
 export const gatewayPeerScenarios = Object.freeze(['echo', 'fragmented', 'queued-input', 'held-read', 'bad-mask', 'bad-rsv',
   'bad-minimal16', 'bad-minimal64', 'oversized-frame', 'fragmented-byte-limit', 'empty-fragment-count129',
-  'header-limit', 'bad-extension', 'bad-subprotocol', 'invalid-utf8']);
+  'header-limit', 'bad-extension', 'bad-subprotocol', 'invalid-utf8', 'queued-text-close', 'local-close-eof']);
 const FORMAT = 'http-freekit-gateway-ws-peer';
 const fail = () => { throw new GatewayPeerError(); };
 export class GatewayPeerError extends Error {
@@ -68,7 +68,7 @@ class GatewayPeer {
           await this.#write(socket, Buffer.from('HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ' + accept + '\r\n' + extra + '\r\n'), state);
           if (['header-limit', 'bad-extension', 'bad-subprotocol'].includes(this.#scenario)) return;
           const ws = new ResearchWebSocket(socket, { role: 'server', initialBytes: head, maxBinaryBytes: 65536 });
-          await this.#initial(socket, state);
+          const serverCloseSent = await this.#initial(socket, state);
           if (['held-read', 'queued-input'].includes(this.#scenario)) { socket.pause(); await this.#releaseWait; }
           let pingSent = false;
           while (!this.#closing && !socket.destroyed) {
@@ -76,7 +76,7 @@ class GatewayPeer {
             try {
               if (event.kind === 'close') {
                 this.#clientClose = true;
-                await this.#write(socket, frame(8, Buffer.from([3, 232])), state);
+                if (!serverCloseSent && this.#scenario !== 'local-close-eof') await this.#write(socket, frame(8, Buffer.from([3, 232])), state);
                 await endWrite(socket, state); return;
               }
               if (event.kind === 'ping') {
@@ -131,7 +131,11 @@ class GatewayPeer {
     const send = (opcode, bytes, fin = true) => this.#write(socket, frame(opcode, bytes, fin), state);
     const ping = () => send(9, Buffer.from('probe'));
     const mode = this.#scenario;
-    if (mode === 'fragmented') {
+    if (mode === 'queued-text-close') {
+      await send(1, Buffer.from('queued-before-close'));
+      await send(8, Buffer.from([3, 232]));
+      return true;
+    } else if (mode === 'fragmented') {
       const text = Buffer.from('fragmented-€-backend'), binary = pattern(4097, 29, 3);
       await send(1, text.subarray(0, 12), false); await ping(); await send(0, text.subarray(12, 14), false); await send(0, text.subarray(14));
       await send(2, binary.subarray(0, 1024), false); await ping(); await send(0, binary.subarray(1024, 1025), false); await send(0, binary.subarray(1025));
