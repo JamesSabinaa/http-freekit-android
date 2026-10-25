@@ -126,8 +126,8 @@ jobs:
         run: node --test tools/transport-spike/enrollment-runtime-*.test.mjs
       - name: Test bounded research WebSocket framing
         run: node --test tools/transport-spike/research-websocket*.test.mjs
-      - name: Test maintained-backend TLS peer and HTTP origin wire cases
-        run: node --test tools/transport-spike/gateway-websocket-peer.test.mjs tools/transport-spike/companion-http-origin.test.mjs
+      - name: Test maintained transport peers, HTTP origin wire and runtime gates
+        run: node --test tools/transport-spike/gateway-websocket-peer.test.mjs tools/transport-spike/companion-http-origin.test.mjs tools/transport-spike/capture-factory-results.test.mjs
       - name: Test the authenticated draft-stream peer and owned cleanup
         run: node --test tools/transport-spike/companion-stream-peer*.test.mjs
       - name: Test finite capture receivers, execution gates and owned cleanup
