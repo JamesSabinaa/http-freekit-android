@@ -31,7 +31,7 @@ internal class CapturePolicyServer(
     private val retainedIntercepts = ArrayList<CaptureSocketBudget.Lease>()
     private var sealed = false
     private var failed = false
-    private var factoryJoined = false
+    @Volatile private var factoryJoined = false
     private val openedIntercepts = AtomicInteger()
     private val openedDirect = AtomicInteger()
     private val openedUdp = AtomicInteger()
@@ -89,8 +89,11 @@ internal class CapturePolicyServer(
         val complete = synchronized(lock) { flows.filter { it.done && it.threads.none(Thread::isAlive) } }
         complete.forEach { flow ->
             flow.threads.forEach { it.join() }
-            if (flow.clean) synchronized(lock) {
-                workers.removeAll(flow.threads.toSet()); flows.remove(flow); flow.lease.release()
+            if (flow.clean && flow.transportJoined()) {
+                flow.releaseTransport()
+                synchronized(lock) {
+                    workers.removeAll(flow.threads.toSet()); flows.remove(flow); flow.lease.release()
+                }
             }
         }
     }
@@ -135,9 +138,13 @@ internal class CapturePolicyServer(
         private val closing = Any()
         private var connection: CaptureTcpConnection? = null
         private var transportLease: CaptureSocketBudget.Lease? = null
+        private var interceptedTransport = false
+        private var connectionJoined = false
         private val targets = LinkedHashMap<InetSocketAddress, UdpTarget>()
         private var inputEnded = false
         private var outputEnded = false
+        private var reverseJoined = false
+        @Volatile private var interrupted = false
 
         fun run() {
             try {
@@ -158,10 +165,20 @@ internal class CapturePolicyServer(
                 }
             } catch (_: Exception) { /* A refused/malformed/closed flow never falls back. */ }
             finally {
-                interrupt()
                 val current = synchronized(closing) { connection }
-                try { current?.close(); synchronized(closing) { transportLease?.release(); transportLease = null } }
-                catch (_: Exception) { clean = false }
+                val graceful = !isSealed() && synchronized(closing) {
+                    !interrupted && inputEnded && outputEnded && reverseJoined
+                }
+                if (!graceful) interrupt()
+                try {
+                    current?.close()
+                    synchronized(closing) { connectionJoined = true }
+                } catch (_: Exception) {
+                    // Interruption is not a join. A later successful factory close may
+                    // settle an intercepted transport, while core workers remain owned.
+                    interrupt()
+                }
+                closeLocalSockets()
                 done = true
             }
         }
@@ -197,27 +214,45 @@ internal class CapturePolicyServer(
                     }
                 } else egress.openTcp(destination.address, destination.port).also { openedDirect.incrementAndGet() }
             } finally { pending.decrementAndGet() }
-            synchronized(closing) { connection = opened }
+            synchronized(closing) {
+                connection = opened
+                interceptedTransport = destination.port == 80 || destination.port == 443
+            }
             if (done || socket.isClosed || isSealed()) { opened.interrupt(); return }
             reply(output, 0); socket.soTimeout = 0; ready = true
             val reverse = launch(this, "capture-tcp-read") {
-                try { copy(opened.input, output); socket.shutdownOutput(); synchronized(closing) { outputEnded = true } }
+                try {
+                    if (copy(opened.input, output)) {
+                        socket.shutdownOutput()
+                        synchronized(closing) { outputEnded = true }
+                    }
+                }
                 finally { if (!synchronized(closing) { outputEnded }) interrupt() }
             }
-            try { copy(input, opened.output); opened.shutdownOutput(); synchronized(closing) { inputEnded = true } }
+            try {
+                if (copy(input, opened.output)) {
+                    opened.shutdownOutput()
+                    synchronized(closing) { inputEnded = true }
+                }
+            }
             finally { if (!synchronized(closing) { inputEnded }) interrupt() }
             // Preserve directional EOF: the opposite reader runs until real EOF, failure or bounded idle/Stop.
             while (reverse.isAlive && !socket.isClosed) reverse.join(100)
+            if (!reverse.isAlive) {
+                reverse.join()
+                synchronized(closing) { reverseJoined = true }
+            }
         }
-        private fun copy(input: java.io.InputStream, output: java.io.OutputStream) {
+        private fun copy(input: java.io.InputStream, output: java.io.OutputStream): Boolean {
             val bytes = ByteArray(8192)
-            while (!socket.isClosed && !isSealed()) {
+            while (!socket.isClosed && !isSealed() && !interrupted) {
                 val size = input.read(bytes)
-                if (size < 0) return
+                if (socket.isClosed || isSealed() || interrupted) return false
+                if (size < 0) return true
                 if (size == 0) continue
-                if (socket.isClosed || isSealed()) return
                 output.write(bytes, 0, size); output.flush(); progress.set(System.nanoTime())
             }
+            return false
         }
         private fun udp(input: DataInputStream, output: DataOutputStream) {
             val bytes = ByteArray(65507)
@@ -261,10 +296,23 @@ internal class CapturePolicyServer(
             }
         }
         fun interrupt() {
+            interrupted = true
+            closeLocalSockets()
+            val current = synchronized(closing) { connection }
+            // Only close()/the owning factory can confirm transport joins, even if
+            // this best-effort interruption throws after closing the raw socket.
+            try { current?.interrupt() } catch (_: Exception) { }
+        }
+        private fun closeLocalSockets() {
             try { socket.close() } catch (_: Exception) { clean = false }
-            val current = synchronized(closing) { connection to targets.values.toList() }
-            try { current.first?.interrupt() } catch (_: Exception) { clean = false }
-            current.second.forEach { try { it.socket.close() } catch (_: Exception) { clean = false } }
+            val current = synchronized(closing) { targets.values.toList() }
+            current.forEach { try { it.socket.close() } catch (_: Exception) { clean = false } }
+        }
+        fun transportJoined(): Boolean = synchronized(closing) {
+            connection == null || connectionJoined || interceptedTransport && factoryJoined
+        }
+        fun releaseTransport() = synchronized(closing) {
+            transportLease?.release(); transportLease = null
         }
     }
     private class UdpTarget(val socket: DatagramSocket, val destination: InetSocketAddress)
