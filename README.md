@@ -8,6 +8,10 @@ The isolated [enrollment foundation](docs/decisions/0013-enrollment-transactions
 
 ## Start here
 
+Read the [current roadmap and progress](docs/roadmap.md) and the
+[resume checkpoint](docs/resume-checkpoint.md) for the latest completed work,
+preserved unfinished files and next actions.
+
 1. Read [the implementation plan](docs/implementation-plan.md).
 2. Read [the architecture](docs/architecture.md), [protocol draft](docs/protocol.md), and [security model](docs/security.md).
 3. Select an unclaimed package from [the agent work board](tasks/README.md).
