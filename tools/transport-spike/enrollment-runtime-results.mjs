@@ -8,6 +8,8 @@ import { captureFactoryClass, captureFactoryMethod, captureFactoryPhases } from 
 import { decodeCaptureFactoryObservation, validateCaptureFactoryObservation } from './capture-factory-observation.mjs';
 import { enrolledTunClass, enrolledTunMethod, enrolledTunPhases } from './enrolled-tun-descriptor.mjs';
 import { decodeEnrolledTunObservation, validateEnrolledTunObservation, enrolledTunFailureCategory } from './enrolled-tun-observation.mjs';
+import { interceptionCaRuntimeClass, interceptionCaRuntimeMethod, interceptionCaRuntimePhases } from './interception-ca-runtime-descriptor.mjs';
+import { decodeInterceptionCaObservation, validateInterceptionCaObservation } from './interception-ca-runtime-observation.mjs';
 
 export const enrollmentRuntimeClass = 'com.httpfreekit.interop.DraftEnrollmentInteropTest';
 export const expectedEnrollmentMethods = Object.freeze(['prepareApprovedCredentialForRestart', 'reopenApprovedCredentialAfterRestart']);
@@ -76,7 +78,17 @@ const tunFrameFiles = new Map([
   ['TrafficClient.kt', new Set(['TrafficClient'])],
   ['EnrolledCaptureTcpFactory.kt', new Set(['EnrolledCaptureTcpFactory'])],
 ]);
+const caFrameFiles = new Map([
+  ['DraftInterceptionCaInteropTest.kt', new Set(['DraftInterceptionCaInteropTest'])],
+  ['DraftInterceptionCaSavedCredential.kt', new Set(['DraftInterceptionCaSavedCredential'])],
+  ['DraftInterceptionCaBinding.kt', new Set(['DraftInterceptionCaBinding', 'DraftInterceptionCaChecks', 'DraftInterceptionCaException', 'DraftInterceptionCa'])],
+  ['DraftInterceptionCaClient.kt', new Set(['DraftInterceptionCaClient', 'DraftInterceptionCaClientSnapshot'])],
+  ['DraftInterceptionCaDer.kt', new Set(['DraftInterceptionCaDer'])],
+  ['DraftEnrollmentResearchFiles.kt', frameFiles.get('DraftEnrollmentResearchFiles.kt')],
+  ['DraftEnrollmentStateCodec.kt', frameFiles.get('DraftEnrollmentStateCodec.kt')],
+]);
 const finiteFailureSuite = suite => suite === 'c2' || suite === 'c5';
+const boundedFrameSuite = suite => finiteFailureSuite(suite) || suite === 'a23';
 function suiteDescriptor(suite) {
   if (suite === 'a22a') return { className: enrollmentRuntimeClass, methods: expectedEnrollmentMethods, phases: enrollmentPhases, prefix: 'draftEnrollment', cap: 16, frames: frameFiles };
   if (suite === 'a22b') return { className: enrolledStreamingClass, methods: expectedEnrolledStreamingMethods, phases: enrolledStreamingPhases, prefix: 'draftEnrolled', cap: 40, frames: streamFrameFiles,
@@ -87,6 +99,8 @@ function suiteDescriptor(suite) {
     decodeObservation: decodeCaptureFactoryObservation, validateObservation: validateCaptureFactoryObservation, observationPhase: () => captureFactoryPhases.length - 1 };
   if (suite === 'c5') return { className: enrolledTunClass, methods: [enrolledTunMethod], phases: { [enrolledTunMethod]: enrolledTunPhases }, prefix: 'draftTun', cap: 56, frames: tunFrameFiles,
     decodeObservation: decodeEnrolledTunObservation, validateObservation: validateEnrolledTunObservation, observationPhase: () => enrolledTunPhases.length - 1 };
+  if (suite === 'a23') return { className: interceptionCaRuntimeClass, methods: [interceptionCaRuntimeMethod], phases: { [interceptionCaRuntimeMethod]: interceptionCaRuntimePhases }, prefix: 'draftCa', cap: 24, frames: caFrameFiles,
+    decodeObservation: decodeInterceptionCaObservation, validateObservation: validateInterceptionCaObservation, observationPhase: () => interceptionCaRuntimePhases.length };
   fail('invalid_parser_configuration');
 }
 export class EnrollmentRuntimeError extends Error { constructor(code = 'invalid_runtime_report') { super(code); this.name = 'EnrollmentRuntimeError'; this.code = code; } }
@@ -133,8 +147,8 @@ function sanitizeFailure(raw, suite = 'a22a') {
     const type = /^(?:java\.lang\.|java\.io\.|java\.net\.|javax\.net\.ssl\.|java\.security\.cert\.|org\.json\.|org\.junit\.)?([A-Za-z]+)(?::|$)/.exec(line);
     if (failureType === null && type) failureType = failures.has(type[1]) ? type[1] : 'other_exception';
     const frame = /^\s*at (com\.httpfreekit\.[A-Za-z0-9_.$]{1,160})\.([A-Za-z0-9_$<>]{1,80})\(([A-Za-z0-9_]{1,100}\.kt):([1-9][0-9]{0,5})\)$/.exec(line.replace(/\r$/, ''));
-    if (frame && knownFrame(frame[1], frame[3], files, suite) && (suite !== 'c5' || /^(?:[A-Za-z_$][A-Za-z0-9_$]*|<init>|<clinit>)$/.test(frame[2])) &&
-        (!finiteFailureSuite(suite) || Number(frame[4]) <= 100000) && frames.length < 16) frames.push({ className: frame[1], method: frame[2], file: frame[3], line: Number(frame[4]) });
+    if (frame && knownFrame(frame[1], frame[3], files, suite) && (!['c5', 'a23'].includes(suite) || /^(?:[A-Za-z_$][A-Za-z0-9_$]*|<init>|<clinit>)$/.test(frame[2])) &&
+        (!boundedFrameSuite(suite) || Number(frame[4]) <= 100000) && frames.length < 16) frames.push({ className: frame[1], method: frame[2], file: frame[3], line: Number(frame[4]) });
   }
   return { failureType, frames };
 }
@@ -164,8 +178,8 @@ function validateFrames(value, suite = 'a22a') {
     if (typeof frame.className !== 'string' || !knownFrame(frame.className, frame.file, files, suite) ||
         typeof frame.method !== 'string' || !/^[A-Za-z0-9_$<>]{1,80}$/.test(frame.method) || /[\r\n]/.test(frame.method) ||
         !files.has(frame.file)) fail('invalid_runtime_report');
-    if (suite === 'c5' && !/^(?:[A-Za-z_$][A-Za-z0-9_$]*|<init>|<clinit>)$/.test(frame.method)) fail('invalid_runtime_report');
-    integer(frame.line, 1, finiteFailureSuite(suite) ? 100000 : 999999);
+    if (['c5', 'a23'].includes(suite) && !/^(?:[A-Za-z_$][A-Za-z0-9_$]*|<init>|<clinit>)$/.test(frame.method)) fail('invalid_runtime_report');
+    integer(frame.line, 1, boundedFrameSuite(suite) ? 100000 : 999999);
   }
 }
 function validateInvocation(value, method, suite = 'a22a') {
