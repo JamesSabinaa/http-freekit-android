@@ -92,7 +92,8 @@ private val DarkColors = darkColorScheme(
 
 @Composable
 fun PreviewApp(state: PreviewState, apps: AppSelectionState, onAction: (PreviewAction) -> Unit,
-    onAppsAction: (AppSelectionAction) -> Unit, onInvitation: (String) -> Unit) {
+    onAppsAction: (AppSelectionAction) -> Unit, onInvitation: (String) -> Unit,
+    onOpenSecuritySettings: () -> Boolean, onCopyConfiguration: (String) -> Unit) {
     var page by rememberSaveable { mutableStateOf(PreviewPage.HOME.name) }
     var addingComputer by remember { mutableStateOf(false) }
     var forgettingComputer by remember { mutableStateOf<PreviewComputer?>(null) }
@@ -189,7 +190,7 @@ fun PreviewApp(state: PreviewState, apps: AppSelectionState, onAction: (PreviewA
                         item { SectionIntro(R.string.setup_title, R.string.setup_description) }
                         item { HelpCard(R.string.help_pair_title, R.string.help_pair_body) }
                         item { HelpCard(R.string.help_vpn_title, R.string.help_vpn_body) }
-                        item { HelpCard(R.string.help_https_title, R.string.help_https_body) }
+                        item { CertificateHelp(onOpenSecuritySettings, onCopyConfiguration) }
                         item { HelpCard(R.string.help_privacy_title, R.string.help_privacy_body) }
                         item { HelpCard(R.string.help_stop_title, R.string.help_stop_body) }
                     }
@@ -290,16 +291,17 @@ private fun ReadinessCard(state: PreviewState, onHelp: () -> Unit) {
             CheckRow(R.string.check_computer, if (state.selectedComputer?.credentials == PreviewCredentials.AVAILABLE) R.string.check_preview_only else R.string.check_needed)
             CheckRow(R.string.check_vpn, if (state.vpnConsent) R.string.check_simulated else R.string.check_not_requested)
             CheckRow(R.string.check_gateway, if (state.phase == PreviewPhase.CONNECTED) R.string.check_simulated else R.string.check_not_connected)
-            CheckRow(R.string.check_https, R.string.check_not_verified)
-            CheckRow(R.string.check_traffic, R.string.check_not_verified)
+            CheckRow(R.string.check_https, R.string.check_not_verified, "readiness-https")
+            CheckRow(R.string.check_traffic, R.string.check_not_verified, "readiness-capture")
             TextButton(onClick = onHelp) { Text(stringResource(R.string.trust_help)) }
         }
     }
 }
 
 @Composable
-private fun CheckRow(label: Int, value: Int) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+private fun CheckRow(label: Int, value: Int, tag: String? = null) {
+    val association = if (tag == null) Modifier else Modifier.semantics(mergeDescendants = true) {}.testTag(tag)
+    Row(Modifier.fillMaxWidth().then(association), horizontalArrangement = Arrangement.SpaceBetween) {
         Text(stringResource(label), modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
         Spacer(Modifier.width(12.dp))
         Text(stringResource(value), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)

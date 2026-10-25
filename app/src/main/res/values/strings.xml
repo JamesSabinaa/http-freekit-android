@@ -109,7 +109,39 @@
     <string name="help_vpn_title">2. Select apps and allow VPN access</string>
     <string name="help_vpn_body">The finished app will request Android VPN consent and show an ongoing Stop notification. Only selected apps belong in the capture interface. Starting a VPN can replace another active VPN.</string>
     <string name="help_https_title">3. Verify HTTPS separately</string>
-    <string name="help_https_body">VPN permission does not install a CA or prove HTTPS interception. Android requires a separate certificate installation flow. Your own debug app can opt into a user CA; other apps may reject it or use certificate pinning. A successful test request must confirm interception.</string>
+    <string name="help_https_body">Pairing, VPN consent and an installed CA do not verify HTTPS interception. Prepare trust for an app you control, then verify a real test request separately.</string>
+    <string name="certificate_help_open">Certificate setup details</string>
+    <string name="certificate_help_title">Set up HTTPS trust</string>
+    <string name="certificate_help_scope">Preparation only · HTTPS and traffic are not verified. This preview does not download, install or check a certificate.</string>
+    <string name="certificate_identity_title">Use the separate interception CA</string>
+    <string name="certificate_identity_body">The gateway certificate identifies the computer and encrypts the phone connection. The interception CA signs certificates for captured sites. A gateway pin is not the interception CA fingerprint.</string>
+    <string name="certificate_fingerprint_title">Compare the public CA fingerprint</string>
+    <string name="certificate_fingerprint_body">Obtain only the public interception CA certificate from the computer you trust. Compare the SHA-256 fingerprint of that exact certificate with the fingerprint displayed by the trusted computer. Stop if they differ. CA and gateway private keys stay on the computer.</string>
+    <string name="certificate_install_title">Install a user CA manually</string>
+    <string name="certificate_install_body">In Android Settings, look under Security for Encryption &amp; credentials, Install from storage, or Install a certificate → CA certificate. Names vary by device. Choose the verified public CA file and review Android’s trust warning. On Android 11 and later, CA installation must be done through Settings. Opening Settings or returning here does not confirm installation.</string>
+    <string name="certificate_open_settings">Open Android security settings</string>
+    <string name="certificate_settings_unavailable">Security settings could not be opened. Open Android Settings manually and look for certificate installation or trusted user credentials.</string>
+    <string name="certificate_debug_title">Configure your own debug app</string>
+    <string name="certificate_debug_body">Installing a user CA does not make every app trust it. For an app you own, the example below bundles one specific public CA only in its debug build, without requiring user-CA installation. It does not change this companion or other apps.</string>
+    <string name="certificate_show_config">Show debug configuration</string>
+    <string name="certificate_hide_config">Hide debug configuration</string>
+    <string name="certificate_existing_config">This complete example is for an app with no existing Network Security Configuration. If yours has one, keep its manifest reference, domains, trust anchors and pin sets. Merge only the debug-overrides block into a debug variant of that configuration; keep the release configuration unchanged.</string>
+    <string name="certificate_resource_path">app/src/debug/res/raw/freekit_interception_ca.crt</string>
+    <string name="certificate_resource_body">Place the verified public CA certificate here in PEM or DER form. Include no private key. These files belong to your own app’s debug source set.</string>
+    <string name="certificate_manifest_path">app/src/debug/AndroidManifest.xml</string>
+    <string name="certificate_trust_path">app/src/debug/res/xml/debug_network_security_config.xml</string>
+    <string name="certificate_debug_manifest" translatable="false">"&lt;manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"&gt;\n    &lt;application android:networkSecurityConfig=\"@xml/debug_network_security_config\" /&gt;\n&lt;/manifest&gt;"</string>
+    <string name="certificate_debug_trust" translatable="false">"&lt;network-security-config&gt;\n    &lt;debug-overrides&gt;\n        &lt;trust-anchors&gt;\n            &lt;certificates src=\"@raw/freekit_interception_ca\"\n                overridePins=\"false\" /&gt;\n        &lt;/trust-anchors&gt;\n    &lt;/debug-overrides&gt;\n&lt;/network-security-config&gt;"</string>
+    <string name="certificate_copy_manifest">Copy debug manifest</string>
+    <string name="certificate_copy_trust">Copy debug trust XML</string>
+    <string name="certificate_manifest_copied">Debug manifest example copied.</string>
+    <string name="certificate_trust_copied">Debug trust XML example copied.</string>
+    <string name="certificate_copy_unavailable">Copy is unavailable. Select the example text to copy it manually.</string>
+    <string name="certificate_example_clip_label">Own-app debug certificate configuration</string>
+    <string name="certificate_pinning_body">The explicit overridePins=false keeps Android Network Security Configuration pin checks enforced. Libraries can use their own certificate pins or trust settings and still reject interception. This example does not bypass those checks or guarantee HTTPS capture.</string>
+    <string name="certificate_remove_title">Remove trust after debugging</string>
+    <string name="certificate_remove_body">In Android Settings, find trusted credentials or user certificates and remove this CA when it is no longer needed. Remove the added public CA and debug-only configuration from your own app, preserving any settings it already had. Forgetting a computer in the companion does not uninstall Android user CAs.</string>
+    <string name="certificate_help_close">Close certificate help</string>
     <string name="help_privacy_title">Know what is captured</string>
     <string name="help_privacy_body">The planned preview intercepts selected HTTP and HTTPS over TCP ports 80 and 443. DNS stays on the underlying phone network. UDP/443 will be blocked to encourage TCP fallback; some apps may fail instead. This is an HTTP debugging tool, not a general privacy VPN.</string>
     <string name="help_stop_title">Stop, forget, and revoke</string>
