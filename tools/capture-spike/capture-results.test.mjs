@@ -7,15 +7,21 @@ const identity = method => `INSTRUMENTATION_STATUS: class=${captureClass}\nINSTR
 const facts = (method, values = captureFactExpectations(method, 'true')) => Object.entries(values).map(([key, value]) => `INSTRUMENTATION_STATUS: ${key}=${value}\n`).join('') + 'INSTRUMENTATION_STATUS_CODE: 2\n';
 const output = method => identity(method) + 'INSTRUMENTATION_STATUS_CODE: 1\n' + facts(method) + identity(method) + 'INSTRUMENTATION_STATUS_CODE: 0\nINSTRUMENTATION_CODE: -1\n';
 const snap = () => Object.fromEntries(['directHttp', 'directOpaque', 'directTcp', 'udp', 'dns', 'udp443', 'interceptedHttp', 'interceptedOpaque', 'interceptedIpv6', 'uploadBytes', 'downloadBytes', 'invalidRequests', 'heldRequestsClosed', 'activeSockets', 'pendingCallbacks', 'timers', 'listeners', 'heldConnections'].map(key => [key, 0]).concat([['closed', false]]));
-const report = () => ({ format: 'http-freekit-capture-runtime', revision: 1, source: { commit: 'a'.repeat(40), trackedDirty: false }, api: 26,
+const report = () => {
+  let previous = snap();
+  const result = { format: 'http-freekit-capture-runtime', revision: 1, source: { commit: 'a'.repeat(40), trackedDirty: false }, api: 26,
   permissionSetup: { required: false, mode: 'not_required', hostGrantExitCode: null, trafficGrantExitCode: null },
   clock: { deviceEpochSeconds: 1700000000, hostBeforeMillis: 1700000000000, hostAfterMillis: 1700000000010, lowerBoundMillis: -10, upperBoundMillis: 999, roundTripMillis: 10 },
   methods: captureCases.map((item, index) => {
-    const before = snap(), after = snap();
-    for (const key of [ ['interceptedHttp', 'interceptedOpaque', 'directHttp', 'directOpaque'], ['directTcp', 'udp', 'dns', 'udp443'], ['interceptedIpv6'], ['heldRequestsClosed', 'interceptedHttp'], [] ][index]) after[key] = 1;
+    const before = { ...previous }, after = { ...before };
+    for (const key of [ ['interceptedHttp', 'interceptedOpaque', 'directHttp', 'directOpaque'], ['directTcp', 'udp', 'dns', 'udp443'], ['interceptedIpv6'], ['heldRequestsClosed', 'interceptedHttp'], [] ][index]) after[key]++;
+    previous = after;
     return { invocation: parseCaptureInvocation(output(item.method), item.method, command), receiversBefore: before, receiversAfter: after };
   }),
-  cleanup: { ownedCommandsClosed: true, ownedCommandGroupsClosed: true, packagesAbsent: true, forceStopExitCodes: [0, 0, 0, 0], uninstallExitCodes: [0, 0, 0, 0], receivers: { ...snap(), closed: true } }, problems: [] });
+  cleanup: { ownedCommandsClosed: true, ownedCommandGroupsClosed: true, packagesAbsent: true, forceStopExitCodes: [0, 0, 0, 0], uninstallExitCodes: [0, 0, 0, 0], receivers: null }, problems: [] };
+  result.cleanup.receivers = { ...previous, closed: true };
+  return result;
+};
 
 test('all five exact methods require paired actual identities, final facts and terminal success', () => {
   for (const item of captureCases) {
@@ -85,4 +91,19 @@ test('API37 requires the denied-permission no-TUN invocation before the owned gr
   assert.match(captureXml({ ...value, accepted: true }), /tests="6"/);
   value.methods[0].invocation.observation.captureFactoryCalls = '1';
   assert.equal(captureReportAccepted(value), false);
+});
+
+test('counter resets, traffic between methods and positive method failure facts cannot be hidden', () => {
+  for (const change of [r => { r.methods[1].receiversBefore.directHttp = 0; r.methods[1].receiversAfter.directHttp = 0; },
+    r => { r.cleanup.receivers.dns++; }, r => { r.methods[0].invocation.failure = { phase: 'selected-traffic', type: 'IOException', cleanupCompleted: true }; }]) {
+    const value = report(); change(value); assert.equal(captureReportAccepted(value), false);
+  }
+});
+
+test('boolean counters and recognized failure followed by a passing terminal cannot substitute actual outcomes', () => {
+  const value = report(); value.methods[0].receiversAfter.directHttp = true;
+  assert.equal(captureReportAccepted(value), false);
+  const method = captureCases[0].method;
+  const contradictory = output(method).replace('INSTRUMENTATION_CODE: -1', 'java.lang.AssertionError: Capture research uid failed at selected-traffic (IOException); cleanup=true.\nINSTRUMENTATION_CODE: -1');
+  assert.equal(parseCaptureInvocation(contradictory, method, command).state, 'failed');
 });

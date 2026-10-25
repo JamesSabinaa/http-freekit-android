@@ -91,13 +91,15 @@ export function parseCaptureInvocation(bytes, method, command) {
   if (Object.keys(bundle).length || active || !identity || !completed || result.actualStarted !== 1 || result.actualCompleted !== 1 ||
       result.terminalCount !== 1 || result.terminalCode !== -1 || !result.observation) fail('instrumentation_incomplete');
   if (result.command.exitCode !== 0 || result.command.signal !== null || !result.command.closeObserved || !result.command.processGroupClosed || result.command.reason) fail('instrumentation_failed');
+  if (result.failure) fail('instrumentation_failed');
   result.state = result.problems.length ? result.actualCompleted ? 'failed' : 'incomplete' : 'passed';
   return result;
 }
 
 export function captureReceiverGate(index, before, after) {
   const delta = name => after[name] - before[name];
-  if (![before, after].every(value => value && value.closed === false && Object.keys(value).sort().join(',') === SNAPSHOT_KEYS && Object.values(value).every(item => typeof item === 'boolean' || Number.isSafeInteger(item) && item >= 0 && item <= 10000000))) return false;
+  if (![before, after].every(value => value && value.closed === false && Object.keys(value).sort().join(',') === SNAPSHOT_KEYS &&
+      Object.entries(value).every(([name, item]) => name === 'closed' || Number.isSafeInteger(item) && item >= 0 && item <= 10000000))) return false;
   if (delta('invalidRequests') !== 0 || index < -1 || index > 4) return false;
   const expected = [{}, { interceptedHttp: 1, interceptedOpaque: 1, directHttp: 1, directOpaque: 1 },
     { directTcp: 1, udp: 1, dns: 1, udp443: 1 }, { interceptedIpv6: 1 }, { heldRequestsClosed: 1, interceptedHttp: 1 }, {}][index + 1];
@@ -107,6 +109,7 @@ export function captureReceiverGate(index, before, after) {
 
 const SNAPSHOT_KEYS = ['directHttp', 'directOpaque', 'directTcp', 'udp', 'dns', 'udp443', 'interceptedHttp', 'interceptedOpaque', 'interceptedIpv6',
   'uploadBytes', 'downloadBytes', 'invalidRequests', 'heldRequestsClosed', 'activeSockets', 'pendingCallbacks', 'timers', 'listeners', 'heldConnections', 'closed'].sort().join(',');
+const CUMULATIVE = ['directHttp', 'directOpaque', 'directTcp', 'udp', 'dns', 'udp443', 'interceptedHttp', 'interceptedOpaque', 'interceptedIpv6', 'uploadBytes', 'downloadBytes', 'invalidRequests', 'heldRequestsClosed'];
 export function captureReportAccepted(report) {
   if (!report || report.format !== 'http-freekit-capture-runtime' || report.revision !== 1 ||
       !/^[0-9a-f]{40}$/.test(report.source?.commit ?? '') || report.source.trackedDirty !== false || ![26, 37].includes(report.api) || report.problems?.length !== 0) return false;
@@ -118,16 +121,19 @@ export function captureReportAccepted(report) {
       clock.upperBoundMillis !== clock.deviceEpochSeconds * 1000 + 999 - clock.hostBeforeMillis || clock.lowerBoundMillis < -2000 || clock.upperBoundMillis > 2000) return false;
   const definitions = captureCasesForApi(report.api);
   if (!Array.isArray(report.methods) || report.methods.length !== definitions.length) return false;
+  let previous = Object.fromEntries(CUMULATIVE.map(name => [name, 0]));
   for (const [index, item] of report.methods.entries()) {
     const invocation = item?.invocation, definition = definitions[index];
     if (!invocation || invocation.method !== definition.method || invocation.state !== 'passed' || invocation.actualStarted !== 1 || invocation.actualCompleted !== 1 ||
-        invocation.terminalCount !== 1 || invocation.terminalCode !== -1 || invocation.problems?.length !== 0 ||
+        invocation.terminalCount !== 1 || invocation.terminalCode !== -1 || invocation.problems?.length !== 0 || invocation.failure !== null ||
         invocation.command?.exitCode !== 0 || invocation.command.signal !== null || invocation.command.reason !== null ||
         invocation.command.closeObserved !== true || invocation.command.processGroupClosed !== true || !invocation.observation) return false;
     const expected = captureFactExpectations(definition.method, invocation.observation.captureConsentDialogObserved, report.api === 37 ? 'granted' : 'not_required');
     if (!['true', 'false'].includes(invocation.observation.captureConsentDialogObserved) || index === 0 && invocation.observation.captureConsentDialogObserved !== 'true' ||
         Object.keys(expected).length !== Object.keys(invocation.observation).length || Object.entries(expected).some(([key, value]) => invocation.observation[key] !== value) ||
         !captureReceiverGate(captureCases.indexOf(definition), item.receiversBefore, item.receiversAfter)) return false;
+    if (CUMULATIVE.some(name => item.receiversBefore[name] !== previous[name])) return false;
+    previous = item.receiversAfter;
   }
   const permission = report.permissionSetup;
   if (report.api === 37 ? permission?.required !== true || permission.mode !== 'owned_ci_grant' || permission.hostGrantExitCode !== 0 || permission.trafficGrantExitCode !== 0
@@ -135,7 +141,8 @@ export function captureReportAccepted(report) {
   const cleanup = report.cleanup;
   return cleanup?.ownedCommandsClosed === true && cleanup.ownedCommandGroupsClosed === true && cleanup.packagesAbsent === true &&
     ['forceStopExitCodes', 'uninstallExitCodes'].every(name => Array.isArray(cleanup[name]) && cleanup[name].length === 4 && cleanup[name].every(code => code === 0)) &&
-    cleanup.receivers?.closed === true && ['activeSockets', 'pendingCallbacks', 'timers', 'listeners', 'heldConnections'].every(name => cleanup.receivers[name] === 0);
+    cleanup.receivers?.closed === true && ['activeSockets', 'pendingCallbacks', 'timers', 'listeners', 'heldConnections'].every(name => cleanup.receivers[name] === 0) &&
+    CUMULATIVE.every(name => cleanup.receivers[name] === previous[name]);
 }
 
 const xml = value => String(value).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' })[character]);
