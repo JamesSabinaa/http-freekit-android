@@ -13,7 +13,7 @@ internal data class CaptureTrafficReply(val status: Int, val bytes: Int, val sha
         }
 
         fun decode(command: Int, status: Int, keys: Set<String>, bytes: Any?, hash: Any?, code: Any?): CaptureTrafficReply? {
-            if (command !in setOf(1, 2, 10, 11, 12, 13, 14, 15, 16, 17, 18) || status !in 0..3 ||
+            if (command !in setOf(1, 2, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19) || status !in 0..3 ||
                 keys != setOf("bytes", "sha256", "failureCode") || bytes !is Int || bytes !in 0..65507 ||
                 hash != null && (hash !is String || !hash.matches(Regex("[0-9a-f]{64}"))) ||
                 code != null && (code !is String || code !in failureCodes) || status == 0 && code != null) return null
@@ -24,7 +24,8 @@ internal data class CaptureTrafficReply(val status: Int, val bytes: Int, val sha
                     3 -> code != "traffic_route_unavailable"
                     else -> code != null
                 }) return null
-            } else if (code is String && code.startsWith("traffic_route_") || command in 10..16 && status in 2..3 && code == null) return null
+            } else if (code is String && code.startsWith("traffic_route_") ||
+                (command in 10..16 || command == 19) && status in 2..3 && code == null) return null
             return CaptureTrafficReply(status, bytes, hash, code)
         }
     }

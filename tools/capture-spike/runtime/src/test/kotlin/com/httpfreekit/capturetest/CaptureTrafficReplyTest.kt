@@ -6,6 +6,16 @@ import org.junit.Test
 class CaptureTrafficReplyTest {
     private val keys = setOf("bytes", "sha256", "failureCode")
 
+    @Test fun enrolledHttpRetainsTheFiniteReplyAndFailureBoundary() {
+        assertNotNull(CaptureTrafficReply.decode(19, 0, keys, 32787, "62a22a63bb850ba7b263fccff99e868133570394d36d6ee16fd32e9d7c1a4601", null))
+        assertNotNull(CaptureTrafficReply.decode(19, 3, keys, 0, null, "traffic_tcp_eof_reset"))
+        assertNull(CaptureTrafficReply.decode(19, 3, keys, 0, null, null))
+        assertNull(CaptureTrafficReply.decode(19, 3, keys, 0, null, "traffic_route_unavailable"))
+        assertNull(CaptureTrafficReply.decode(19, 0, keys, 32787, "a".repeat(64), "traffic_tcp_reply_io"))
+        assertNull(CaptureTrafficReply.decode(19, 0, keys + "requestSecret", 32787, "a".repeat(64), null))
+        assertNull(CaptureTrafficReply.decode(20, 0, keys, 0, null, null))
+    }
+
     @Test fun routeOutcomesRequireZeroDataAndTheRequestedRouteCategory() {
         assertNotNull(CaptureTrafficReply.decode(17, 0, keys, 0, null, null))
         assertNotNull(CaptureTrafficReply.decode(18, 2, keys, 0, null, "traffic_route_nonvpn_timeout_p1_i1_v1"))

@@ -14,6 +14,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 
+/** Shared finite research IPC; all old command admission and joins stay unchanged. */
 internal class TrafficClient(context: Context, directPort: Int) : AutoCloseable {
     private val app = context.applicationContext
     private val thread = HandlerThread("capture-fixture-replies").apply { start() }

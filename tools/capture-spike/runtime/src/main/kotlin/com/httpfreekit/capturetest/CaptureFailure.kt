@@ -4,8 +4,6 @@ import com.httpfreekit.capture.CaptureException
 import com.httpfreekit.capture.CaptureServiceSnapshot
 import java.util.Collections
 
-internal data class CaptureTrafficOutcome(val command: Int, val status: Int, val bytes: Int)
-
 /** Failure-only inert observations; no exception text, identities, destinations or configuration. */
 internal object CaptureFailure {
     val phases = setOf("setup", "platform-consent", "route-readiness", "tun-start", "local-auth-baseline", "local-auth-refusal", "selected-traffic", "nonselected-traffic",

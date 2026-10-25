@@ -19,6 +19,14 @@ android {
     packaging.resources.merges += setOf("META-INF/LICENSE.md", "META-INF/NOTICE.md")
 }
 kotlin { jvmToolchain(17) }
+androidComponents.onVariants { variant ->
+    variant.deviceTests.values.forEach { test ->
+        checkNotNull(test.sources.kotlin).apply {
+            addStaticSourceDirectory("../../capture-spike/shared-traffic/src/main/kotlin")
+            addStaticSourceDirectory("../../capture-spike/shared-traffic/src/androidTest/kotlin")
+        }
+    }
+}
 dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(project(":core-security"))

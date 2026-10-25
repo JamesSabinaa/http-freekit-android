@@ -19,6 +19,12 @@ android {
     lint { warningsAsErrors = true }
 }
 kotlin { jvmToolchain(17) }
+androidComponents.onVariants { variant ->
+    checkNotNull(variant.sources.kotlin).addStaticSourceDirectory("../shared-traffic/src/main/kotlin")
+    variant.deviceTests.values.forEach { test ->
+        checkNotNull(test.sources.kotlin).addStaticSourceDirectory("../shared-traffic/src/androidTest/kotlin")
+    }
+}
 dependencies {
     implementation(project(":core-capture"))
     testImplementation(libs.junit)
