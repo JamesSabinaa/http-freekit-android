@@ -102,9 +102,15 @@ runtime. Ordinary host CI compiles the new method and tests guards only.
 
 The hosted enrollment workflow's `a23` choice uses its existing fresh API 26/37
 images, pinned toolchain, strict bounded clock setup and actual retained emulator
-termination/join. It performs no desktop checkout or alias setup. Dispatch waits
-for checked source, the actual A23 host proof, APK/strict lint and finite verifier
-checks; no local Windows emulator retry is assigned.
+termination/join. It performs no desktop checkout or alias setup. On API 37, the
+owned research package must declare `ACCESS_LOCAL_NETWORK`; after installing that
+package, the driver grants the permission only to its exact package in User 0 and
+requires a bounded exact-package readback before the three invocations. This is
+an explicit fixture permission setup (`owned_ci_grant`), not proof that loopback
+is exempt. API 26 requires no such grant (`not_required`) and records null grant
+command observations. Dispatch waits for checked source, the actual A23 host
+proof, APK/strict lint and finite verifier checks; no local Windows emulator
+retry is assigned.
 
 This establishes saved Android Keystore/pinned-mTLS/public-CA retrieval evidence
 only when actually executed and independently verified. CA installation, target
