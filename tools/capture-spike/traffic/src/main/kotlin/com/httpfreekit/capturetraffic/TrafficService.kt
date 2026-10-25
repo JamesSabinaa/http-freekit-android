@@ -2,6 +2,8 @@ package com.httpfreekit.capturetraffic
 
 import android.app.Service
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.IBinder
@@ -51,7 +53,8 @@ class TrafficService : Service() {
                 respond(reply, id, if (joined && owned == null) OK else FAILED, 0, null)
             }
             true
-        } else if (!request.data.isEmpty || directPort == 0 || executor.isShutdown || !busy.compareAndSet(false, true)) {
+        } else if (!request.data.isEmpty || directPort == 0 || executor.isShutdown ||
+            Build.VERSION.SDK_INT >= 37 && checkSelfPermission("android.permission.ACCESS_LOCAL_NETWORK") != PackageManager.PERMISSION_GRANTED || !busy.compareAndSet(false, true)) {
             respond(reply, id, INVALID, 0, null)
             true
         } else {

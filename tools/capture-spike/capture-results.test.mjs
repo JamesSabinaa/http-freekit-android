@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { captureCases, captureClass, captureFactExpectations, parseCaptureInvocation, captureReportAccepted, captureXml } from './capture-results.mjs';
+import { captureCases, capturePermissionCase, captureClass, captureFactExpectations, parseCaptureInvocation, captureReportAccepted, captureXml } from './capture-results.mjs';
 
 const command = { code: 0, signal: null, closeObserved: true, processGroupClosed: true, reason: null };
 const identity = method => `INSTRUMENTATION_STATUS: class=${captureClass}\nINSTRUMENTATION_STATUS: test=${method}\n`;
@@ -8,6 +8,7 @@ const facts = (method, values = captureFactExpectations(method, 'true')) => Obje
 const output = method => identity(method) + 'INSTRUMENTATION_STATUS_CODE: 1\n' + facts(method) + identity(method) + 'INSTRUMENTATION_STATUS_CODE: 0\nINSTRUMENTATION_CODE: -1\n';
 const snap = () => Object.fromEntries(['directHttp', 'directOpaque', 'directTcp', 'udp', 'dns', 'udp443', 'interceptedHttp', 'interceptedOpaque', 'interceptedIpv6', 'uploadBytes', 'downloadBytes', 'invalidRequests', 'heldRequestsClosed', 'activeSockets', 'pendingCallbacks', 'timers', 'listeners', 'heldConnections'].map(key => [key, 0]).concat([['closed', false]]));
 const report = () => ({ format: 'http-freekit-capture-runtime', revision: 1, source: { commit: 'a'.repeat(40), trackedDirty: false }, api: 26,
+  permissionSetup: { required: false, mode: 'not_required', hostGrantExitCode: null, trafficGrantExitCode: null },
   clock: { deviceEpochSeconds: 1700000000, hostBeforeMillis: 1700000000000, hostAfterMillis: 1700000000010, lowerBoundMillis: -10, upperBoundMillis: 999, roundTripMillis: 10 },
   methods: captureCases.map((item, index) => {
     const before = snap(), after = snap();
@@ -72,4 +73,16 @@ test('later host cleanup failure preserves the five actual method outcomes in bo
   const rendered = captureXml(value);
   assert.equal((rendered.match(/<testcase /g) ?? []).length, 5); assert.match(rendered, /failures="0" errors="1"/);
   assert.equal(rendered.includes('CANARY'), false);
+});
+
+test('API37 requires the denied-permission no-TUN invocation before the owned grant and five real policy methods', () => {
+  const value = report(); value.api = 37;
+  value.permissionSetup = { required: true, mode: 'owned_ci_grant', hostGrantExitCode: 0, trafficGrantExitCode: 0 };
+  for (const item of value.methods) item.invocation.observation.captureLocalNetworkPermission = 'granted';
+  const method = capturePermissionCase.method;
+  value.methods.unshift({ invocation: parseCaptureInvocation(output(method), method, command), receiversBefore: snap(), receiversAfter: snap() });
+  assert.equal(captureReportAccepted(value), true);
+  assert.match(captureXml({ ...value, accepted: true }), /tests="6"/);
+  value.methods[0].invocation.observation.captureFactoryCalls = '1';
+  assert.equal(captureReportAccepted(value), false);
 });
