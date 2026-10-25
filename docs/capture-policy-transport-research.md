@@ -8,9 +8,11 @@ with the real enrolled factory and the local reviewed desktop. It follows the
 This is isolated research against the draft contract. It changes no wire bytes,
 capabilities, production app integration or protocol-freeze gate.
 
-D owns `CapturePolicyServer.kt` and its focused core unit regressions. Root owns
-the transport module's test-only composition facade, integration cases, build
-wiring and this profile. Each owner works in a separate Android worktree. The
+D owns `CapturePolicyServer.kt` and its focused core unit regressions. F owns the
+existing Node origin fixture and focused tests for one additive `http-h1` profile
+using the same C3 desktop pin and default two capabilities; preserve all existing
+C2/C3 profiles. Root owns the transport module's test-only composition facade,
+integration cases, build wiring and this profile. Each owner works in a separate Android worktree. The
 desktop checkout remains clean at `2ee70e86b17e2feb2fd2bf4842a85c66671eb4c6`;
 no desktop edits or publication are assigned.
 
