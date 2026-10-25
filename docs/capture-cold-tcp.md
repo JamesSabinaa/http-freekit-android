@@ -1,6 +1,6 @@
 # Cold TCP comparison
 
-Status: isolated diagnostic implemented and locally checked, assigned from checked c43f0e8; actual API26 comparison unrun. The [capture policy](capture-policy-runtime.md) remains open: API26 validates the complete nonselected HTTP reply, then fails strict EOF as `traffic_tcp_eof_reset`, with zero receiver deadline/error/reset events. This comparison changes no production or companion wire contract.
+Status: implemented and actually run at f847197; the cold API26 transaction reproduces `traffic_tcp_eof_reset` without prior VPN activity. The [capture policy](capture-policy-runtime.md) remains open: a full reply does not replace the required EOF. This comparison changes no production or companion wire contract.
 
 ## Experiment and ownership
 
@@ -61,3 +61,11 @@ A matching cold failure shows that prior VPN activity is not necessary for this 
 ## Checked implementation
 
 UI's 5f59ec1 is integrated as 721a560 (one new Android test); D's d50822d as 1739874 (new parser/tests); F's 422d45d as 93f6b0d (separate runner, workflow, independent verifier and host checks). Root's integrated check passes six existing runtime JVM cases, host/instrumentation APK assembly and strict lint in 18 seconds. Actual APK IDs, signatures, common debug signer and 16 KiB ZIP alignment are verified again; the comparison installs only its three specified APKs. The combined new Node checks pass 27 cases, including actual CLI/unavailable-child and owned Bash cleanup cases; Python guards pass 12, documentation tests pass nine, and 199 local links resolve. Node-generated XML matches the independent Python verifier in the compatibility fixture. Focused actionlint schema/expressions and all 36 changed-workflow ShellCheck/Bash blocks pass without suppressions; full Linux host and actual Android outcomes remain separate checks. Existing C1, TrafficClient, TrafficService, fixture and core sources are unchanged from c43f0e8. No comparison result or C1 acceptance is established by these local checks.
+
+## Actual cold result
+
+At `f8471970de730ae4f4fb9cc2f7ec8a4c46f0d0b3`, [run 40156287722](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40156287722), job 121058283509 records one actual start/completion and terminal code -1. Its command exits with code 0 and observed stdio/process-group joins. All thirteen fields are retained: both owner/configuration observations are absent, route readiness completes, HTTP attempts=1, command 10 returns status=3/bytes=0/hash=none, and the first failure is `http` / `traffic_tcp_eof_reset`. Client cleanup joins. The unchanged source verifies all 32787 reply bytes and content before entering the separate EOF read; returned bytes=0 is a failed-command result count, not zero network receipt.
+
+Receiver counters begin at zero and finish with exactly `directHttp=1`, `tcpConnections=1`, `uploadBytes=16528` and `downloadBytes=32787`. Every other path and all deadline/error/reset counters remain zero. All host data resources settle before the final receiver/listener close. Three package force-stops and uninstalls exit with code 0, package/process absence is observed, command groups join, and emulator stop/termination/join complete with exit code 0. The measured full clock interval is [-1184,-176] milliseconds with a 9 ms round trip. JSON accepted=false, XML has one failure/one error, and driver exit code 1 preserves the failed EOF. F, UI and D independently inspect the same three original sanitized files and fixed source.
+
+This demonstrates that prior VPN activity is not necessary for this observed failure. It does not identify a specific errno, wire RST, responsible endpoint or general Android behavior, and it does not clear C1. Preserve both negative cases. Further capture-framework changes or unchanged reruns are not justified by these observations. Actual authenticated desktop HTTP transport composition proceeds as separate research while the limitation remains recorded.
