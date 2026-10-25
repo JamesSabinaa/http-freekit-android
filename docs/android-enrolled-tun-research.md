@@ -91,7 +91,11 @@ reply. Its old CONFIGURE readiness uses the validated ephemeral gateway port
 (1024..65535), which command19 never uses as its destination.
 
 At `http-command-started` the driver starts the existing response-tail release;
-the fixture still requires actual decoded/drained client END_WRITE. At
+the fixture still requires actual decoded/drained client END_WRITE. A control
+probe may not exist yet: wait for its admission rather than rejecting legitimate
+lazy startup. C5's release gate has a finite 15-second deadline; existing profiles
+retain their 5-second gate. Traffic connect/read and
+IPC deadlines remain unchanged. At
 `local-stream-drained`, the driver independently polls the existing actual
 `gatewayStreamComplete` fact and verifies exact origin/capture/body/destination
 facts. Only then may it write the descriptor's fixed one-shot acknowledgment

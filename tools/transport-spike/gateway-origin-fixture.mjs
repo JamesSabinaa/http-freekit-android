@@ -245,11 +245,12 @@ export async function startOriginGatewayFixture({ desktopRoot, desktopCommit, op
       if (!gatedHttp || releaseRequested || closing || enrollmentId === null) return Promise.reject(failure());
       releaseRequested = true; releasePending = true;
       releaseTask = (async () => {
-        const deadline = performance.now() + 5000;
+        // C5 requests release before the first selected flow starts its lazy control connection.
+        const deadline = performance.now() + (tun ? 15000 : 5000);
         while (true) {
           const state = enrollment.inspectEnrollment(enrollmentId).probe;
-          if (closing || !state || ['failed', 'closed'].includes(state.control.phase)) throw failure();
-          if (origin.requestVerified && origin.responsePrefixWritten && state.stream?.client.eofEmitted === true &&
+          if (closing || state && ['failed', 'closed'].includes(state.control.phase)) throw failure();
+          if (state && origin.requestVerified && origin.responsePrefixWritten && state.stream?.client.eofEmitted === true &&
               state.io.proxyWritePending === false && state.io.pendingIngressBytes === 0 && backend.snapshot().clientEndWrites === 1) break;
           if (performance.now() >= deadline) throw failure();
           await new Promise(done => {

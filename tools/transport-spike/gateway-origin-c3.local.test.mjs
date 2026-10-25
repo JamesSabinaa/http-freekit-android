@@ -30,7 +30,7 @@ function joined(snapshot) {
   assert.equal(snapshot.enrollment.stream.sessionLeases + snapshot.enrollment.stream.streamLeases + snapshot.enrollment.stream.chargedBytes +
     snapshot.enrollment.stream.workers + snapshot.enrollment.stream.pendingCallbacks + snapshot.enrollment.stream.timers, 0);
 }
-async function fixture(t, profile, family) {
+async function fixture(t, profile, family, beforeControl) {
   const owner = await startOriginGatewayFixture({ desktopRoot, desktopCommit, profile, family });
   const clients = []; let control;
   t.after(async () => {
@@ -45,6 +45,7 @@ async function fixture(t, profile, family) {
   const credential = await enrollOrigin(owner, createCryptoFixture(), C3_CAPABILITIES);
   assert.deepEqual(credential.approved.capabilities, C3_CAPABILITIES);
   assert.equal(credential.approved.interceptionCaCertificateSha256, metadata.interceptionCaCertificateSha256);
+  await beforeControl?.(owner);
   control = await originControl(owner, credential, C3_CAPABILITIES);
   assert.deepEqual(control.ready.capabilities, C3_CAPABILITIES);
   const lookup = dns.lookup;
@@ -137,7 +138,15 @@ async function bytesThroughEof(socket) {
 }
 
 test('actual enrolled HTTP80 keeps both capabilities and gates the full response tail on applied client END_WRITE', { timeout: 45000 }, async t => {
-  const f = await fixture(t, 'http-h1', 'ipv4'), client = await f.application(80), socket = client.transport;
+  let releasing, releaseState = 'pending';
+  const f = await fixture(t, 'http-h1', 'ipv4', async owner => {
+    assert.equal(owner.inspect().probe, null);
+    releasing = owner.releaseTail();
+    releasing.then(() => { releaseState = 'complete'; }, () => { releaseState = 'failed'; });
+    await new Promise(done => setTimeout(done, 75));
+    assert.equal(releaseState, 'pending');
+  });
+  const client = await f.application(80), socket = client.transport;
   const body = Buffer.from(Array.from({ length: payload.requestBodyBytes }, (_, i) => i % 251));
   const request = Buffer.concat([Buffer.from(`POST ${payload.path} HTTP/1.1\r\nHost: ${C3_LOGICAL_HOST}\r\nContent-Length: ${body.length}\r\nConnection: close\r\n\r\n`), body]);
   const state = writerState();
@@ -151,7 +160,6 @@ test('actual enrolled HTTP80 keeps both capabilities and gates the full response
   const held = await until(() => f.owner.snapshot(), value => value.origin.responsePrefixWritten);
   assert.equal(held.origin.responseBodyBytesWritten, 4096); assert.equal(held.origin.tailReleased, false);
   assert.equal(f.owner.inspect().probe.stream.client.eofEmitted, false); assert.equal(held.backend.clientEndWrites, 0);
-  const releasing = f.owner.releaseTail();
   await new Promise(done => setTimeout(done, 275));
   assert.equal(f.owner.snapshot().origin.responseBodyBytesWritten, 4096); assert.equal(f.owner.snapshot().origin.tailReleased, false);
   await endWrite(socket, state);
