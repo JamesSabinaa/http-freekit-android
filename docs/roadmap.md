@@ -18,8 +18,8 @@ and isolated research tests; those tests do not establish a finished capture app
 | App interface | Installed-app discovery, selection, keyboard/rotation and certificate-help checks on API 26/37 | Connect the interface to real pairing, capture, recovery and diagnostics |
 | Identity and enrollment | Keystore identity, scoped TLS, approval, saved credentials, restart/recovery, revocation and expiry research | Production credential/approval binding and remaining v1 decisions |
 | Capture and proxy transport | Native packet checks and local policy/HTTP/HTTPS H1/Upgrade composition | Actual enrolled selected-UID TUN execution, production integration and physical USB |
-| Public interception CA | Compiled getter and actual Node TLS endpoint; source-bound 46/46 receipts, 318 JVM host methods and nine clean lint reports at `8526b0a`; saved-credential Android retrieval passes API 26 | Run complete fresh API 26/37 acceptance after correcting API 37 permission readback; CA installation and target-app trust remain open |
-| Android CA runtime driver | `bf73686` passes host CI and API26 fifth matrix; `4192a41` corrects owned-package boundaries with 69 checked regressions | `4192a41` host gate fails a JVM directional-EOF test; investigate/fix before a fresh A23 matrix |
+| Public interception CA | `fa2d845`: 46/46 source-bound CA receipts, 320 JVM host methods, nine clean lint reports and saved-credential Android retrieval on API26/37 | CA installation, target-app trust and production integration remain open |
+| Android CA runtime driver | Fresh matrix 40222004218 passes both APIs; independent original four-file replay verifies three ordered methods and all cleanup on each | A23 runtime research acceptance complete; preserve scope limits and advance to enrolled selected-app capture |
 | Desktop dependency | User authorized publication of the reviewed ten-commit branch ending `2ee70e86` | Exact desktop checkout/review patch is absent from this Linux workspace and that commit is not on GitHub; obtain and verify it before publishing or running C5 |
 
 The original completed code checkpoint is `94a47c7` (CA proof input/source
@@ -67,23 +67,29 @@ or join assertions; no new matrix has been dispatched. Test-only correction
 `5758c20` (integrated `5a589d4`) adds deterministic publication-gap and exception
 retention regressions without production changes. Local JVM/lint execution is
 unavailable (no Java); require independent review and fresh pinned host CI.
+The integrated checkpoint `fa2d845` passes [host run 40220903154](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40220903154):
+independent artifact replay confirms 320 JVM methods including all five EOF tests,
+46/46 clean-source CA receipts and nine clean lint XMLs. Fresh
+[matrix 40222004218](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40222004218)
+passes both API26 and API37; independent original four-file replay verifies all
+three ordered methods and all report/cleanup gates on each API. **A23 runtime
+research acceptance is complete at this exact source.** Earlier failed runs
+remain failed. This is not CA installation, target-app trust, production capture
+or physical USB acceptance.
 The older audited baseline is `1065657` in
 [run 40177081047](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40177081047).
 New checkpoint CI must be inspected before claiming hosted validation of later code.
 
 ## Next milestones, in order
 
-1. **Finish Android CA retrieval acceptance.** Validate the owned-package block
-   boundary correction on pinned host CI, then run a fresh three-invocation
-   API 26/37 matrix. Preserve duplicate-user rejection within the block and
-   require actual-image success before accepting the correction as its cause.
-   Require real Keystore enrollment, worker restart, CA/hash continuity, final
-   Forget and joined cleanup on both APIs in that new run.
-   Earlier API26 passes and API37 setup/readback failures stay separate. This uses the
-   reference gateway and needs no desktop publication. See the
+1. **Android CA retrieval acceptance — complete.** Source `fa2d845`, host run
+   40220903154 and fresh API26/37 matrix 40222004218 pass independent artifact
+   replay. Real Keystore enrollment, worker restart, CA/hash continuity, final
+   Forget and joined cleanup pass on both APIs in the same matrix. See the
    [Android CA profile](android-interception-ca-research.md).
-2. **Prove enrolled selected-app capture.** Resolve the separate desktop
-   publication decision, then run the prepared factory and selected-UID TUN
+2. **Prove enrolled selected-app capture — next, externally blocked.** Obtain and
+   verify the exact already-authorized reviewed desktop source (currently absent),
+   then publish that branch and run the prepared factory and selected-UID TUN
    checks against the exact reviewed commits. Preserve original destinations,
    complete bytes, EOF, notification Stop and all actual ownership joins.
    See [C5](android-enrolled-tun-research.md). Its Android runtime remains unrun.

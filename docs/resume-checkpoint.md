@@ -7,8 +7,11 @@ The original goal is active and incomplete.
 
 ## Current Linux resume position
 
-- Android public `main` is `4192a41e9a69c9aaeb198397063538eb8b96697f` before
-  this host-failure investigation checkpoint.
+- Android public `main` is `fa2d845086e4157dc6d455775fc541a4fc67071f` before
+  this accepted-A23 evidence checkpoint. **A23 runtime research acceptance passes**
+  on both API26 and API37 in fresh matrix 40222004218; see the evidence below.
+  The next milestone is C5 enrolled selected-app capture, blocked on the absent
+  exact reviewed desktop source. Production freeze and physical USB remain open.
   The original Windows F worktree and ignored archive below are absent here;
   no original unfinished files were overwritten. The eight-file A23 package
   was reconstructed in an isolated branch and merged through `91c2a85`.
@@ -90,6 +93,18 @@ The original goal is active and incomplete.
   primary/peer exception regressions. Static checks pass. JVM/lint execution
   cannot run locally because JAVA_HOME/java are absent; independent review and
   fresh pinned hosted compilation/tests are required before another A23 matrix.
+- Accepted source `fa2d845` passes [host run 40220903154](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40220903154):
+  independent artifacts confirm 320 JVM methods including all five EOF/evidence
+  tests, 46/46 clean-source CA receipts and nine clean lint XMLs. Fresh
+  [matrix 40222004218](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40222004218)
+  passes both APIs. Independent original four-file replay verifies each API's
+  three ordered methods, actual starts/completions, original A22 gates, seventeen
+  CA facts and every cleanup join. DER is 432 bytes on API26 and 433 on API37;
+  each has before/after asset continuity. API37 now verifies its exact owned
+  installed User0 runtime grant. No raw dumps or CA digests are exported. This
+  completes A23 runtime research only, not CA installation/target trust/TUN/USB.
+  The exact desktop checkout remains absent at the next-milestone check; no C5
+  dispatch or substitute publication is authorized by this acceptance.
 - User explicitly authorized continued publication of validated Android main
   checkpoints and existing hosted validation workflows for this goal without
   asking for every checkpoint. This does not authorize paid infrastructure,

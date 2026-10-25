@@ -1,14 +1,15 @@
 # Android saved-credential public CA research
 
-Status: reconstructed A23b driver and hosted selection; API26 independently
-passes all five fresh matrices. API37 has only setup/readback failures, no
-method executions. Diagnostic source `bf73686` passes host CI; its fifth matrix
-finds one owned package but two User0 headers in the parser's current scope.
-Public source and red/green regressions demonstrate that outer dump sections
-are wrongly included after the package block. A narrow indentation-boundary
-correction retains duplicate-user rejection inside the block; host CI and a
-fresh matrix must establish actual-image success. No raw dump is published.
-See the [retained runtime evidence](validation.md#authenticated-public-interception-ca-research).
+Status: A23 saved-credential runtime acceptance passes on API26 and API37 in
+fresh [matrix 40222004218](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40222004218)
+at `fa2d845086e4157dc6d455775fc541a4fc67071f`. Independent replay of both original
+four-file artifacts verifies all three ordered methods and joined cleanup.
+Pinned host run 40220903154 independently confirms 320 JVM methods, 46/46 CA
+receipts and nine clean lint reports. The owned-package boundary correction
+admits one installed User0 and its actual granted runtime permission on API37;
+no raw dump is published. Earlier failed matrices remain retained separately.
+CA installation, target-app trust, production integration and physical USB are
+not established. See the [retained runtime evidence](validation.md#authenticated-public-interception-ca-research).
 The checked software-key host proof remains a prerequisite for each dispatch. This
 suite uses the existing reference enrollment gateway and needs no desktop
 checkout, Linux alias or production app wiring.

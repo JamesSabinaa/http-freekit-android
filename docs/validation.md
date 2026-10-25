@@ -228,7 +228,24 @@ attempted focused JVM/lint command exits immediately because `JAVA_HOME` is not
 set and no `java` command is available. Independent read-only review found no
 concrete correctness or lifecycle defect in the test correction; it also could
 not compile without Java. Fresh pinned host CI must compile and execute these
-tests before another emulator dispatch.
+tests before another emulator dispatch. The integrated clean checkpoint
+`fa2d845086e4157dc6d455775fc541a4fc67071f` passes
+[host run 40220903154](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40220903154).
+Independent original XML/receipt audit confirms 320 unique JVM methods in 41
+XMLs (all five EOF/evidence methods pass), zero failures/errors/skips, 46/46
+clean-source CA receipts and nine zero-issue lint XMLs.
+
+**A23 runtime research acceptance passes** in fresh
+[matrix 40222004218](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40222004218)
+at that exact source. Independent replay of both APIs' original runtime, XML,
+HTML and host-cleanup files verifies three ordered methods, three starts and
+three completions plus every original A22/CA/cleanup gate on each API. API26
+returns 432-byte DER and API37 433-byte DER; each retains before/after byte/hash
+continuity and all seventeen Android CA facts. API37 finite readback now has
+one exact owned package/User0/installed/runtime/target, true grant and successful
+commands. API26 remains not_required. Both actual emulator stop/termination/join
+records pass with exit0. Earlier failed runs remain failed, not combined into
+this acceptance. This proves saved Android Keystore credential retrieval only.
 CA installation, target-app trust and physical USB remain open.
 
 ## Enrolled HTTP-origin factory research
