@@ -215,6 +215,11 @@ jobs:
                   "successfulRefreshPrunesDisabledFixtureAndDoesNotReselectIt",
                   "sampleAndInstalledSelectionsRemainSeparate",
               )
+          } | {
+              ("com.httpfreekit.android.preview.CertificateHelpActivityTest", name) for name in (
+                  "realSecuritySettingsReturnAndRotationKeepTrustUnverified",
+                  "unavailableSettingsAndCopiedDebugExamplesNeverChangeReadiness",
+              )
           }
           cases = []
           totals = {field: 0 for field in ("tests", "failures", "errors", "skipped")}
@@ -242,7 +247,7 @@ jobs:
           if totals["tests"] != len(expected) or any(totals[field] for field in ("failures", "errors", "skipped")):
               raise SystemExit(f"Preview instrumentation did not execute a fully passing suite: {totals}")
           if len(cases) != len(expected) or {(case.get("classname"), case.get("name")) for case in cases} != expected:
-              raise SystemExit("The expected eight named preview/catalog tests did not execute exactly once")
+              raise SystemExit("The expected ten named preview/catalog/certificate tests did not execute exactly once")
           if any(case.find(result) is not None for case in cases for result in ("failure", "error", "skipped")):
               raise SystemExit("A preview testcase failed or was skipped")
           print(json.dumps({"api": os.environ["API_LEVEL"], **totals}, sort_keys=True))
@@ -250,23 +255,26 @@ jobs:
           mkdir -p build/reports/preview
           screenshot="build/reports/preview/sample-preview-ready-api-${API_LEVEL}.png"
           adb -s emulator-5554 exec-out run-as com.httpfreekit.android.debug cat files/sample-preview-ready.png > "$screenshot"
-          python3 - "$screenshot" <<'PY'
+          help_screenshot="build/reports/preview/certificate-help-api-${API_LEVEL}.png"
+          adb -s emulator-5554 exec-out run-as com.httpfreekit.android.debug cat files/certificate-help.png > "$help_screenshot"
+          python3 - "$screenshot" "$help_screenshot" <<'PY'
           import hashlib
           from pathlib import Path
           import struct
           import sys
 
-          path = Path(sys.argv[1])
-          data = path.read_bytes()
-          if len(data) < 24 or data[:8] != b"\x89PNG\r\n\x1a\n" or data[12:16] != b"IHDR":
-              raise SystemExit("The rendered sample screenshot is absent or is not a PNG")
-          width, height = struct.unpack(">II", data[16:24])
-          if width < 100 or height < 100:
-              raise SystemExit(f"The rendered sample screenshot is unexpectedly small: {width}x{height}")
-          print(f"Sample preview screenshot: {path} {width}x{height} sha256={hashlib.sha256(data).hexdigest()}")
+          for filename in sys.argv[1:]:
+              path = Path(filename)
+              data = path.read_bytes()
+              if len(data) < 24 or data[:8] != b"\x89PNG\r\n\x1a\n" or data[12:16] != b"IHDR":
+                  raise SystemExit("A rendered preview/help screenshot is absent or is not a PNG")
+              width, height = struct.unpack(">II", data[16:24])
+              if width < 100 or height < 100:
+                  raise SystemExit(f"A rendered preview/help screenshot is unexpectedly small: {width}x{height}")
+              print(f"Preview/help screenshot: {path} {width}x{height} sha256={hashlib.sha256(data).hexdigest()}")
           PY
           cleanup 0
-      # Retain test reports and the explicitly sample-only preview PNG: no APKs, emulator logs, keys, AVDs, or userdata.
+      # Retain reports and static preview/help PNGs: no APKs, emulator logs, keys, AVDs, or userdata.
       - name: Retain instrumentation reports
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -278,3 +286,4 @@ jobs:
             app/build/outputs/androidTest-results/connected/**/*.xml
             app/build/reports/androidTests/connected/
             build/reports/preview/sample-preview-ready-api-*.png
+            build/reports/preview/certificate-help-api-*.png

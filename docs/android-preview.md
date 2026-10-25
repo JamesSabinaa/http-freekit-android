@@ -18,6 +18,14 @@ The state holder uses an activity-scoped [ViewModel](https://developer.android.c
 
 Setup help distinguishes desktop identity, VPN consent, user CA installation, debug-app trust, certificate pinning, DNS behavior, Stop, Forget, and desktop revocation. Forgetting a preview computer does not claim to remove a user-installed Android CA.
 
+## HTTPS certificate help
+
+In Setup, open the HTTPS help card for installation, removal and own-debug-app instructions. **Open Android security settings** launches the real public platform action; a missing or restricted Settings handler produces an unavailable message. Returning from Settings never changes HTTPS trust or successful capture to verified. On Android 11 and later, user CA installation must be performed in Settings. The app does not download or install a CA; obtain the public CA from the trusted computer and compare its SHA-256 fingerprint first. Gateway identity and interception trust remain separate.
+
+The expandable examples copy only static debug-variant manifest and Network Security Configuration XML. Place the verified public CA in the indicated debug-only raw resource, merge with any existing configuration and preserve release behavior. The explicit `overridePins="false"` retains Network Security Configuration pin checks; independent library pins can still reject interception. These instructions configure the user's own debug app and cannot establish trust for other apps. See [Android CA installation](https://developer.android.com/reference/android/security/KeyChain#createInstallIntent()) and [network security configuration](https://developer.android.com/privacy-and-security/security-config).
+
+The B4 instrumentation extends the existing preview workflow to ten named methods per API. Its two new cases check actual Settings foreground/return and rotation, plus an injected unavailable handler, copied examples and unchanged readiness. Static help screenshots contain no installed-app list or certificate. Compilation and host tests are separate from these Android runtime checks; B4 API 26/37 execution is not yet verified.
+
 ## Installed-app selection
 
 **Installed apps** queries the platform's current-profile installed applications on a background worker. It includes enabled system and development packages without launcher activities, excludes this companion package, removes duplicate package entries, and sorts by application label then package name. **All apps** shows that full enabled catalogue; **Development** filters it to the platform's debuggable flag. This flag does not establish HTTPS trust or interception support. Search matches labels and package names without changing hidden selections.
