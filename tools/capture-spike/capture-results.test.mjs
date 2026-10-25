@@ -54,13 +54,13 @@ test('only finite failure phase/type survives provider messages, causes and fore
   const method = captureCases[0].method;
   const failed = identity(method) + 'INSTRUMENTATION_STATUS_CODE: 1\n' + identity(method) + 'INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: Capture research uid failed at selected-traffic (IOException); cleanup=true.\nCaused by: private.CANARY: secret\nINSTRUMENTATION_STATUS_CODE: -2\nINSTRUMENTATION_CODE: -1\n';
   const actual = parseCaptureInvocation(failed, method, command);
-  assert.deepEqual(actual.failure, { phase: 'selected-traffic', type: 'IOException', cleanupCompleted: true });
+  assert.deepEqual(actual.failure, { phase: 'selected-traffic', type: 'IOException', cleanupCompleted: true, frames: [], diagnostic: null });
   assert.equal(JSON.stringify(actual).includes('CANARY'), false);
   assert.equal(parseCaptureInvocation(failed.replace('cleanup=true.', 'cleanup=true. CANARY'), method, command).failure, null);
 });
 test('output bytes, line length, invalid UTF8 and metadata count have finite rejecting bounds', () => {
   const method = captureCases[0].method;
-  for (const value of [Buffer.alloc(262145), Buffer.from([0xff]), 'a'.repeat(8193), identity(method) + Array.from({ length: 33 }, (_, i) => `INSTRUMENTATION_STATUS: field${i}=x\n`).join('') + 'INSTRUMENTATION_STATUS_CODE: 1\n']) assert.notEqual(parseCaptureInvocation(value, method, command).state, 'passed');
+  for (const value of [Buffer.alloc(262145), Buffer.from([0xff]), 'a'.repeat(8193), identity(method) + Array.from({ length: 49 }, (_, i) => `INSTRUMENTATION_STATUS: field${i}=x\n`).join('') + 'INSTRUMENTATION_STATUS_CODE: 1\n']) assert.notEqual(parseCaptureInvocation(value, method, command).state, 'passed');
 });
 test('independent host path counters cannot be replaced by positive Android facts', () => {
   for (const [index, field] of [[0, 'directHttp'], [1, 'udp443'], [2, 'interceptedIpv6'], [3, 'heldRequestsClosed'], [4, 'directTcp']]) {
@@ -107,4 +107,50 @@ test('boolean counters and recognized failure followed by a passing terminal can
   const method = captureCases[0].method;
   const contradictory = output(method).replace('INSTRUMENTATION_CODE: -1', 'java.lang.AssertionError: Capture research uid failed at selected-traffic (IOException); cleanup=true.\nINSTRUMENTATION_CODE: -1');
   assert.equal(parseCaptureInvocation(contradictory, method, command).state, 'failed');
+});
+
+function failureFacts(scenario, phase) {
+  const value = { Version: '1', Scenario: scenario, Phase: phase, Type: 'IllegalStateException', Check: 'tcp_bytes', TrafficCommand: '16', TrafficStatus: '3', TrafficBytes: '0',
+    ServicePresent: 'false', ServiceState: 'absent', ServiceFailureCode: 'null', TunEstablished: 'null', SelectedPackageCount: 'null', UnderlyingNetworkPresent: 'null', LifecycleThreadAlive: 'null',
+    CapturePresent: 'false', Started: 'null', AdmissionClosed: 'null', NativeRunning: 'null', NativeStopJoined: 'null', TunClosed: 'null', ConfigurationPresent: 'null', ActiveFlows: 'null', OwnedSockets: 'null',
+    LiveWorkers: 'null', PendingOpens: 'null', InterceptedTcpFlows: 'null', DirectTcpFlows: 'null', UdpTargets: 'null', Udp443Drops: 'null', ProtectFailures: 'null', BindFailures: 'null', Failed: 'null',
+    GuardProtects: 'null', GuardBinds: 'null', GuardRejected: 'null', GuardRejectedSocketsClosed: 'null', CaptureRequestCalls: 'null', InterceptedFactoryClosed: 'null' };
+  return Object.fromEntries(Object.entries(value).map(([key, item]) => ['captureFailure' + key, item]));
+}
+const status = (value, code) => Object.entries(value).map(([key, item]) => `INSTRUMENTATION_STATUS: ${key}=${item}\n`).join('') + `INSTRUMENTATION_STATUS_CODE: ${code}\n`;
+function failedOutput(method, scenario, phase, observation, frames = '') {
+  return identity(method) + 'INSTRUMENTATION_STATUS_CODE: 1\n' + status(observation, 3) + identity(method) +
+    `INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: Capture research ${scenario} failed at ${phase} (IllegalStateException); cleanup=true.\n` + frames +
+    'INSTRUMENTATION_STATUS_CODE: -2\nINSTRUMENTATION_CODE: -1\n';
+}
+
+test('digit-containing failure scenarios/phases retain only finite typed facts and own-source sites', () => {
+  for (const [index, scenario, phase] of [[2, 'ipv6', 'selected-ipv6'], [1, 'direct', 'udp443-positive-control']]) {
+    const method = captureCases[index].method;
+    const text = failedOutput(method, scenario, phase, failureFacts(scenario, phase), '    at com.httpfreekit.capturetest.CapturePolicyInteropTest.selectedIpv6UsesTun(CapturePolicyInteropTest.kt:123)\nCaused by: private.CANARY\n    at foreign.CANARY.private(CapturePolicyInteropTest.kt:7)\n');
+    const result = parseCaptureInvocation(text, method, command);
+    assert.equal(result.state, 'failed'); assert.equal(result.failure.phase, phase); assert.equal(result.failure.diagnostic.trafficStatus, 3);
+    assert.deepEqual(result.failure.frames, [{ file: 'CapturePolicyInteropTest.kt', line: 123 }]); assert.equal(JSON.stringify(result).includes('CANARY'), false);
+  }
+});
+
+test('unknown/duplicate/mismatched/nonprimitive failure bundles cannot become retained observations', () => {
+  const method = captureCases[2].method;
+  for (const change of [v => { v.captureFailureExtra = 'CANARY'; }, v => { v.captureFailureScenario = 'uid'; }, v => { v.captureFailureActiveFlows = 'true'; },
+    v => { v.captureFailureCheck = 'CANARY'; }, v => { v.captureFailureCapturePresent = 'true'; }, v => { v.captureFailureTrafficStatus = '-2'; }]) {
+    const values = failureFacts('ipv6', 'selected-ipv6'); change(values);
+    const result = parseCaptureInvocation(failedOutput(method, 'ipv6', 'selected-ipv6', values), method, command);
+    assert.equal(result.failure.diagnostic, null); assert.equal(JSON.stringify(result).includes('CANARY'), false);
+  }
+  const value = failureFacts('ipv6', 'selected-ipv6');
+  const duplicate = failedOutput(method, 'ipv6', 'selected-ipv6', value).replace(identity(method) + 'INSTRUMENTATION_STATUS: stack=', status(value, 3) + identity(method) + 'INSTRUMENTATION_STATUS: stack=');
+  assert.ok(parseCaptureInvocation(duplicate, method, command).problems.includes('invalid_capture_facts'));
+});
+
+test('failure facts always prevent passing acceptance and source frames remain capped at16', () => {
+  const method = captureCases[2].method, values = failureFacts('ipv6', 'selected-ipv6');
+  const text = output(method).replace(facts(method), status(values, 3) + facts(method));
+  assert.equal(parseCaptureInvocation(text, method, command).state, 'failed');
+  const frames = Array.from({ length: 24 }, (_, i) => `    at com.httpfreekit.capturetest.CapturePolicyInteropTest.selectedIpv6UsesTun(CapturePolicyInteropTest.kt:${i + 1})\n`).join('');
+  assert.equal(parseCaptureInvocation(failedOutput(method, 'ipv6', 'selected-ipv6', values, frames), method, command).failure.frames.length, 16);
 });

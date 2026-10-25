@@ -37,10 +37,13 @@ class CapturePolicyInteropTest {
     private var stops = 0
     private var consentDialog = false
     private var consentActivity: Activity? = null
+    private val firstFailure = AtomicReference<Pair<String, Throwable>?>(null)
+    private var scenario = "permission"
 
     @Test(timeout = 120000)
     fun localNetworkDenialPreventsTun() {
         check(Build.VERSION.SDK_INT == 37) { "api37_only" }
+        TrafficClient.resetObservation()
         try {
             phase = "platform-consent"; consent()
             check(context.checkSelfPermission("android.permission.ACCESS_LOCAL_NETWORK") == PackageManager.PERMISSION_DENIED) { "local_permission_not_denied" }
@@ -62,13 +65,15 @@ class CapturePolicyInteropTest {
             })
         } catch (caught: Throwable) {
             if (caught !is Exception && caught !is AssertionError) throw caught
-            val failedPhase = phase
+            observeFailure(caught)
+            val original = firstFailure.get() ?: (phase to caught)
+            val failedPhase = original.first
             val service = ResearchCaptureService.current
             val cleanup = try {
                 if (service != null) { context.startService(Intent(context, ResearchCaptureService::class.java).setAction(CaptureVpnService.ACTION_STOP)); service.awaitStopped(30000) } else true
             } catch (_: Exception) { false }
-            val failure = AssertionError("Capture research permission failed at $failedPhase (IllegalStateException); cleanup=$cleanup.")
-            failure.stackTrace = caught.stackTrace.filter { it.className.startsWith("com.httpfreekit.") && it.fileName in SAFE_FILES }.take(16).toTypedArray()
+            val failure = AssertionError("Capture research permission failed at $failedPhase (${CaptureFailure.type(original.second)}); cleanup=$cleanup.")
+            failure.stackTrace = CaptureFailure.frames(original.second)
             throw failure
         } finally {
             consentActivity?.let { activity -> instrumentation.runOnMainSync { activity.finish() } }; consentActivity = null
@@ -79,7 +84,7 @@ class CapturePolicyInteropTest {
     fun selectedTcpUsesTunAndNonselectedUidBypasses() = runCase("uid") { facts ->
         val uid = context.packageManager.getApplicationInfo(ResearchCaptureService.TRAFFIC, 0).uid
         check(uid != Process.myUid() && uid != context.packageManager.getApplicationInfo(ResearchCaptureService.INERT, 0).uid) { "separate_uid" }
-        TrafficClient(context, directPort).use { traffic ->
+        withTraffic { traffic ->
             start()
             phase = "local-auth-refusal"
             val admissions = snapshot().capture!!
@@ -111,7 +116,7 @@ class CapturePolicyInteropTest {
 
     @Test(timeout = 120000)
     fun directTcpUdpDnsAndUdp443Policy() = runCase("direct") { facts ->
-        TrafficClient(context, directPort).use { traffic ->
+        withTraffic { traffic ->
             phase = "udp443-positive-control"
             val control = traffic.command(15)
             check(control.status == 0 && control.bytes == 256 && control.sha256 == UDP_HASH) { "udp_positive_control" }
@@ -134,7 +139,7 @@ class CapturePolicyInteropTest {
 
     @Test(timeout = 120000)
     fun selectedIpv6UsesTun() = runCase("ipv6") { facts ->
-        TrafficClient(context, directPort).use { traffic ->
+        withTraffic { traffic ->
             start()
             phase = "selected-ipv6"
             val before = receiver.snapshot()
@@ -149,7 +154,7 @@ class CapturePolicyInteropTest {
 
     @Test(timeout = 120000)
     fun stopJoinsCaptureAndAllowsFreshStart() = runCase("stop") { facts ->
-        TrafficClient(context, directPort).use { traffic ->
+        withTraffic { traffic ->
             start()
             phase = "held-intercepted-request"
             receiver.armHeld()
@@ -166,6 +171,9 @@ class CapturePolicyInteropTest {
                 failure.get()?.let { throw it }
                 check(result.get()?.status in setOf(2, 3)) { "held_request_completed" }
                 await { receiver.snapshot().getValue("heldConnections") == 0 }
+            } catch (caught: Throwable) {
+                if (caught is Exception || caught is AssertionError) observeFailure(caught)
+                throw caught
             } finally {
                 if (request.isAlive) { stop(); request.join(12000) }
                 check(!request.isAlive) { "fixture_request_not_joined" }
@@ -180,7 +188,7 @@ class CapturePolicyInteropTest {
 
     @Test(timeout = 120000)
     fun protectAndBindFailuresFailClosed() = runCase("guards") { facts ->
-        TrafficClient(context, directPort).use { traffic ->
+        withTraffic { traffic ->
             for (mode in listOf(ResearchCaptureService.Mode.REFUSE_PROTECT, ResearchCaptureService.Mode.FAIL_BIND)) {
                 start(mode = mode)
                 phase = if (mode == ResearchCaptureService.Mode.REFUSE_PROTECT) "protect-refusal" else "bind-refusal"
@@ -199,6 +207,8 @@ class CapturePolicyInteropTest {
     }
 
     private fun runCase(scenario: String, block: (MutableMap<String, String>) -> Unit) {
+        this.scenario = scenario
+        TrafficClient.resetObservation()
         val facts = linkedMapOf<String, String>()
         try {
             phase = "platform-consent"
@@ -224,16 +234,38 @@ class CapturePolicyInteropTest {
             instrumentation.sendStatus(2, bundle)
         } catch (caught: Throwable) {
             if (caught !is Exception && caught !is AssertionError) throw caught
-            val failedPhase = phase
+            observeFailure(caught)
+            val original = firstFailure.get() ?: (phase to caught)
+            val failedPhase = original.first
             val cleanup = try { stop(); true } catch (_: Exception) { false }
-            val type = when (caught) { is AssertionError -> "AssertionError"; is IllegalArgumentException -> "IllegalArgumentException"; is java.io.IOException -> "IOException"; else -> "IllegalStateException" }
+            val type = CaptureFailure.type(original.second)
             val failure = AssertionError("Capture research $scenario failed at $failedPhase ($type); cleanup=$cleanup.")
-            failure.stackTrace = caught.stackTrace.filter { it.className.startsWith("com.httpfreekit.") && it.fileName in SAFE_FILES }.take(16).toTypedArray()
+            failure.stackTrace = CaptureFailure.frames(original.second)
             throw failure
         } finally {
             consentActivity?.let { activity -> instrumentation.runOnMainSync { activity.finish() } }
             consentActivity = null
         }
+    }
+
+    private fun withTraffic(block: (TrafficClient) -> Unit) {
+        TrafficClient(context, directPort).use { client ->
+            try { block(client) }
+            catch (caught: Throwable) {
+                if (caught is Exception || caught is AssertionError) observeFailure(caught)
+                throw caught
+            }
+        }
+    }
+
+    private fun observeFailure(error: Throwable) {
+        if (!firstFailure.compareAndSet(null, phase to error)) return
+        try {
+            val service = ResearchCaptureService.current
+            val values = CaptureFailure.values(scenario, phase, error, service?.captureSnapshot(), service?.guardObservation(),
+                service?.captureRequestCalls(), service?.interceptedFactoryClosed(), TrafficClient.observation())
+            instrumentation.sendStatus(3, Bundle().apply { values.forEach { (name, value) -> putString(name, value) } })
+        } catch (_: Exception) { /* Diagnostic failure never replaces the original failed assertion. */ }
     }
 
     private fun start(bypass: Boolean = false, mode: ResearchCaptureService.Mode = ResearchCaptureService.Mode.NORMAL) {
@@ -250,6 +282,14 @@ class CapturePolicyInteropTest {
     }
 
     private fun stop(notification: Boolean = false) {
+        try { stopOwned(notification) }
+        catch (caught: Throwable) {
+            if (caught is Exception || caught is AssertionError) observeFailure(caught)
+            throw caught
+        }
+    }
+
+    private fun stopOwned(notification: Boolean) {
         val service = ResearchCaptureService.current ?: return
         if (service.captureSnapshot().state == "stopped" && service.awaitStopped(1000)) return
         phase = "actual-stop-join"
@@ -337,6 +377,5 @@ class CapturePolicyInteropTest {
         private const val TCP_HASH = "05dfd86ee3ecc0267ceb6234e1955c1e8c80e34b6323b2b1c87c7d1d84042255"
         private const val UDP_HASH = "ca8c15a2b7d76a0dc5c39dc35deffcfc596d14194b5c09a7513acb1577e99dbe"
         private const val DNS_HASH = "ab8bd414e49bcfde5e1bcc7277d8947246a42dbd5802ee81db4cc4e90bddd8d3"
-        private val SAFE_FILES = setOf("CapturePolicyInteropTest.kt", "TrafficClient.kt", "HostReceiver.kt", "ResearchCaptureService.kt", "CaptureEngineSession.kt", "CapturePolicyServer.kt", "ProtectedEgressFactory.kt")
     }
 }

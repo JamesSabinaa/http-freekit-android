@@ -56,12 +56,13 @@ internal class TrafficClient(context: Context, directPort: Int) : AutoCloseable 
 
     @Synchronized fun command(code: Int, data: Bundle = Bundle()): Result {
         check(!thread.isInterrupted && nextId <= 1_000_000) { "traffic_closed" }
+        if (code in 10..16) lastData.set(CaptureTrafficOutcome(code, -1, 0))
         val request = Message.obtain(null, code, nextId++, 0)
         waitingId = request.arg1; waiting = CountDownLatch(1); received = null
         request.data = data; request.replyTo = replies
         checkNotNull(remote.get()) { "traffic_disconnected" }.send(request)
         check(waiting.await(12000, TimeUnit.MILLISECONDS)) { "traffic_reply_timeout" }
-        return checkNotNull(received) { "traffic_invalid_reply" }
+        return checkNotNull(received) { "traffic_invalid_reply" }.also { if (code in 10..16) lastData.set(CaptureTrafficOutcome(code, it.status, it.bytes)) }
     }
 
     override fun close() {
@@ -74,4 +75,9 @@ internal class TrafficClient(context: Context, directPort: Int) : AutoCloseable 
     }
 
     data class Result(val status: Int, val bytes: Int, val sha256: String?)
+    companion object {
+        private val lastData = AtomicReference(CaptureTrafficOutcome(0, -1, 0))
+        fun resetObservation() { lastData.set(CaptureTrafficOutcome(0, -1, 0)) }
+        fun observation(): CaptureTrafficOutcome = lastData.get()
+    }
 }

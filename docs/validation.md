@@ -50,7 +50,7 @@ node scripts/verify-enrollment-crash-report.mjs --source "$(git rev-parse HEAD)"
   :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug \
   :transport-interop:testDebugUnitTest :transport-interop:assembleDebugAndroidTest :transport-interop:lintDebug \
   :core-capture:testDebugUnitTest :core-capture:lintDebug \
-  :capture-runtime:assembleDebug :capture-runtime:assembleDebugAndroidTest :capture-runtime:lintDebug \
+  :capture-runtime:testDebugUnitTest :capture-runtime:assembleDebug :capture-runtime:assembleDebugAndroidTest :capture-runtime:lintDebug \
   :capture-traffic:assembleDebug :capture-traffic:lintDebug \
   :installed-app-fixture:assembleDebug :installed-app-fixture:assembleRelease \
   :installed-app-fixture:lintDebug :installed-app-fixture:lintRelease
@@ -68,6 +68,8 @@ The [manual capture workflow](../.github/workflows/capture-runtime.yml) invokes 
 The independent gate checks the actual method pairs, finite facts, full measured clock interval, exact host TCP-accept/UDP-receipt and completed-path counter deltas, cumulative continuity, source, permission provenance and all owned cleanup. Missing/wrong local SOCKS authentication must allocate no egress. The host and signature-protected traffic service share only fixed synthetic commands and count/digest results. Controlled listeners fail on collisions; no arbitrary target RPC, map-DNS, companion wire revision or TLS-interception claim is introduced by the raw injected receiver.
 
 Only `runtime.json`, `TEST-capture-research.xml` and `host-cleanup.json` under `build/reports/capture-runtime/` are uploaded. Raw instrumentation, receiver/configuration credentials, APKs, ADB/emulator logs and packet bodies remain private. Overall acceptance additionally requires actual receiver/command/package cleanup and emulator termination/join; a later host failure preserves the actual method results while failing the gate.
+
+Failure-only diagnostics retain a finite39-field primitive bundle before implicit cleanup, a fixed project check code, and up to16 original project file/line sites. They exclude arbitrary exception text, causes, suppressed exceptions, packages, destinations and credentials. Source-level fixes copy an incoming Messenger command before Android recycles its Message; TCP descriptors are initialized before VPN protect while preserving protect→bind→connect. These fixes do not establish actual routing until a checked follow-up runtime passes. Historical d37b8f2 reports remain unchanged: both common five-method runs failed; API37's separate actual denied-permission/no-TUN preflight passed. Driver package/receiver/command cleanup and emulator termination/join completed.
 
 The host job checks OpenSSL 3 explicitly and runs five loopback Node fixture tests for bounded CSR validation, certificate issuance, authenticated WebSocket echo, missing-client rejection, temporary-file cleanup, bounded research certificate times and clock probes, and normal TLS rejection of future or expired gateway certificates. Twenty-nine parser/ownership regressions separately cover exact start/end pairs, terminal status, crashes, missing/duplicate/skipped cases, bounded input, sanitized ADB/server-log diagnostics, explicit reverse-port collisions, and selective cleanup. It also compiles and strictly lints the isolated transport module, retaining its lint reports. It does not run connected Android tests. A local Windows research check can select an installed OpenSSL 3 executable through `OPENSSL_BIN`; no system OpenSSL setting is changed.
 

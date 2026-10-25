@@ -153,7 +153,7 @@ jobs:
           :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug
           :transport-interop:testDebugUnitTest :transport-interop:assembleDebugAndroidTest :transport-interop:lintDebug
           :core-capture:testDebugUnitTest :core-capture:lintDebug
-          :capture-runtime:assembleDebug :capture-runtime:assembleDebugAndroidTest :capture-runtime:lintDebug
+          :capture-runtime:testDebugUnitTest :capture-runtime:assembleDebug :capture-runtime:assembleDebugAndroidTest :capture-runtime:lintDebug
           :capture-traffic:assembleDebug :capture-traffic:lintDebug
           :installed-app-fixture:assembleDebug :installed-app-fixture:assembleRelease
           :installed-app-fixture:lintDebug :installed-app-fixture:lintRelease
@@ -204,6 +204,8 @@ jobs:
             core-capture/build/test-results/testDebugUnitTest/
             core-capture/build/reports/lint-results-debug.*
             tools/capture-spike/runtime/build/reports/lint-results-debug.*
+            tools/capture-spike/runtime/build/reports/tests/
+            tools/capture-spike/runtime/build/test-results/testDebugUnitTest/
             tools/capture-spike/traffic/build/reports/lint-results-debug.*
             build/reports/draft-protocol/*-conformance.json
             build/reports/draft-enrollment/*-conformance.json

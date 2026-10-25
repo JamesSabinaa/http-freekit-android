@@ -18,10 +18,53 @@ const problems = new Set(['instrumentation_incomplete', 'instrumentation_failed'
   'clock_outside_bound', 'source_unavailable', 'fixture_setup_failed', 'cleanup_incomplete', 'research_cancelled']);
 export const captureProblem = value => problems.has(value) ? value : 'host_setup_failed';
 const fixedFailure = (line, scenario) => {
-  const failure = /^java\.lang\.AssertionError: Capture research ([a-z]+) failed at ([a-z-]+) \(([A-Za-z]+)\); cleanup=(true|false)\.$/.exec(line);
+  const failure = /^java\.lang\.AssertionError: Capture research ([a-z0-9]+) failed at ([a-z0-9-]+) \(([A-Za-z]+)\); cleanup=(true|false)\.$/.exec(line);
   return failure && failure[1] === scenario && phases.has(failure[2]) && safeTypes.has(failure[3])
     ? { phase: failure[2], type: failure[3], cleanupCompleted: failure[4] === 'true' } : null;
 };
+const failureChecks = new Set(('other separate_uid auth_egress auth_guard_admission uid_changed udp_positive_control udp_bytes dns_bytes udp443_not_blocked policy_drop_not_observed ipv6_policy_admission stop_did_not_interrupt_before_request_deadline held_request_completed fixture_request_not_joined refused_flow_connected refused_socket_not_closed guard_order failure_route_not_retained local_network_permission start_stop_count previous_owner_live tun_not_active lifecycle_not_joined capture_snapshot_missing capture_resources_not_closed foreground_notification_missing platform_consent_missing consent_touch consent_bounds local_listener_missing missing_auth_accepted auth_negotiation wrong_auth_accepted tcp_bytes service_missing research_port receiver_path_count research_condition_timeout traffic_bind traffic_configure traffic_closed traffic_disconnected traffic_reply_timeout traffic_invalid_reply traffic_worker_not_joined traffic_reply_worker_not_joined receiver_port receiver_response_bound receiver_http receiver_length receiver_schema receiver_counter research_configuration research_original_tuple research_factory_closed research_factory_cleanup local_permission_not_denied denied_permission_created_capture denied_stop_not_joined').split(' ').concat(['invalid_request', 'capacity', 'closed', 'protect_failed', 'bind_failed', 'connect_failed', 'cleanup_failed', 'native_failed'].map(value => 'capture_' + value)));
+const failureBooleans = ['servicePresent', 'tunEstablished', 'underlyingNetworkPresent', 'lifecycleThreadAlive', 'capturePresent', 'started', 'admissionClosed', 'nativeRunning', 'nativeStopJoined', 'tunClosed', 'configurationPresent', 'failed', 'guardRejectedSocketsClosed', 'interceptedFactoryClosed'];
+const failureNumbers = ['trafficCommand', 'trafficStatus', 'trafficBytes', 'selectedPackageCount', 'activeFlows', 'ownedSockets', 'liveWorkers', 'pendingOpens', 'interceptedTcpFlows', 'directTcpFlows', 'udpTargets', 'udp443Drops', 'protectFailures', 'bindFailures', 'guardProtects', 'guardBinds', 'guardRejected', 'captureRequestCalls'];
+const failureNames = ['version', 'scenario', 'phase', 'type', 'check', 'serviceState', 'serviceFailureCode', ...failureBooleans, ...failureNumbers];
+const captureNames = ['started', 'admissionClosed', 'nativeRunning', 'nativeStopJoined', 'tunClosed', 'configurationPresent', 'activeFlows', 'ownedSockets', 'liveWorkers', 'pendingOpens', 'interceptedTcpFlows', 'directTcpFlows', 'udpTargets', 'udp443Drops', 'protectFailures', 'bindFailures', 'failed'];
+function decodeFailure(bundle, scenario) {
+  if (Object.keys(bundle).length !== 39) return null;
+  const values = {};
+  for (const name of failureNames) {
+    const key = 'captureFailure' + name[0].toUpperCase() + name.slice(1), raw = bundle[key];
+    if (typeof raw !== 'string') return null;
+    if (raw === 'null') values[name] = null;
+    else if (failureBooleans.includes(name)) { if (!['true', 'false'].includes(raw)) return null; values[name] = raw === 'true'; }
+    else if (failureNumbers.includes(name)) {
+      if (!/^(?:-1|0|[1-9][0-9]{0,9})$/.test(raw) || raw.includes('\n') || Number(raw) > 1000000000) return null;
+      values[name] = Number(raw);
+    } else values[name] = raw;
+  }
+  if (values.version !== '1' || values.scenario !== scenario || !phases.has(values.phase) || !safeTypes.has(values.type) || !failureChecks.has(values.check) ||
+      ![true, false].includes(values.servicePresent) || ![true, false].includes(values.capturePresent) ||
+      ![0, 10, 11, 12, 13, 14, 15, 16].includes(values.trafficCommand) || ![-1, 0, 1, 2, 3].includes(values.trafficStatus) ||
+      !Number.isInteger(values.trafficBytes) || values.trafficBytes < 0 || values.trafficBytes > 65507 || values.trafficCommand === 0 && (values.trafficStatus !== -1 || values.trafficBytes !== 0)) return null;
+  if (values.servicePresent) {
+    if (!['idle', 'starting', 'active', 'disconnected', 'stopping', 'stopped', 'failed'].includes(values.serviceState) ||
+      ![null, 'foreground_unavailable', 'capture_runtime_failed', 'consent_required', 'local_network_permission', 'network_lost', 'capture_start_failed', 'capture_cleanup_failed'].includes(values.serviceFailureCode) ||
+      !Number.isInteger(values.selectedPackageCount) || values.selectedPackageCount < 0 || values.selectedPackageCount > 64 ||
+      ['tunEstablished', 'underlyingNetworkPresent', 'lifecycleThreadAlive', 'guardRejectedSocketsClosed', 'interceptedFactoryClosed'].some(name => ![true, false].includes(values[name])) ||
+      ['guardProtects', 'guardBinds', 'guardRejected', 'captureRequestCalls'].some(name => !Number.isInteger(values[name]) || values[name] < 0)) return null;
+  } else if (values.serviceState !== 'absent' || values.serviceFailureCode !== null || values.capturePresent ||
+    ['tunEstablished', 'selectedPackageCount', 'underlyingNetworkPresent', 'lifecycleThreadAlive', 'guardProtects', 'guardBinds', 'guardRejected', 'guardRejectedSocketsClosed', 'captureRequestCalls', 'interceptedFactoryClosed'].some(name => values[name] !== null)) return null;
+  if (captureNames.some(name => values.capturePresent ? failureBooleans.includes(name) ? ![true, false].includes(values[name]) : !Number.isInteger(values[name]) || values[name] < 0 : values[name] !== null)) return null;
+  return values;
+}
+const frameRoots = Object.freeze({ 'CapturePolicyInteropTest.kt': 'com.httpfreekit.capturetest.CapturePolicyInteropTest', 'TrafficClient.kt': 'com.httpfreekit.capturetest.TrafficClient',
+  'HostReceiver.kt': 'com.httpfreekit.capturetest.HostReceiver', 'ResearchCaptureService.kt': 'com.httpfreekit.capturetest.ResearchCaptureService',
+  'ConsentActivity.kt': 'com.httpfreekit.capturetest.ConsentActivity', 'CaptureFailure.kt': 'com.httpfreekit.capturetest.CaptureFailure',
+  'CaptureEngineSession.kt': 'com.httpfreekit.capture.CaptureEngineSession', 'CapturePolicyServer.kt': 'com.httpfreekit.capture.CapturePolicyServer', 'ProtectedEgressFactory.kt': 'com.httpfreekit.capture.ProtectedEgressFactory' });
+function sourceFrame(line) {
+  const match = /^\s*at (com\.httpfreekit\.[A-Za-z0-9_$.]+)\.(?:[A-Za-z_$][A-Za-z0-9_$]*|<init>|<clinit>)\(([A-Za-z]+\.kt):([1-9][0-9]{0,5})\)\s*$/.exec(line);
+  if (!match) return null;
+  const root = frameRoots[match[2]];
+  return root && (match[1] === root || match[1].startsWith(root + '$')) ? { file: match[2], line: Number(match[3]) } : null;
+}
 
 export function captureFactExpectations(method, consentDialogObserved = 'false', localNetworkPermission = 'not_required') {
   const item = definitionFor(method);
@@ -49,13 +92,14 @@ export function parseCaptureInvocation(bytes, method, command) {
     if (input.length > 262144) throw Error();
     text = new TextDecoder('utf-8', { fatal: true }).decode(input);
   } catch { fail('instrumentation_bound'); return result; }
-  let bundle = {}, active = false, completed = false, identity = false;
+  let bundle = {}, active = false, completed = false, identity = false, diagnostic = null;
+  const frames = [];
   for (const line of text.split(/\r?\n/)) {
     if (Buffer.byteLength(line) > 8192) { fail('instrumentation_bound'); continue; }
     const status = /^INSTRUMENTATION_STATUS: ([A-Za-z][A-Za-z0-9_]*)=(.*)$/.exec(line);
     if (status) {
       if (result.terminalCount) fail('instrumentation_structure');
-      if (Object.hasOwn(bundle, status[1]) || Object.keys(bundle).length >= 32) fail('instrumentation_structure');
+      if (Object.hasOwn(bundle, status[1]) || Object.keys(bundle).length >= 48) fail('instrumentation_structure');
       else bundle[status[1]] = status[2];
       if (status[1] === 'stack') result.failure = fixedFailure(status[2], definition.scenario);
       continue;
@@ -75,6 +119,11 @@ export function parseCaptureInvocation(bytes, method, command) {
             !(definition === capturePermissionCase ? ['denied'] : ['granted', 'not_required']).includes(bundle.captureLocalNetworkPermission) ||
             Object.keys(bundle).length !== Object.keys(expected).length || Object.entries(expected).some(([key, value]) => bundle[key] !== value)) fail('invalid_capture_facts');
         else result.observation = { ...bundle };
+      } else if (code === 3) {
+        const observation = decodeFailure(bundle, definition.scenario);
+        if (!active || completed || diagnostic || !observation) fail('invalid_capture_facts');
+        else diagnostic = observation;
+        fail('instrumentation_failed');
       } else {
         result.actualCompleted++;
         if (!active || completed || bundle.class !== captureClass || bundle.test !== method || code !== 0) fail(code === 0 ? 'instrumentation_structure' : 'instrumentation_failed');
@@ -83,6 +132,7 @@ export function parseCaptureInvocation(bytes, method, command) {
       bundle = {};
       continue;
     }
+    if (active && Object.hasOwn(bundle, 'stack') && result.failure && frames.length < 16) { const frame = sourceFrame(line); if (frame) frames.push(frame); }
     const terminal = /^INSTRUMENTATION_CODE: (-?[0-9]+)$/.exec(line);
     if (terminal) { if (!completed || active || Object.keys(bundle).length) fail('instrumentation_structure'); result.terminalCount++; result.terminalCode = Number(terminal[1]); }
     result.failure ??= fixedFailure(line, definition.scenario);
@@ -92,6 +142,11 @@ export function parseCaptureInvocation(bytes, method, command) {
       result.terminalCount !== 1 || result.terminalCode !== -1 || !result.observation) fail('instrumentation_incomplete');
   if (result.command.exitCode !== 0 || result.command.signal !== null || !result.command.closeObserved || !result.command.processGroupClosed || result.command.reason) fail('instrumentation_failed');
   if (result.failure) fail('instrumentation_failed');
+  if (diagnostic && !result.failure) result.failure = { phase: diagnostic.phase, type: diagnostic.type, cleanupCompleted: null };
+  if (result.failure) {
+    if (diagnostic && (result.failure.phase !== diagnostic.phase || result.failure.type !== diagnostic.type)) fail('invalid_capture_facts');
+    result.failure.frames = frames; result.failure.diagnostic = diagnostic;
+  }
   result.state = result.problems.length ? result.actualCompleted ? 'failed' : 'incomplete' : 'passed';
   return result;
 }
