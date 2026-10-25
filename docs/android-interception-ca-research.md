@@ -13,8 +13,10 @@ shared build/manifest integration, work board and hosted workflow selection.
 After the current getter follow-up, UI owns only the new Android
 `DraftInterceptionCaInteropTest.kt`. D owns the additive zero-argument private
 worker evidence operation, its wrapper/tests and the narrow reference-fixture
-evidence method. F first completes the actual A23 JVM-to-Node proof, then owns
-the finite Android parser/report/driver, independent verifier and their tests.
+evidence method. After that checked handoff, D also owns the new finite CA
+observation decoder, the additive shared-parser `a23` case and focused parser
+tests. F first completes the actual A23 JVM-to-Node proof, then owns the combined
+three-invocation Android report/driver, independent verifier and their tests.
 Agents use separate branches/worktrees and leave existing A22 methods unchanged.
 
 Use one fresh owned API 26 or 37 runtime, one actual Android Keystore identity,
