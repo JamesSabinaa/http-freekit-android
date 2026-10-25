@@ -36,6 +36,7 @@ node --test tools/transport-spike/draft-stream-results.test.mjs
 node --test tools/transport-spike/draft-stream-command.test.mjs tools/transport-spike/run-draft-streaming.test.mjs
 node --test tools/transport-spike/enrollment-runtime-*.test.mjs
 node --test tools/transport-spike/gateway-websocket-peer.test.mjs tools/transport-spike/companion-http-origin.test.mjs tools/transport-spike/capture-factory-results.test.mjs
+node --test tools/transport-spike/companion-interception-ca-peer.test.mjs
 node --test tools/transport-spike/research-websocket*.test.mjs
 node --test tools/transport-spike/companion-stream-peer*.test.mjs
 node --test tools/capture-spike/*.test.mjs
@@ -61,6 +62,37 @@ node scripts/compare-enrollment-conformance.mjs
 ```
 
 Assembling the app and security module's Android instrumentation APKs checks compilation only; no UI, Keystore, or device result is inferred from it.
+
+## Authenticated public interception CA research
+
+The [A23 contract](protocol-interception-ca.md) is checked by the compiled shared
+Kotlin getter over fresh pinned mTLS to the actual reference credential endpoint.
+The JVM proof creates a software P-256 identity, enrolls its real CSR, and binds the
+returned public DER to the saved approval, original identity and issued credential.
+It checks fresh fetches, saved-context reopen, defensive results and unchanged
+global TLS defaults. Real authenticated hostile TLS responses exercise framing,
+DER/profile and fingerprint refusals; the peer must witness the authorized request
+and actual response publication. Marked malformed-DER cases deliberately corrupt
+the test recovery fingerprint to match their bytes, so canonical parsing is tested
+independently of a hash mismatch. They do not represent valid server approval.
+
+Run the focused compiled proof with JDK 17, pinned Node 24.22.1 and OpenSSL 3:
+
+```sh
+FREEKIT_NODE=/absolute/path/to/node OPENSSL_BIN=/absolute/path/to/openssl \
+  ./gradlew --no-daemon --console=plain :transport-interop:testDebugUnitTest \
+  --tests com.httpfreekit.interop.DraftInterceptionCaTlsTest
+```
+
+The proof includes real credential expiry, current registry revocation, wrong
+gateway and absent TLS identity, read/whole-exchange deadlines and concurrent
+close. Client snapshots and the private peer require actual socket, callback,
+worker, issuer and process joins. Its finite report is
+`build/reports/interception-ca/jvm-tls.json`; ordinary host CI retains it with the
+original JVM XML and runs the separate private-peer tests. No certificates,
+fingerprints, private keys, identity values or provider messages enter that report.
+This proves software-key host behavior. Android Keystore execution, CA installation,
+production approval persistence and protocol freeze remain separate gates.
 
 ## Enrolled HTTP-origin factory research
 
