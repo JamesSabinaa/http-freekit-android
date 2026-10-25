@@ -140,6 +140,24 @@ test('a successful deletion ends ownership even when its following state read fa
   });
 });
 
+test('a successful delete exit relinquishes ownership despite missing joins and failed absence read; a replacement is never deleted', async () => {
+  for (const missing of ['closeObserved', 'processGroupClosed']) await fixture({ badAfter: true }, async ({ command, directory }) => {
+    const owner = createEnrolledTunAliasOwner(async (...args) => {
+      const result = await command(...args);
+      return args[1].includes('del') ? { ...result, [missing]: false } : result;
+    }, { platform: 'linux' });
+    await owner.prepare(); await assert.rejects(owner.remove({ fixtureJoined: true }));
+    const first = owner.snapshot(); assert.equal(first.commands.remove.exitCode, 0); assert.equal(first.commands.remove[missing], false);
+    assert.equal(first.removed, false); assert.equal(first.absenceConfirmed, false);
+    fs.writeFileSync(path.join(directory, 'created'), 'other-owner');
+    await assert.rejects(owner.remove({ fixtureJoined: true }));
+    const after = owner.snapshot(); assert.equal(after.refusal, first.refusal); assert.equal(after.removed, false);
+    assert.equal(fs.readFileSync(path.join(directory, 'created'), 'utf8'), 'other-owner');
+    assert.equal(fs.readFileSync(path.join(directory, 'calls'), 'utf8').split('\n').filter(line => line.startsWith('-4 address del ')).length, 1);
+    const value = report(); value.alias = after; assert.throws(() => verify(value));
+  });
+});
+
 test('failed add never invents ownership, while failed verification retains ownership for actual cleanup', async () => {
   await fixture({ createFail: true }, async ({ command }) => {
     const owner = createEnrolledTunAliasOwner(command, { platform: 'linux' }); await assert.rejects(owner.prepare());

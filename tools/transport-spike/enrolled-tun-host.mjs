@@ -63,7 +63,7 @@ export function createEnrolledTunAliasOwner(command, { platform = process.platfo
         if (owned) {
           try {
             const result = await run('remove', ['sudo', '-n', 'ip', '-4', 'address', 'del', cidr, 'dev', 'lo'], true);
-            if (enrollmentPassed(result)) owned = false;
+            if (result.code === 0) owned = false;
           } catch { state.refusal ??= 'alias_remove_failed'; }
         }
         try { state.absenceConfirmed = addresses(await inspect('after', true)).length === 0; }
