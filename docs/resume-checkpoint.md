@@ -7,8 +7,8 @@ The original goal is active and incomplete.
 
 ## Current Linux resume position
 
-- Android public `main` is `bf736867413ce1d296bca603af438373b45092eb` before
-  this package-scope investigation checkpoint.
+- Android public `main` is `4192a41e9a69c9aaeb198397063538eb8b96697f` before
+  this host-failure investigation checkpoint.
   The original Windows F worktree and ignored archive below are absent here;
   no original unfinished files were overwritten. The eight-file A23 package
   was reconstructed in an isolated branch and merged through `91c2a85`.
@@ -74,6 +74,17 @@ The original goal is active and incomplete.
   and duplicate child-user rejection remain. Independent scope/privacy review
   and six focused cases pass. Host CI and a new full matrix must establish
   actual-image compatibility; no raw layout or acceptance is inferred.
+- Boundary correction `4192a41` is published with 69 combined regressions and
+  independent scope/privacy review, but [host run 40216911800](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40216911800)
+  fails the JVM directional-EOF test: `Socket is closed` obtaining the peer
+  output stream at `CapturePolicyCompletionTest.kt:33`. Native/documentation jobs
+  pass; full host acceptance does not. No fresh matrix is dispatched. Root owns
+  evidence docs. Investigator a50aa98e2b37ebb24 demonstrated a test-publication
+  race and helper exception masking, not an exact retained assertion or
+  production defect. Its read-only worktree disappeared on resume and it made
+  no edits. Fresh isolated owner aa5382bf319812ad8 owns only
+  `CapturePolicyCompletionTest.kt` synchronization/evidence/regression changes.
+  Do not skip assertions, bypass worktree restrictions or silently rerun.
 - User explicitly authorized continued publication of validated Android main
   checkpoints and existing hosted validation workflows for this goal without
   asking for every checkpoint. This does not authorize paid infrastructure,

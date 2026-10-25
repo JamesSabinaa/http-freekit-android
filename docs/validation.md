@@ -200,7 +200,23 @@ Combined local parser/report/verifier/workflow/documentation regressions pass
 69/69, with 270 checked local links and clean diff whitespace. The prior local
 Node22 worker failures remain recorded above; this package does not claim to
 resolve them. A new pinned host gate and full runtime matrix remain required.
-A23 acceptance remains open.
+A23 acceptance remains open. Boundary checkpoint `4192a41` fails
+[host run 40216911800](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40216911800)
+in `:core-capture:testDebugUnitTest`: the original XML records
+`realDirectionalEofClosesGracefullyBeforeInterruptAndRetainsChargesUntilJoin`,
+`java.net.SocketException: Socket is closed` at `CapturePolicyCompletionTest.kt:33`
+while obtaining the peer output stream. Documentation/native jobs pass, but
+this is not a passing full host gate. No new A23 matrix was dispatched.
+Isolated analysis demonstrates a viable test race: real peer EOF can release
+its latch before `shutdownOutput` returns and publishes `outputEnded`. The
+immediate flag assertion therefore lacks an ordering guarantee. Separately,
+the peer helper closes its accepted socket in failure cleanup and can replace
+the original assertion with its later peer exception. The artifact cannot
+recover the lost primary failure, so this is not proof of its exact assertion.
+The owner is correcting only test synchronization and exception precedence,
+with deterministic publication-gap/primary-secondary failure regressions.
+Production EOF/half-close/join/charge semantics remain unchanged; no assertion
+is skipped and the failed run stays failed.
 CA installation, target-app trust and physical USB remain open.
 
 ## Enrolled HTTP-origin factory research

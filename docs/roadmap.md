@@ -19,7 +19,7 @@ and isolated research tests; those tests do not establish a finished capture app
 | Identity and enrollment | Keystore identity, scoped TLS, approval, saved credentials, restart/recovery, revocation and expiry research | Production credential/approval binding and remaining v1 decisions |
 | Capture and proxy transport | Native packet checks and local policy/HTTP/HTTPS H1/Upgrade composition | Actual enrolled selected-UID TUN execution, production integration and physical USB |
 | Public interception CA | Compiled getter and actual Node TLS endpoint; source-bound 46/46 receipts, 318 JVM host methods and nine clean lint reports at `8526b0a`; saved-credential Android retrieval passes API 26 | Run complete fresh API 26/37 acceptance after correcting API 37 permission readback; CA installation and target-app trust remain open |
-| Android CA runtime driver | `bf73686` passes pinned host CI and API26 all three methods in fifth matrix 40216075210 | API37 finite diagnostics locate duplicate User0 rejection; validate owned-package block boundary correction before fresh two-API acceptance |
+| Android CA runtime driver | `bf73686` passes host CI and API26 fifth matrix; `4192a41` corrects owned-package boundaries with 69 checked regressions | `4192a41` host gate fails a JVM directional-EOF test; investigate/fix before a fresh A23 matrix |
 | Desktop dependency | User authorized publication of the reviewed ten-commit branch ending `2ee70e86` | Exact desktop checkout/review patch is absent from this Linux workspace and that commit is not on GitHub; obtain and verify it before publishing or running C5 |
 
 The original completed code checkpoint is `94a47c7` (CA proof input/source
@@ -59,7 +59,11 @@ Public source and red/green regressions show the parser incorrectly includes
 outer dump sections after the owned package block; they do not prove which
 section the actual image printed. The narrow block-boundary correction keeps
 exact ownership and duplicate-user rejection inside that block. It needs pinned
-host validation followed by a new full matrix.
+host validation followed by a new full matrix. Boundary checkpoint `4192a41`
+fails [host run 40216911800](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40216911800)
+in the JVM directional-EOF test (`Socket is closed`, peer output-stream access
+at line33). Investigate and correct the concrete failure without weakening EOF
+or join assertions; no new matrix has been dispatched.
 The older audited baseline is `1065657` in
 [run 40177081047](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40177081047).
 New checkpoint CI must be inspected before claiming hosted validation of later code.
