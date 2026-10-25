@@ -20,8 +20,13 @@ android {
 }
 kotlin { jvmToolchain(17) }
 androidComponents.onVariants { variant ->
+    variant.hostTests.values.forEach { test ->
+        checkNotNull(test.sources.kotlin).addStaticSourceDirectory("../ca-client/src/main/kotlin")
+        test.configureTestTask { task -> task.workingDir = rootProject.projectDir }
+    }
     variant.deviceTests.values.forEach { test ->
         checkNotNull(test.sources.kotlin).apply {
+            addStaticSourceDirectory("../ca-client/src/main/kotlin")
             addStaticSourceDirectory("../../capture-spike/shared-traffic/src/main/kotlin")
             addStaticSourceDirectory("../../capture-spike/shared-traffic/src/androidTest/kotlin")
         }
@@ -29,6 +34,10 @@ androidComponents.onVariants { variant ->
 }
 dependencies {
     testImplementation(libs.junit)
+    testImplementation(project(":core-security"))
+    testImplementation(project(":core-protocol"))
+    testImplementation(libs.serialization.json)
+    testImplementation(libs.okhttp.tls)
     androidTestImplementation(project(":core-security"))
     androidTestImplementation(project(":core-protocol"))
     androidTestImplementation(project(":transport-framing"))

@@ -34,8 +34,14 @@ checks. The sole request is HTTP/1.1 `GET /companion/v1/ca`, with the exact logi
 Host/port, `Accept: application/pkix-cert` and `Connection: close`. There is no
 query, redirect, request body, cookie, bearer token, browser Origin, upgrade or
 transfer encoding. An absent Content-Length or the single value `0` is allowed.
+The CA route's exact header allowlist is Host, Accept, Connection and optional
+Content-Length; Accept and Connection must have the values above.
 Reject duplicate headers, trailers and unsupported request framing under the
 existing reference listener's header, connection and deadline bounds.
+
+The Host port is the resolved dial port. Saved setup/credential ports are routing
+hints, not authenticated identity; the dial port may differ while the logical
+TLS name, pin and enrolled credential remain fixed.
 
 Only the authenticated credential listener serves this route. Its existing
 setup listener cannot serve it. On every request, require the actual TLS client
@@ -107,7 +113,9 @@ Reuse the existing bounded enrollment `pair_error` response encoding and media
 type for errors: invalid syntax/framing is HTTP 400 `invalid_message`, denied
 registry authorization is HTTP 403 `authentication_failed`, and unavailable
 store/CA material is HTTP 503 `pairing_unavailable`. The setup listener continues
-to reject this route. A TLS failure may end before any HTTP response. Clients
+to reject this route. Existing reader-capacity refusal remains HTTP 429
+`pairing_limit`; adding this route does not remove the shared resource limits.
+A TLS failure may end before any HTTP response. Clients
 never accept a non-200 response as public CA material; errors cannot replace the
 saved approval or create trust. Preserve existing credential-probe responses,
 enrollment messages and cleanup/accounting semantics.
