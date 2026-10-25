@@ -49,6 +49,17 @@ function matchIdentity(directory, name, now) {
     !cert.verify(cert.publicKey) || cert.subject !== cert.issuer || now < Date.parse(cert.validFrom) || now >= Date.parse(cert.validTo)) fail();
   return cert;
 }
+function interceptionCertificate(value, now) {
+  if (!(value instanceof Uint8Array) || value.byteLength < 1 || value.byteLength > 4096) fail();
+  const bytes = Buffer.from(value), cert = new X509Certificate(bytes), key = cert.publicKey;
+  const notBefore = Date.parse(cert.validFrom), notAfter = Date.parse(cert.validTo);
+  const supportedKey = key.asymmetricKeyType === 'ec' && key.asymmetricKeyDetails?.namedCurve === 'prime256v1' ||
+    key.asymmetricKeyType === 'rsa' && key.asymmetricKeyDetails?.modulusLength >= 2048 && key.asymmetricKeyDetails.modulusLength <= 4096;
+  if (!cert.raw.equals(bytes) || !cert.ca || cert.subject !== cert.issuer || !cert.checkIssued(cert) || !cert.verify(key) || !supportedKey ||
+      !Number.isSafeInteger(notBefore) || !Number.isSafeInteger(notAfter) || notBefore >= notAfter || now < notBefore || now >= notAfter ||
+      cert.keyUsage !== undefined && (cert.keyUsage.length !== 1 || cert.keyUsage[0] !== '1.3.6.1.5.5.7.3.1')) fail();
+  return cert;
+}
 class EnrollmentAssets {
   #directory; #material;
   constructor(directory, material) { this.#directory = directory; this.#material = structuredClone(material); }
@@ -67,19 +78,26 @@ class EnrollmentAssets {
   toJSON() { return '[Enrollment research identities]'; }
   [inspect.custom]() { return this.toString(); }
 }
-export async function enrollmentFixtureAssets({ directory, mode, openssl, setupPort, credentialPort }) {
+export async function enrollmentFixtureAssets({ directory, mode, openssl, setupPort, credentialPort, interceptionCaCertificateDer }) {
   try {
     directory = enrollmentPrivateDirectory(directory);
     if (!['create', 'open'].includes(mode) || typeof openssl !== 'string' || !openssl || openssl.length > 4096 || /[\u0000\r\n]/.test(openssl) ||
       ![setupPort, credentialPort].every(port => Number.isInteger(port) && port >= (mode === 'create' ? 0 : 1) && port <= 65535) || (setupPort !== 0 && setupPort === credentialPort)) fail();
     const now = Date.now(), floored = Math.floor(now / 1000) * 1000, before = floored - 300000, after = floored + 7200000;
     if (before < Date.parse('2000-01-01T00:00:00Z') || after > Date.parse('2099-12-31T23:59:59Z')) fail();
+    // This optional trusted composition input is public material only. Snapshot
+    // it before the first child await, without changing the default identities.
+    const suppliedInterception = interceptionCaCertificateDer === undefined ? null : interceptionCertificate(interceptionCaCertificateDer, now);
     if (mode === 'create') {
       if (fs.readdirSync(directory).length) fail();
       privateFile(directory, 'initializing', 'A22 research initialization\n');
       if (!/^OpenSSL 3\./.test(await command(openssl, ['version'], directory))) fail();
       privateFile(directory, 'request.cnf', '[req]\ndistinguished_name=subject\nprompt=no\nstring_mask=utf8only\n[subject]\nCN=HTTP FreeKit research\n');
       for (const [name, subject, gateway] of [['enrollment-authority', 'Enrollment research authority', false], ['interception', 'Enrollment research interception identity', false], ['gateway', enrollmentLogicalName, true]]) {
+        if (name === 'interception' && suppliedInterception) {
+          privateFile(directory, 'interception.pem', suppliedInterception.toString());
+          continue;
+        }
         await command(openssl, ['req', '-config', 'request.cnf', '-new', '-newkey', 'ec', '-pkeyopt', 'ec_paramgen_curve:P-256', '-nodes', '-sha256', '-utf8', '-subj', `/CN=${subject}`, '-keyout', `${name}-key.pem`, '-out', `${name}.csr.pem`], directory);
         fs.chmodSync(path.join(directory, `${name}-key.pem`), 0o600); fs.chmodSync(path.join(directory, `${name}.csr.pem`), 0o600);
         const work = path.join(directory, `${name}-bootstrap`); fs.mkdirSync(work, { mode: 0o700 }); fs.mkdirSync(path.join(work, 'issued'), { mode: 0o700 });
@@ -90,8 +108,10 @@ export async function enrollmentFixtureAssets({ directory, mode, openssl, setupP
           '-startdate', date(before), '-enddate', date(after), '-extensions', 'identity', '-in', path.join(directory, `${name}.csr.pem`), '-out', path.join(directory, `${name}.pem`)], work);
         fs.chmodSync(path.join(directory, `${name}.pem`), 0o600); fs.rmSync(work, { recursive: true, force: true }); fs.unlinkSync(path.join(directory, `${name}.csr.pem`));
       }
-      const gateway = matchIdentity(directory, 'gateway', now), authority = matchIdentity(directory, 'enrollment-authority', now), interception = matchIdentity(directory, 'interception', now);
-      validateEnrollmentAuthority(authority.raw, { utcMillis: now }); validateEnrollmentAuthority(interception.raw, { utcMillis: now });
+      const gateway = matchIdentity(directory, 'gateway', now), authority = matchIdentity(directory, 'enrollment-authority', now),
+        interception = suppliedInterception ?? matchIdentity(directory, 'interception', now);
+      validateEnrollmentAuthority(authority.raw, { utcMillis: now });
+      if (!suppliedInterception) validateEnrollmentAuthority(interception.raw, { utcMillis: now });
       const material = { revision: 1, desktopId: 'a22_' + randomBytes(32).toString('base64url'), logicalName: enrollmentLogicalName,
         gatewayCertificateDer: gateway.raw.toString('base64url'), gatewaySpkiSha256: hash(gateway.publicKey.export({ format: 'der', type: 'spki' })),
         enrollmentAuthorityDer: authority.raw.toString('base64url'), interceptionCaCertificateSha256: hash(interception.raw), setupPort, credentialPort };
@@ -102,8 +122,11 @@ export async function enrollmentFixtureAssets({ directory, mode, openssl, setupP
     if (!material || Object.keys(material).length !== fields.length || fields.some(key => !Object.hasOwn(material, key)) || material.revision !== 1 ||
       /^[A-Za-z0-9_-]{1,128}$/.exec(material.desktopId)?.[0] !== material.desktopId || encoded !== JSON.stringify(material) ||
       material.logicalName !== enrollmentLogicalName || material.setupPort !== setupPort || material.credentialPort !== credentialPort) fail();
-    const gateway = matchIdentity(directory, 'gateway', now), authority = matchIdentity(directory, 'enrollment-authority', now), interception = matchIdentity(directory, 'interception', now);
-    validateEnrollmentAuthority(authority.raw, { utcMillis: now }); validateEnrollmentAuthority(interception.raw, { utcMillis: now });
+    const gateway = matchIdentity(directory, 'gateway', now), authority = matchIdentity(directory, 'enrollment-authority', now),
+      interception = suppliedInterception ? interceptionCertificate(new X509Certificate(read(directory, 'interception.pem')).raw, now) : matchIdentity(directory, 'interception', now);
+    if (suppliedInterception && (!interception.raw.equals(suppliedInterception.raw) || fs.existsSync(path.join(directory, 'interception-key.pem')))) fail();
+    validateEnrollmentAuthority(authority.raw, { utcMillis: now });
+    if (!suppliedInterception) validateEnrollmentAuthority(interception.raw, { utcMillis: now });
     if (gateway.ca || gateway.checkHost(enrollmentLogicalName, { subject: 'never', wildcards: false }) !== enrollmentLogicalName ||
       material.gatewayCertificateDer !== gateway.raw.toString('base64url') || material.gatewaySpkiSha256 !== hash(gateway.publicKey.export({ format: 'der', type: 'spki' })) ||
       material.enrollmentAuthorityDer !== authority.raw.toString('base64url') || material.interceptionCaCertificateSha256 !== hash(interception.raw)) fail();

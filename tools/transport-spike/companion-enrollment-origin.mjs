@@ -7,6 +7,7 @@ import { createCompanionStreamServer } from './companion-stream-peer.mjs';
 import { EnrollmentFixtureError } from './companion-enrollment-https-assets.mjs';
 import { enrollmentPublicSnapshot } from './companion-enrollment-crypto.mjs';
 import { HTTP_ORIGIN_CAPABILITY } from './companion-http-origin.mjs';
+import { validateCapabilities } from './companion-protocol-codec.mjs';
 
 class EnrollmentOriginFixture {
   #enrollment; #stream;
@@ -26,15 +27,17 @@ class EnrollmentOriginFixture {
 
 export async function startEnrollmentOriginFixture({ directory, mode, openssl = process.env.OPENSSL_BIN ?? 'openssl',
   setupPort = 0, credentialPort = 0, streamPort = 0, credentialLifetimeSeconds = 60, sessionLifetimeMillis = 120000,
-  trustedProxyFactory } = {}) {
+  trustedProxyFactory, supportedCapabilities = [HTTP_ORIGIN_CAPABILITY], interceptionCaCertificateDer } = {}) {
   if (typeof trustedProxyFactory !== 'function' || !Number.isInteger(streamPort) || streamPort < 0 || streamPort > 65535 ||
       (streamPort && [setupPort, credentialPort].includes(streamPort)) ||
       !Number.isInteger(sessionLifetimeMillis) || sessionLifetimeMillis < 1000 || sessionLifetimeMillis > 1800000) throw new EnrollmentFixtureError();
+  const capabilities = Object.freeze(validateCapabilities(supportedCapabilities));
+  if (!capabilities.length || capabilities.some(value => ![HTTP_ORIGIN_CAPABILITY, 'tcp-https-connect'].includes(value))) throw new EnrollmentFixtureError();
   const enrollment = await startEnrollmentHttpsFixture({ directory, mode, openssl, setupPort, credentialPort, credentialLifetimeSeconds,
-    supportedCapabilities: [HTTP_ORIGIN_CAPABILITY],
+    supportedCapabilities: capabilities, interceptionCaCertificateDer,
     authenticatedServiceFactory: async ({ tls, metadata, authorizeCertificate }) => createCompanionStreamServer({
       tls, authorize: socket => socket.authorized, desktopId: metadata.desktopId, logicalName: metadata.logicalName,
-      port: streamPort, sessionLifetimeMillis, trustedProxyFactory, supportedCapabilities: [HTTP_ORIGIN_CAPABILITY],
+      port: streamPort, sessionLifetimeMillis, trustedProxyFactory, supportedCapabilities: capabilities,
       credentialAuthority: { authorizeCertificate, gatewayExpiresAt: new X509Certificate(Buffer.from(metadata.gatewayCertificateDer, 'base64url')).validTo },
     }),
   });

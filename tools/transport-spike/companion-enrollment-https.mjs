@@ -295,13 +295,13 @@ class EnrollmentHttpsFixture {
   [inspect.custom]() { return this.toString(); }
 }
 export async function startEnrollmentHttpsFixture({ directory, mode, openssl = process.env.OPENSSL_BIN ?? 'openssl', setupPort = 0, credentialPort = 0,
-  authenticatedServiceFactory, credentialLifetimeSeconds = 3600, supportedCapabilities = ['tcp-http', 'tcp-https-connect'] } = {}) {
+  authenticatedServiceFactory, credentialLifetimeSeconds = 3600, supportedCapabilities = ['tcp-http', 'tcp-https-connect'], interceptionCaCertificateDer } = {}) {
   if (retainedFailures.size) fail(false);
   let issuer, store, fixture;
   try {
     // Canonical defensive snapshot before any child/listener/DB admission.
     const capabilities = Object.freeze(validateCapabilities(supportedCapabilities));
-    const assets = await enrollmentFixtureAssets({ directory, mode, openssl, setupPort, credentialPort }), metadata = assets.metadata().material();
+    const assets = await enrollmentFixtureAssets({ directory, mode, openssl, setupPort, credentialPort, interceptionCaCertificateDer }), metadata = assets.metadata().material();
     issuer = await startEnrollmentIssuer({ directory, openssl, enrollmentAuthorityDer: metadata.enrollmentAuthorityDer });
     store = (mode === 'create' ? createEnrollmentStore : openEnrollmentStore)({ directory, metadata: { desktopId: metadata.desktopId,
       gatewaySpkiSha256: metadata.gatewaySpkiSha256, enrollmentAuthorityDer: metadata.enrollmentAuthorityDer,
