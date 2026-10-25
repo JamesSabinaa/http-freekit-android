@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ownedCaPermissionDeclared } from './run-interception-ca-runtime.mjs';
+import { ownedCaPermissionDeclared, ownedCaPermissionGranted } from './run-interception-ca-runtime.mjs';
 import { enrollmentRuntimeOptions } from './run-enrollment-runtime.mjs';
 import { createInterceptionCaInvocationParser } from './interception-ca-runtime-results.mjs';
 import { interceptionCaRuntimeMethod } from './interception-ca-runtime-descriptor.mjs';
@@ -17,6 +17,24 @@ test('installed self-instrumentation package needs an exact requested permission
     `requested permissions:\n      ${permission}_EXTRA\n`, `requested permissions:\n      ${permission}: granted=true\n`,
     'requested permissions:\n      android.permission.INTERNET\n', Buffer.alloc(262145, 65).toString(), null])
     assert.equal(ownedCaPermissionDeclared(bad), false);
+});
+test('API 37 reads an actual User 0 runtime grant from only the owned installed package', () => {
+  const owned = `Package [com.httpfreekit.interop.test] (abc123):\n    requested permissions:\n      ${permission}\n`;
+  const granted = `${owned}    install permissions:\n      android.permission.INTERNET: granted=true\n  User 0: installed=true\n    runtime permissions:\n      ${permission}: granted=true, flags=[ USER_SET ]\n`;
+  assert.equal(ownedCaPermissionGranted(granted), true);
+  assert.equal(ownedCaPermissionGranted(granted.replace('User 0: installed=true', 'User 0: installed=false hidden=true')), false);
+  assert.equal(ownedCaPermissionGranted(granted.replace('User 0: installed=true', 'User 0: hidden=false')), false);
+  assert.equal(ownedCaPermissionGranted(granted.replace('User 0: installed=true', 'User 0: installed=true installed=false')), false);
+  assert.equal(ownedCaPermissionGranted(granted + `    runtime permissions:\n      ${permission}: granted=false\n`), false);
+  assert.equal(ownedCaPermissionGranted(granted + `      ${permission}: granted=false\n`), false);
+  assert.equal(ownedCaPermissionGranted(granted + `      ${permission}: granted=unknown\n`), false);
+  assert.equal(ownedCaPermissionGranted(granted.replace('granted=true, flags=', 'granted=false, flags=')), false);
+  assert.equal(ownedCaPermissionGranted(granted.replace('User 0:', 'User 10:')), false);
+  assert.equal(ownedCaPermissionGranted(granted.replace('runtime permissions:', 'install permissions:')), false);
+  assert.equal(ownedCaPermissionGranted(granted.replace('com.httpfreekit.interop.test', 'com.example.other')), false);
+  assert.equal(ownedCaPermissionGranted(granted + '  User 0: installed=true\n    runtime permissions:\n      android.permission.INTERNET: granted=true\n'), false);
+  assert.equal(ownedCaPermissionGranted(`${owned}  User 0: installed=true\n    runtime permissions:\n      ${permission}: granted=false\n  User 10: installed=true\n    runtime permissions:\n      ${permission}: granted=true\n`), false);
+  assert.equal(ownedCaPermissionGranted(`${owned}  User 0: installed=true\n    runtime permissions:\n      android.permission.INTERNET: granted=true\nPackage [com.example.other] (def456):\n  User 0: installed=true\n    runtime permissions:\n      ${permission}: granted=true\n`), false);
 });
 test('A23 CLI accepts no desktop checkout or accidental fallback to A22a', () => {
   assert.equal(enrollmentRuntimeOptions(['--serial', 'emulator-5554']).suite, 'a22a');

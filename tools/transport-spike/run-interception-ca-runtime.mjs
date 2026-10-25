@@ -27,18 +27,40 @@ const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const approvedHash = value => sha(encodeEnrollment(enrollmentMessage('status_response', value)));
 function requirePass(value, code) { if (!passed(value)) throw Error(code); return value; }
 
-// Parse only the installed self-instrumenting APK's requested-permissions section.
-export function ownedCaPermissionDeclared(output) {
-  if (typeof output !== 'string' || Buffer.byteLength(output) > 262144) return false;
+// Parse only the installed self-instrumenting APK's bounded package section.
+function ownedCaPackageSection(output) {
+  if (typeof output !== 'string' || Buffer.byteLength(output) > 262144) return null;
   const owned = /^\s*Package \[com\.httpfreekit\.interop\.test\] \([^\r\n]*\):?\s*$/gm;
   const match = owned.exec(output);
-  if (!match || owned.exec(output)) return false;
+  if (!match || owned.exec(output)) return null;
   const nextPackage = /^\s*Package \[/gm;
   nextPackage.lastIndex = match.index + match[0].length;
   const next = nextPackage.exec(output);
-  const packageSection = output.slice(match.index + match[0].length, next?.index ?? output.length);
+  return output.slice(match.index + match[0].length, next?.index ?? output.length);
+}
+export function ownedCaPermissionDeclared(output) {
+  const packageSection = ownedCaPackageSection(output);
+  if (packageSection === null) return false;
   const section = /^\s*requested permissions:\s*\r?\n((?:^[ \t]+android\.permission\.[A-Z_]+(?:\s*\r?\n|$))*)/im.exec(packageSection);
   return !!section && /^[ \t]+android\.permission\.ACCESS_LOCAL_NETWORK[ \t]*$/m.test(section[1]);
+}
+export function ownedCaPermissionGranted(output) {
+  const packageSection = ownedCaPackageSection(output);
+  if (packageSection === null) return false;
+  const users = [...packageSection.matchAll(/^[ \t]*User ([0-9]+):[^\r\n]*(?:\r?\n|$)/gm)];
+  const user = users.filter(match => match[1] === '0');
+  if (user.length !== 1) return false;
+  const installed = [...user[0][0].matchAll(/(?:^|[ \t])installed=(true|false)(?=[ \t\r\n]|$)/g)];
+  if (installed.length !== 1 || installed[0][1] !== 'true') return false;
+  const start = user[0].index + user[0][0].length;
+  const next = users.find(match => match.index >= start);
+  const userSection = packageSection.slice(start, next?.index ?? packageSection.length);
+  const headings = [...userSection.matchAll(/^[ \t]*runtime permissions:[ \t]*\r?\n/gm)];
+  if (headings.length !== 1) return false;
+  const runtime = /^((?:^[ \t]+android\.permission\.[A-Z_]+:[^\r\n]*(?:\r?\n|$))*)/m.exec(userSection.slice(headings[0].index + headings[0][0].length));
+  if (runtime?.index !== 0) return false;
+  const target = [...(runtime?.[1] ?? '').matchAll(/^[ \t]+android\.permission\.ACCESS_LOCAL_NETWORK:[^\r\n]*(?:\r?\n|$)/gm)];
+  return target.length === 1 && /^[ \t]+android\.permission\.ACCESS_LOCAL_NETWORK: granted=true(?:,|[ \t]|$)/.test(target[0][0]);
 }
 
 export async function runInterceptionCaRuntime(options) {
@@ -93,9 +115,9 @@ export async function runInterceptionCaRuntime(options) {
         const grant = await adb(['shell', 'pm', 'grant', '--user', '0', PACKAGE, 'android.permission.ACCESS_LOCAL_NETWORK']);
         report.permission.grantCommand = enrollmentCommandObservation(grant);
         requirePass(grant, stage);
-        const readback = await adb(['shell', 'cmd', 'package', 'check-permission', 'android.permission.ACCESS_LOCAL_NETWORK', PACKAGE, '0']);
+        const readback = await adb(['shell', 'pm', 'dump', PACKAGE]);
         report.permission.readbackCommand = enrollmentCommandObservation(readback);
-        report.permission.readbackGranted = passed(readback) && readback.stderrBytes === 0 && readback.output.trim() === 'granted';
+        report.permission.readbackGranted = passed(readback) && readback.stderrBytes === 0 && ownedCaPermissionGranted(readback.output);
         if (!report.permission.readbackGranted) throw Error(stage);
       }
     }

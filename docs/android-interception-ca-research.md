@@ -1,8 +1,9 @@
 # Android saved-credential public CA research
 
-Status: A23b implementation assignment, no Android execution claimed. This adds
-an actual API 26/37 check of the [authenticated public-CA getter](protocol-interception-ca.md).
-The checked software-key host proof remains a prerequisite for dispatch. This
+Status: reconstructed A23b driver and hosted selection; API 26 passes the first
+fresh matrix, API 37 stops before method execution on an unsupported permission
+readback command. See the [retained runtime evidence](validation.md#authenticated-public-interception-ca-research).
+The checked software-key host proof remains a prerequisite for each dispatch. This
 suite uses the existing reference enrollment gateway and needs no desktop
 checkout, Linux alias or production app wiring.
 
@@ -105,9 +106,13 @@ images, pinned toolchain, strict bounded clock setup and actual retained emulato
 termination/join. It performs no desktop checkout or alias setup. On API 37, the
 owned research package must declare `ACCESS_LOCAL_NETWORK`; after installing that
 package, the driver grants the permission only to its exact package in User 0 and
-requires a bounded exact-package readback before the three invocations. This is
-an explicit fixture permission setup (`owned_ci_grant`), not proof that loopback
-is exempt. API 26 requires no such grant (`not_required`) and records null grant
+requires a bounded exact-package/User 0 `pm dump` readback of the runtime
+permission's `granted=true` value before the three invocations. The first hosted
+API 37 attempt used unsupported `cmd package check-permission` (exit 255) after
+a successful owned grant, so it recorded zero starts and a failed run; the
+corrected readback still requires a fresh Android check. This is an explicit
+fixture permission setup (`owned_ci_grant`), not proof that loopback is exempt.
+API 26 requires no such grant (`not_required`) and records null grant
 command observations. Dispatch waits for checked source, the actual A23 host
 proof, APK/strict lint and finite verifier checks; no local Windows emulator
 retry is assigned.

@@ -18,30 +18,34 @@ and isolated research tests; those tests do not establish a finished capture app
 | App interface | Installed-app discovery, selection, keyboard/rotation and certificate-help checks on API 26/37 | Connect the interface to real pairing, capture, recovery and diagnostics |
 | Identity and enrollment | Keystore identity, scoped TLS, approval, saved credentials, restart/recovery, revocation and expiry research | Production credential/approval binding and remaining v1 decisions |
 | Capture and proxy transport | Native packet checks and local policy/HTTP/HTTPS H1/Upgrade composition | Actual enrolled selected-UID TUN execution, production integration and physical USB |
-| Public interception CA | Compiled getter and real Node TLS endpoint; 35 integrated JVM methods and 46 receipts in the actual TLS proof pass; APK assembly and strict lint pass | Execute the new Android saved-credential method on API 26/37 |
-| Android CA runtime driver | Reconstructed three-invocation driver and independent verifier, hosted `a23` selection, exact-package API 37 permission setup; 73 selected combined Node checks pass on Node 22 and a clean-source unavailable-device CLI exits 1 with three zero-start rows | Pinned Node 24/JDK 17/SDK host checks, APK/strict lint, ordinary CI and actual API 26/37 emulator run; no Android CA execution yet |
-| Desktop dependency | Reviewed local ten-commit branch through `2ee70e86`; local integration checks pass | Separate publication approval; production desktop UI/gateway wiring |
+| Public interception CA | Compiled getter and actual Node TLS endpoint; source-bound 46/46 receipts, 318 JVM host methods and nine clean lint reports at `8526b0a`; saved-credential Android retrieval passes API 26 | Run complete fresh API 26/37 acceptance after correcting API 37 permission readback; CA installation and target-app trust remain open |
+| Android CA runtime driver | Pinned host CI passes at `8526b0a`; API 26 passes all three same-run methods and cleanup in run 40190998118 | API 37 stops at unsupported permission readback with zero starts; check corrected readback in new host CI and fresh two-API matrix before A23 acceptance |
+| Desktop dependency | User authorized publication of the reviewed ten-commit branch ending `2ee70e86` | Exact desktop checkout/review patch is absent from this Linux workspace and that commit is not on GitHub; obtain and verify it before publishing or running C5 |
 
 The original completed code checkpoint is `94a47c7` (CA proof input/source
 binding); the accompanying documentation checkpoint brought it onto `main`.
-The reconstructed A23b and workflow commits are checked on local `main` at
-`33d7a65` after a fast-forward from the isolated coordinator branch. Seven
-broader enrollment tests fail on the available Node 22 host; the pinned Node
-24/JDK/SDK checks and actual emulator run remain unrun. The last independently
-audited hosted baseline is `1065657` in
+The reconstructed A23b and workflow commits passed ordinary pinned host CI at
+`8526b0a` in [run 40189595419](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40189595419):
+318 JVM methods, 46/46 actual TLS CA receipts and nine zero-issue lint reports.
+The first [A23 matrix 40190998118](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40190998118)
+passes API 26's three ordered methods and cleanup, but API 37 stops before any
+method when unsupported `cmd package check-permission` exits 255 after a
+successful owned grant. Both emulator cleanups join; A23 is not accepted. The
+bounded owned-package/User 0 `pm dump` readback correction awaits checked-source
+host CI and a new complete matrix. The prior independently audited hosted
+baseline is `1065657` in
 [run 40177081047](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40177081047).
 New checkpoint CI must be inspected before claiming hosted validation of later code.
 
 ## Next milestones, in order
 
-1. **Finish Android CA retrieval acceptance.** The reconstructed A23b driver,
-   clean-source refusal check and `a23` hosted selection are committed on local
-   `main`. Run pinned host proof, APK/strict lint, finite
-   checks and ordinary CI, then execute all three required invocations on each
-   API 26/37 emulator. Require real Keystore enrollment, worker restart,
-   CA/hash continuity, final Forget and joined cleanup. This uses the reference
-   gateway and needs no desktop publication. See the
-   [Android CA profile](android-interception-ca-research.md).
+1. **Finish Android CA retrieval acceptance.** Validate the API 37
+   exact-package/User 0 grant-readback correction on pinned host CI, then run a
+   fresh three-invocation API 26/37 matrix. Require real Keystore enrollment,
+   worker restart, CA/hash continuity, final Forget and joined cleanup on both
+   APIs in that new run. The earlier API 26 pass and API 37 zero-start failure
+   stay separate. This uses the reference gateway and needs no desktop
+   publication. See the [Android CA profile](android-interception-ca-research.md).
 2. **Prove enrolled selected-app capture.** Resolve the separate desktop
    publication decision, then run the prepared factory and selected-UID TUN
    checks against the exact reviewed commits. Preserve original destinations,
@@ -77,7 +81,11 @@ checkpoint. Update this roadmap after a completed milestone with its evidence,
 remaining limitations and next action. Do not replace implementation with more
 planning once an executable next step is available.
 
-Desktop publication approval, a physical-device test opportunity and later
-network/hosting decisions are external dependencies. See the checkpoint for their
-exact scope; the Android repository's public status does not authorize desktop
-publication or paid infrastructure.
+The user separately authorized publishing the reviewed desktop ten-commit
+branch ending `2ee70e86` as `codex/android-companion-trusted-https` on
+`JamesSabinaa/http-freekit`. Its checkout and recorded review patch are absent
+from this Linux workspace, and GitHub does not have that commit. Obtain and
+verify the exact source before publication; approval does not authorize a
+substitute, paid infrastructure, signing upload or deployment. A physical-device
+test opportunity and later network/hosting decisions are separate external
+dependencies. See the checkpoint for the reviewed source's exact scope.

@@ -113,12 +113,28 @@ starts/completions, fresh bounded files and byte-exact XML/HTML projections plus
 joined emulator cleanup; it rejects desktop arguments. API 37 explicitly checks
 `ACCESS_LOCAL_NETWORK` in the installed self-instrumenting
 `com.httpfreekit.interop.test` package's requested permissions, grants it to that
-owned package for User 0 and requires the exact `granted` readback before
-invocation. The finite mode is `owned_ci_grant`, not a loopback exemption. API 26
-records `not_required` and null grant/readback commands. The developer must use
-the pinned Node 24.22.1, JDK 17, Android SDK and OpenSSL 3 toolchain; host guard
-checks alone are not emulator evidence. No A23 Android method has run at this
-checkpoint, and CA installation, target-app trust and physical USB remain open.
+owned package for User 0 and requires a bounded `pm dump` readback of that same
+package's User 0 `runtime permissions` entry with `granted=true` before invocation.
+The finite mode is `owned_ci_grant`, not a loopback exemption. API 26 records
+`not_required` and null grant/readback commands. The developer must use the
+pinned Node 24.22.1, JDK 17, Android SDK and OpenSSL 3 toolchain; host guard
+checks alone are not emulator evidence.
+
+At published source `8526b0a`, [host run 40189595419](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40189595419)
+passes all three jobs. Original artifact replay records 318 JVM methods with
+zero failures/errors/skips, 46/46 source-bound actual CA TLS receipts and nine
+strict lint XML files with zero issues. The [first A23 matrix
+40190998118](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40190998118)
+has a complete API 26 pass: all three ordered methods, actual 430-byte DER,
+seventeen CA facts, original A22 gates and owned cleanup pass the independent
+verifier. API 37 fails **before any instrumentation method starts**: the owned
+declaration and `pm grant --user 0` pass, but the unsupported `cmd package
+check-permission` readback exits 255. Its sanitized report records three zero
+starts, `enrollment_fixture_failed`, a driver exit of 1, and complete package,
+worker, command and emulator cleanup. Do not combine the two API results into
+A23 acceptance. The correction uses the bounded, exact-package/User 0 `pm dump`
+readback described above; it needs checked-source host CI and a fresh full matrix.
+CA installation, target-app trust and physical USB remain open.
 
 ## Enrolled HTTP-origin factory research
 
