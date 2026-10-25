@@ -7,15 +7,15 @@ import { EnrollmentRuntimeWorker } from './enrollment-runtime-worker.mjs';
 const entry = fileURLToPath(new URL('./enrollment-runtime-worker-fixture.mjs', import.meta.url));
 const worker = mode => new EnrollmentRuntimeWorker({ entry, args: mode ? [mode] : [] });
 
-test('origin operations retain the same private worker and reject invalid source before initialization', async () => {
+test('origin and TUN operations retain the same private worker and reject invalid source before initialization', async () => {
   const realEntry = fileURLToPath(new URL('./companion-enrollment-worker.mjs', import.meta.url));
-  for (const args of [ { desktopRoot: '.', desktopCommit: '0'.repeat(40), openssl: 'openssl' },
+  for (const op of ['startOrigin', 'startTunOrigin']) for (const args of [ { desktopRoot: '.', desktopCommit: '0'.repeat(40), openssl: 'openssl' },
     { desktopRoot: process.cwd(), desktopCommit: '0'.repeat(40) + '\n', openssl: 'openssl' },
     { desktopRoot: process.cwd(), desktopCommit: '0'.repeat(40), openssl: 'openssl', extra: 'PRIVATE_CANARY' } ]) {
     const child = new EnrollmentRuntimeWorker({ entry: realEntry });
     try {
       await assert.rejects(child.request('releaseOriginTail'), error => error.code === 'pairing_unavailable');
-      await assert.rejects(child.request('startOrigin', args), error => error.code === 'invalid_message');
+      await assert.rejects(child.request(op, args), error => error.code === 'invalid_message');
     } finally { await child.close(); }
     assert.equal(child.closedSnapshot().material().initializationAttempted, false);
     assert.equal(child.commandObservation().code, 0);
@@ -28,9 +28,11 @@ test('private actual IPC replies are copied/redacted and graceful close joins th
   try {
     const reply = await child.request('metadata');
     assert.equal(reply.material().value, 'PRIVATE_IPC_MATERIAL');
+    const tun = await child.request('startTunOrigin', { desktopRoot: process.cwd(), desktopCommit: '0'.repeat(40), openssl: 'openssl' });
+    assert.equal(tun.material().value, 'PRIVATE_IPC_MATERIAL');
     const copy = reply.material(); copy.value = 'changed';
     assert.equal(reply.material().value, 'PRIVATE_IPC_MATERIAL');
-    assert.doesNotMatch(JSON.stringify(reply) + inspect(reply) + inspect(child), /PRIVATE/);
+    assert.doesNotMatch(JSON.stringify(reply) + inspect(reply) + JSON.stringify(tun) + inspect(tun) + inspect(child), /PRIVATE/);
   } finally { await child.close(); }
   assert.deepEqual(child.commandObservation(), { code: 0, signal: null, reason: null,
     closeObserved: true, processGroupClosed: true });

@@ -17,8 +17,8 @@ function directory(t) {
   const value = fs.mkdtempSync(path.join(temporaryRoot, 'freekit-enrollment-worker-')); fs.chmodSync(value, 0o700);
   t.after(() => { assert(value.startsWith(temporaryRoot + path.sep)); fs.rmSync(value, { recursive: true, force: true }); }); return value;
 }
-function worker(t) {
-  const child = fork(entry, [], { execArgv: ['--disable-warning=ExperimentalWarning'], stdio: ['ignore', 'pipe', 'pipe', 'ipc'], windowsHide: true });
+function worker(t, workerEntry = entry) {
+  const child = fork(workerEntry, [], { execArgv: ['--disable-warning=ExperimentalWarning'], stdio: ['ignore', 'pipe', 'pipe', 'ipc'], windowsHide: true });
   let sequence = 0, output = 0, errors = 0, exit;
   const pending = new Map();
   // On Windows, parent-initiated IPC disconnect can omit ChildProcess's aggregate
@@ -68,6 +68,46 @@ function closure(snapshot) {
   for (const key of ['admissionClosed', 'listenersClosed', 'storeClosed', 'issuerChildrenJoined']) assert.equal(snapshot[key], true);
   for (const key of ['activeSockets', 'pendingCallbacks', 'pendingTimers', 'issuerJobs', 'signerGroups', 'workers']) assert.equal(snapshot[key], 0);
 }
+
+test('TUN origin dispatch fixes its profile and family, shares startup admission and projects actual fixture close', { timeout: 10000 }, async t => {
+  // The real fork/IPC worker runs unchanged; this TEMP module is a scoped dispatch
+  // double. It creates no alias, desktop listener, issuer or Android proof.
+  const root = directory(t), copiedEntry = path.join(root, 'companion-enrollment-worker.mjs');
+  fs.copyFileSync(entry, copiedEntry);
+  fs.writeFileSync(path.join(root, 'companion-enrollment-https.mjs'), 'export function startEnrollmentHttpsFixture(){throw Error();}\n');
+  fs.writeFileSync(path.join(root, 'gateway-origin-fixture.mjs'), `
+    export async function startOriginGatewayFixture(options) {
+      const closed = { admissionClosed:true, listenersClosed:true, storeClosed:true, issuerChildrenJoined:true,
+        activeSockets:0, pendingCallbacks:0, pendingTimers:0, workers:0, issuerJobs:0, signerGroups:0 };
+      return { metadata:()=>({material:()=>({...options})}), releaseTail:()=>({released:true}),
+        snapshot:()=>({profile:options.profile,family:options.family}),
+        close:async()=>({admissionClosed:true, listenerClosed:true, privateDirectoryRemoved:true,
+          gatewayStreamComplete:false, activeSockets:0, pendingCallbacks:0, pendingTimers:0, workers:0,
+          backend:{closing:true,activeOwners:0,admitted:1,settled:1}, enrollment:closed}) };
+    }
+  `);
+  const owner = worker(t, copiedEntry), args = { desktopRoot: root,
+    desktopCommit: '2ee70e86b17e2feb2fd2bf4842a85c66671eb4c6', openssl: 'openssl' };
+  assert.equal((await owner.request('startTunOrigin', { ...args, profile: 'http-h1' })).code, 'invalid_message');
+  const actual = await owner.command('startTunOrigin', args);
+  same(actual, { ...args, profile: 'tun-http-h1', family: 'ipv4' });
+  assert.equal((await owner.request('startOrigin', args)).code, 'pairing_unavailable');
+  same(await owner.command('releaseOriginTail'), { released: true });
+  same(await owner.command('snapshot'), { profile: 'tun-http-h1', family: 'ipv4' });
+  const final = await owner.command('close'); closure(final);
+  assert.equal(final.privateDirectoryRemoved, true); assert.equal(final.gatewayStreamComplete, false);
+  same(await owner.join(), { code: 0, signal: null });
+});
+
+test('actual TUN startup refuses the old C2 source pin and does not fabricate a failed-start close', { timeout: 10000 }, async t => {
+  const owner = worker(t);
+  const reply = await owner.request('startTunOrigin', { desktopRoot: process.cwd(),
+    desktopCommit: 'fd63f6940226c8e3401a165082dfa9325abaca69', openssl: process.env.OPENSSL_BIN ?? 'openssl' });
+  assert.equal(reply.ok, false); assert.equal(reply.code, 'pairing_unavailable');
+  const closed = await owner.request('close');
+  assert.equal(closed.ok, false); assert.equal(closed.code, 'pairing_unavailable');
+  same(await owner.join(), { code: 1, signal: null });
+});
 
 test('real fork signs through private operator RPC, joins naturally, then reopens exact identity/result/ports in a new process', { timeout: 20000 }, async t => {
   const d = directory(t), first = worker(t), metadata = await first.command('start', start(d)), invitation = await first.command('createInvitation');

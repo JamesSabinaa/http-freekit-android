@@ -7,6 +7,7 @@ const schema = {
   start: ['directory', 'mode', 'openssl', 'setupPort', 'credentialPort'], metadata: [], createInvitation: [],
   startAdversarial: ['directory', 'mode', 'openssl', 'setupPort', 'credentialPort'],
   startOrigin: ['desktopRoot', 'desktopCommit', 'openssl'], releaseOriginTail: [],
+  startTunOrigin: ['desktopRoot', 'desktopCommit', 'openssl'],
   startStreaming: ['directory', 'mode', 'openssl', 'setupPort', 'credentialPort', 'streamPort', 'credentialLifetimeSeconds', 'sessionLifetimeMillis'],
   waitForRegistered: ['invitationId', 'timeoutMillis'], approve: ['enrollmentId'], reject: ['enrollmentId'], revoke: ['enrollmentId'],
   readResult: ['enrollmentId'], inspectEnrollment: ['enrollmentId'], dropNextApprovedStatus: [], snapshot: [], close: [],
@@ -19,7 +20,7 @@ function valid(message) {
   if (!exact(message, ['revision', 'id', 'op', 'args']) || message.revision !== 1 || !Number.isSafeInteger(message.id) || message.id < 1 ||
       !Object.hasOwn(schema, message.op) || !exact(message.args, schema[message.op])) return false;
   const args = message.args;
-  if (message.op === 'startOrigin') return text(args.desktopRoot) && path.isAbsolute(args.desktopRoot) &&
+  if (['startOrigin', 'startTunOrigin'].includes(message.op)) return text(args.desktopRoot) && path.isAbsolute(args.desktopRoot) &&
     full(args.desktopCommit, /^[0-9a-f]{40}$/) && text(args.openssl);
   if (['start', 'startStreaming', 'startAdversarial'].includes(message.op)) {
     const streaming = message.op === 'startStreaming';
@@ -60,13 +61,13 @@ function stopWithoutReply() {
   shutdown.catch(() => {}); return shutdown;
 }
 async function invoke(op, args) {
-  if (['start', 'startStreaming', 'startAdversarial', 'startOrigin'].includes(op)) {
+  if (['start', 'startStreaming', 'startAdversarial', 'startOrigin', 'startTunOrigin'].includes(op)) {
     startAccepted = true;
-    originFixture = op === 'startOrigin';
+    originFixture = op === 'startOrigin' || op === 'startTunOrigin';
     starting = op === 'start' ? startEnrollmentHttpsFixture(args) : (async () => {
-      if (op === 'startOrigin') {
+      if (op === 'startOrigin' || op === 'startTunOrigin') {
         const { startOriginGatewayFixture } = await import('./gateway-origin-fixture.mjs');
-        return startOriginGatewayFixture(args);
+        return startOriginGatewayFixture(op === 'startTunOrigin' ? { ...args, profile: 'tun-http-h1', family: 'ipv4' } : args);
       }
       if (op === 'startStreaming') {
         const { startEnrollmentStreamFixture } = await import('./companion-enrollment-stream.mjs');
@@ -104,7 +105,7 @@ function receive(message) {
   if (size > 16384) { refuse('message_too_large'); return; }
   if (!valid(message)) { refuse('invalid_message'); return; }
   if (pending.has(safeId)) { refuse('invalid_message'); return; }
-  const starts = ['start', 'startStreaming', 'startAdversarial', 'startOrigin'].includes(message.op);
+  const starts = ['start', 'startStreaming', 'startAdversarial', 'startOrigin', 'startTunOrigin'].includes(message.op);
   if (closing || (starts ? startAccepted : message.op !== 'close' && !startAccepted)) { refuse('pairing_unavailable'); return; }
   if (message.op !== 'close' && pending.size >= 3) { refuse('pairing_limit'); return; }
   if (message.op === 'close') closing = true;
