@@ -29,8 +29,15 @@ function requirePass(value, code) { if (!passed(value)) throw Error(code); retur
 
 // Parse only the installed self-instrumenting APK's requested-permissions section.
 export function ownedCaPermissionDeclared(output) {
-  if (typeof output !== 'string' || Buffer.byteLength(output) > 262144 || !/^\s*Package \[com\.httpfreekit\.interop\.test\] \(/m.test(output)) return false;
-  const section = /^\s*requested permissions:\s*\r?\n((?:^[ \t]+android\.permission\.[A-Z_]+(?:\s*\r?\n|$))*)/im.exec(output);
+  if (typeof output !== 'string' || Buffer.byteLength(output) > 262144) return false;
+  const owned = /^\s*Package \[com\.httpfreekit\.interop\.test\] \([^\r\n]*\):?\s*$/gm;
+  const match = owned.exec(output);
+  if (!match || owned.exec(output)) return false;
+  const nextPackage = /^\s*Package \[/gm;
+  nextPackage.lastIndex = match.index + match[0].length;
+  const next = nextPackage.exec(output);
+  const packageSection = output.slice(match.index + match[0].length, next?.index ?? output.length);
+  const section = /^\s*requested permissions:\s*\r?\n((?:^[ \t]+android\.permission\.[A-Z_]+(?:\s*\r?\n|$))*)/im.exec(packageSection);
   return !!section && /^[ \t]+android\.permission\.ACCESS_LOCAL_NETWORK[ \t]*$/m.test(section[1]);
 }
 
