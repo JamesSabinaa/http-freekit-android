@@ -94,6 +94,24 @@ test('real desktop import requires explicit clean exact source and a synchronous
   }
 });
 
+test('actual mode/capability snapshot is empty before admission and copied before asynchronous desktop startup', async () => {
+  const backend = await createDesktopOriginBackend({ desktopRoot, desktopCommit, authorizeDestination: () => true });
+  assert.equal(backend.snapshot().proxyMode, null); assert.deepEqual(backend.snapshot().negotiatedCapabilities, []);
+  let active = true;
+  const context = { proxyMode: 'http-origin-connect', negotiatedCapabilities: ['tcp-http-origin-connect'], grant: { material: () => ({}) }, admissionAllowed: () => active };
+  const owner = backend.factory(context);
+  try {
+    context.proxyMode = 'CANARY'; context.negotiatedCapabilities.splice(0); context.admissionAllowed = () => true;
+    await owner.start();
+    assert.equal(backend.snapshot().proxyMode, 'http-origin-connect');
+    assert.deepEqual(backend.snapshot().negotiatedCapabilities, ['tcp-http-origin-connect']);
+    assert(Object.isFrozen(backend.snapshot().negotiatedCapabilities));
+    active = false;
+    owner.transport.write(encodeHttpOriginPreface(Uint8Array.of(127, 0, 0, 2)), () => {});
+    await bounded(owner.closed, 5000); assert.equal(backend.snapshot().activeOwners, 0);
+  } finally { await owner.close(); await backend.close(); }
+});
+
 test('real enrolled mTLS origin mode routes numeric80, preserves logical HTTP and capture, and completes END_WRITE', { timeout: 20000 }, async t => {
   const f = await fixture(t), flow = await f.stream();
   const body = Buffer.from(Array.from({ length: 16421 }, (_, i) => i % 251));

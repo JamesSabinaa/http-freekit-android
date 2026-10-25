@@ -8,6 +8,7 @@ import { inspect } from 'node:util';
 import { HTTP_ORIGIN_PROXY_MODE, HTTP_ORIGIN_CAPABILITY } from './companion-http-origin.mjs';
 import { observeClose, bounded, safeError } from './companion-stream-peer-io.mjs';
 import { runDraftCommand } from './draft-stream-command.mjs';
+import { validateCapabilities, TRAFFIC_CAPABILITIES } from './companion-protocol-codec.mjs';
 
 function ownCallbacks(socket) {
   const pending = new Set();
@@ -46,10 +47,19 @@ export async function createDesktopOriginBackend({ desktopRoot, desktopCommit, a
     if (typeof ProxyServer !== 'function' || typeof ProxyServer.prototype.attachTrustedHttpOriginConnectStream !== 'function') throw 0;
   } catch { throw safeError('desktop_origin_configuration'); }
   let closing = false, closeTask, admitted = 0, settled = 0, captures = 0, clientEndWrites = 0;
+  let actualMode = null, actualCapabilities = Object.freeze([]);
   const proxy = new ProxyServer(null, { onRequest: value => { captures++; onCapture(value); } });
   const owners = new Set();
   const factory = context => {
-    if (closing || context.proxyMode !== HTTP_ORIGIN_PROXY_MODE || !context.negotiatedCapabilities.includes(HTTP_ORIGIN_CAPABILITY) || context.admissionAllowed() !== true) throw safeError('desktop_origin_rejected');
+    let capabilities;
+    try {
+      capabilities = Object.freeze(validateCapabilities(context.negotiatedCapabilities));
+      if (closing || context.proxyMode !== HTTP_ORIGIN_PROXY_MODE || !capabilities.includes(HTTP_ORIGIN_CAPABILITY) ||
+          capabilities.some(value => !TRAFFIC_CAPABILITIES.includes(value)) || context.admissionAllowed() !== true) throw 0;
+    } catch { throw safeError('desktop_origin_rejected'); }
+    const mode = context.proxyMode, grant = context.grant, admission = context.admissionAllowed;
+    const admissionAllowed = () => { try { return admission.call(context) === true; } catch { return false; } };
+    actualMode = mode; actualCapabilities = capabilities;
     const [transport, peer] = duplexPair({ allowHalfOpen: true, readableHighWaterMark: 4096, writableHighWaterMark: 4096 });
     transport.on('error', () => {}); peer.on('error', () => {});
     peer.once('end', () => { clientEndWrites++; }); // Actual drained desktop-facing read EOF.
@@ -64,16 +74,16 @@ export async function createDesktopOriginBackend({ desktopRoot, desktopCommit, a
     });
     const owner = Object.freeze({ transport, closed,
       async start() {
-        if (started || sealed || closing || context.admissionAllowed() !== true) { resolveStarted(); throw safeError('desktop_origin_rejected'); }
+        if (started || sealed || closing || !admissionAllowed()) { resolveStarted(); throw safeError('desktop_origin_rejected'); }
         started = true;
         try {
           // Retain the actual desktop owner before any subsequent asynchronous work.
-          attached = proxy.attachTrustedHttpOriginConnectStream(peer, { proxyMode: context.proxyMode,
-            negotiatedCapabilities: [...context.negotiatedCapabilities], signal: abort.signal,
+          attached = proxy.attachTrustedHttpOriginConnectStream(peer, { proxyMode: mode,
+            negotiatedCapabilities: [...capabilities], signal: abort.signal,
             authorizeDestination: endpoint => {
-              if (sealed || closing || context.admissionAllowed() !== true) return false;
-              let allowed; try { allowed = authorizeDestination(endpoint, context.grant); } catch { return false; }
-              return allowed === true && !sealed && !closing && context.admissionAllowed() === true;
+              if (sealed || closing || !admissionAllowed()) return false;
+              let allowed; try { allowed = authorizeDestination(endpoint, grant); } catch { return false; }
+              return allowed === true && !sealed && !closing && admissionAllowed();
             } });
         } finally { resolveStarted(); }
       },
@@ -93,7 +103,8 @@ export async function createDesktopOriginBackend({ desktopRoot, desktopCommit, a
     admitted++; owners.add(owner); closed.catch(() => {});
     return owner;
   };
-  const snapshot = () => Object.freeze({ closing, activeOwners: owners.size, admitted, settled, captures, clientEndWrites });
+  const snapshot = () => Object.freeze({ closing, activeOwners: owners.size, admitted, settled, captures, clientEndWrites,
+    proxyMode: actualMode, negotiatedCapabilities: Object.freeze([...actualCapabilities]) });
   return Object.freeze({ factory, snapshot,
     close() {
       if (closeTask) return closeTask;
