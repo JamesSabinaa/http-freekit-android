@@ -11,6 +11,7 @@ test('installed self-instrumentation package needs an exact requested permission
   assert.equal(ownedCaPermissionDeclared(good), true);
   assert.equal(ownedCaPermissionDeclared(good.replace('com.httpfreekit.interop.test', 'com.httpfreekit.interop')), false);
   assert.equal(ownedCaPermissionDeclared(`Packages:\n  Package [com.httpfreekit.interop.test] (abc123):\n    requested permissions:\n      android.permission.INTERNET\n  Package [com.example.other] (def456):\n    requested permissions:\n      ${permission}\n`), false);
+  assert.equal(ownedCaPermissionDeclared(`Packages:\n  Package [com.example.other] (def456):\n    requested permissions:\n      ${permission}\n  Package [com.httpfreekit.interop.test] (abc123):\n    requested permissions:\n      android.permission.INTERNET\n`), false);
   assert.equal(ownedCaPermissionDeclared(good + good), false);
   for (const bad of [`requested permissions:\n      android.permission.INTERNET\n    install permissions:\n      ${permission}: granted=true`,
     `requested permissions:\n      ${permission}_EXTRA\n`, `requested permissions:\n      ${permission}: granted=true\n`,
