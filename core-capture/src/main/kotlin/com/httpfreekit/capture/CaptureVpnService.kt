@@ -210,7 +210,9 @@ abstract class CaptureVpnService : VpnService() {
                 }
             }
             networkCallback = callback
-            manager.registerNetworkCallback(NetworkRequest.Builder().addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN).build(), callback)
+            manager.registerNetworkCallback(NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN).build(), callback)
             // Registration does not retrospectively deliver a loss before it was registered.
             check(suitable(network)) { "Underlying network lost during start" }
             if (!stopQueued.get()) { publish("active"); foreground("Capturing selected apps") }
