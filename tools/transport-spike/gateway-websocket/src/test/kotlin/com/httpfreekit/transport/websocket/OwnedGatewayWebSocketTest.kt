@@ -7,6 +7,68 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class OwnedGatewayWebSocketTest {
+    @Test(timeout = 45000) fun onTimeReceiptSurvivesValidatedNormalCloseBeforeCallerResumes() {
+        receiptHeldAcrossNormalClose(explicitInterrupt = false)
+    }
+
+    @Test(timeout = 45000) fun explicitInterruptAfterNormalCloseStillRejectsHeldReceipt() {
+        receiptHeldAcrossNormalClose(explicitInterrupt = true)
+    }
+
+    private fun receiptHeldAcrossNormalClose(explicitInterrupt: Boolean) {
+        val peer = GatewayNodePeer("queued-text-close")
+        peer.use {
+            val (raw, tls) = peer.connect()
+            val inputRelease = java.util.concurrent.CountDownLatch(1)
+            val flushEntered = java.util.concurrent.CountDownLatch(1)
+            val flushRelease = java.util.concurrent.CountDownLatch(1)
+            val callerEntered = java.util.concurrent.CountDownLatch(1)
+            val callerRelease = java.util.concurrent.CountDownLatch(1)
+            val armed = java.util.concurrent.atomic.AtomicBoolean()
+            val wrapped = GatewayTestSocket(tls, beforeFlush = {
+                if (armed.compareAndSet(true, false)) {
+                    flushEntered.countDown(); check(flushRelease.await(10, TimeUnit.SECONDS))
+                }
+            }, beforePostUpgradeRead = { check(inputRelease.await(10, TimeUnit.SECONDS)) })
+            OwnedGatewayWebSocket(wrapped, { flushRelease.countDown(); inputRelease.countDown(); raw.close() },
+                peer.authority, "/companion/v1/control", null, beforeReceiptWait = {
+                    callerEntered.countDown(); check(callerRelease.await(15, TimeUnit.SECONDS))
+                }).use { backend ->
+                val executor = Executors.newSingleThreadExecutor()
+                try {
+                    backend.start(deadline()); armed.set(true)
+                    val writing = executor.submit<String> {
+                        try { backend.writeText("receipt-before-close", deadline(15000)); "ok" }
+                        catch (failure: GatewayWebSocketException) { failure.code }
+                    }
+                    assertTrue(callerEntered.await(5, TimeUnit.SECONDS))
+                    assertTrue(flushEntered.await(5, TimeUnit.SECONDS))
+                    assertFalse(writing.isDone)
+                    assertEquals(1, backend.snapshot().pendingOutputSlots)
+                    assertTrue(backend.snapshot().pendingOutputBytes > 0)
+                    flushRelease.countDown()
+                    await { backend.snapshot().pendingOutputSlots == 0 }
+                    assertNull(backend.snapshot().failureCode)
+                    inputRelease.countDown()
+                    assertEquals("queued-before-close", (next(backend) as OwnedGatewayWebSocket.Incoming.Text).text())
+                    assertTrue((next(backend) as OwnedGatewayWebSocket.Incoming.Closed).normal)
+                    assertTrue(backend.awaitJoined(deadline())); assertJoined(backend)
+                    assertNull(backend.snapshot().failureCode)
+                    assertFalse(writing.isDone)
+                    if (explicitInterrupt) backend.interrupt()
+                    callerRelease.countDown()
+                    assertEquals(if (explicitInterrupt) "closed" else "ok", writing.get(5, TimeUnit.SECONDS))
+                    if (!explicitInterrupt) assertNull(backend.snapshot().failureCode)
+                } finally {
+                    callerRelease.countDown(); flushRelease.countDown(); inputRelease.countDown()
+                    executor.shutdownNow(); assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS))
+                }
+            }
+        }
+        assertEquals("1", peer.closedFacts?.get("clientTextMessages"))
+        assertEquals("true", peer.closedFacts?.get("clientCloseObserved"))
+    }
+
     @Test(timeout = 45000) fun upgradeCallbackCannotAcknowledgeAnUnfinishedHandshakeFlush() {
         GatewayNodePeer("echo").use { peer ->
             val (raw, tls) = peer.connect()

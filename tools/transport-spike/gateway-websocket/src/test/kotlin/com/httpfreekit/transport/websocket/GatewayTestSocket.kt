@@ -1,6 +1,7 @@
 package com.httpfreekit.transport.websocket
 
 import java.io.OutputStream
+import java.io.InputStream
 import javax.net.ssl.HandshakeCompletedListener
 import javax.net.ssl.SSLParameters
 import javax.net.ssl.SSLSession
@@ -12,7 +13,31 @@ internal class GatewayTestSocket(
     private val beforeWrite: () -> Unit = {}, private val afterWrite: () -> Unit = {},
     private val beforeFlush: () -> Unit = {},
     private val beforeClose: () -> Unit = {},
+    private val beforePostUpgradeRead: (() -> Unit)? = null,
 ) : SSLSocket() {
+    private val input = if (beforePostUpgradeRead == null) delegate.inputStream else object : InputStream() {
+        private var upgraded = false
+        private var tail = 0
+        override fun read(): Int {
+            val byte = ByteArray(1)
+            return if (read(byte, 0, 1) < 0) -1 else byte[0].toInt() and 255
+        }
+        override fun read(bytes: ByteArray, offset: Int, length: Int): Int {
+            if (offset < 0 || length < 0 || offset > bytes.size - length) throw IndexOutOfBoundsException()
+            if (length == 0) return 0
+            if (upgraded) { beforePostUpgradeRead.invoke(); return delegate.inputStream.read(bytes, offset, length) }
+            // Partition real TLS input at the HTTP boundary without consuming any WebSocket bytes.
+            var count = 0
+            while (count < length && !upgraded) {
+                val value = delegate.inputStream.read()
+                if (value < 0) return if (count == 0) -1 else count
+                bytes[offset + count++] = value.toByte()
+                tail = (tail shl 8) or value
+                upgraded = tail == 0x0d0a0d0a
+            }
+            return count
+        }
+    }
     private val output = object : OutputStream() {
         override fun write(value: Int) { beforeWrite(); delegate.outputStream.write(value); afterWrite() }
         override fun write(bytes: ByteArray, offset: Int, count: Int) {
@@ -21,7 +46,7 @@ internal class GatewayTestSocket(
         override fun flush() { beforeFlush(); delegate.outputStream.flush() }
     }
     override fun getOutputStream() = output
-    override fun getInputStream() = delegate.inputStream
+    override fun getInputStream() = input
     override fun close() { beforeClose(); delegate.close() }
     override fun isClosed() = delegate.isClosed
     override fun getSupportedCipherSuites() = delegate.supportedCipherSuites

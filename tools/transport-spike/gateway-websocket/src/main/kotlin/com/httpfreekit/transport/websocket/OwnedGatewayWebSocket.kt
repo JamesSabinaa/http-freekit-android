@@ -27,13 +27,16 @@ class GatewayWebSocketException internal constructor(val code: String) : Illegal
 }
 
 /** Owns I/O around a maintained engine. The caller has already authenticated the scoped TLS socket. */
-class OwnedGatewayWebSocket(
+class OwnedGatewayWebSocket internal constructor(
     private val socket: SSLSocket,
     private val interruptRaw: () -> Unit,
     private val authority: String,
     private val path: String,
-    private val sessionHeader: String? = null,
+    private val sessionHeader: String?,
+    private val beforeReceiptWait: (() -> Unit)?,
 ) : AutoCloseable {
+    constructor(socket: SSLSocket, interruptRaw: () -> Unit, authority: String, path: String,
+        sessionHeader: String? = null) : this(socket, interruptRaw, authority, path, sessionHeader, null)
     sealed interface Incoming {
         class Text internal constructor(private val value: String) : Incoming {
             fun text(): String = value
@@ -75,6 +78,7 @@ class OwnedGatewayWebSocket(
     private var openedAt = 0L
     private var admissionClosed = false
     private var stopping = false
+    private var explicitlyInterrupted = false
     private var closeRequested = false
     private var closeEncoded = false
     private var engineClosed = false
@@ -190,9 +194,12 @@ class OwnedGatewayWebSocket(
         if (!lock.withLock { usable && !admissionClosed && !stopping }) throw GatewayWebSocketException("closed")
         try {
             val receipt = encode(deadline, reserve, action)
+            beforeReceiptWait?.invoke() // Internal caller scheduling seam; no lock or I/O is held.
             lock.withLock {
                 while (!receipt.done && !stopping) waitUntil(deadline)
-                if (!receipt.done || stopping) throw GatewayWebSocketException(failureCode ?: "closed")
+                // Normal I/O shutdown cannot revoke an actual timely receipt. Cancellation and
+                // operational failures remain authoritative even if the caller resumes later.
+                if (!receipt.done || explicitlyInterrupted || failureCode != null) throw GatewayWebSocketException(failureCode ?: "closed")
                 if (receipt.completedAt - deadline > 0) throw GatewayWebSocketException("deadline")
             }
         } catch (failure: GatewayWebSocketException) {
@@ -242,6 +249,7 @@ class OwnedGatewayWebSocket(
 
     fun interrupt() {
         lock.withLock {
+            explicitlyInterrupted = true
             stopping = true; admissionClosed = true
             if (!engineClosed || failureCode != null) closedNormal = false
             closureGeneration++
