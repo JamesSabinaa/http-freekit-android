@@ -41,7 +41,7 @@ jobs:
           python3 scripts/check-protocol-corpus.py --corpus protocol/fixtures/a19-draft-0.3
       - name: Validate independent enrollment corpus and evidence guards
         run: |
-          node --test scripts/tests/enrollment-*.test.mjs
+          node --test scripts/tests/enrollment-*.test.mjs scripts/tests/enrolled-tun-runtime.test.mjs
           node scripts/check-enrollment-corpus.mjs
       - name: Test independent capture runtime evidence verification
         run: python3 -m unittest discover -s scripts/tests -p 'test_capture_runtime.py'
