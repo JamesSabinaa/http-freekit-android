@@ -132,6 +132,8 @@ Exercise hostile response cases over real TLS and retain exact source/tool/test
 provenance. Existing enrollment/stream/capture checks remain required regressions.
 
 This is a software-key host foundation proof and prepared Android research code.
+The separate [saved-credential Android profile](android-interception-ca-research.md)
+defines the subsequent actual API 26/37 check without a desktop dependency.
 Android Keystore/device execution, user CA installation, production approval
 persistence/migration, HTTPS/H2 capture, selected-UID TUN, physical USB, protocol
 freeze and the rest of the [implementation plan](implementation-plan.md) remain
