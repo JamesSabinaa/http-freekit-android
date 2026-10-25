@@ -24,7 +24,7 @@ export const enrolledTunObservationSuffixes = Object.freeze((
   'SeparateTrafficUid SelectedUidVpnObserved TunAndNativeObserved ForegroundNotificationObserved ' +
   'HttpAttempts HttpOutputHalfClosed StrictResponseEof LocalStreamsDrained HostCompleteAcknowledged ' +
   'ProtectAttempts ProtectSuccesses BindAttempts BindSuccesses SelectedPackageCount InterceptedTcpFlows ' +
-  'DirectTcpFlows UdpTargets Udp443Drops ProtectFailures BindFailures RequestBodyBytes RequestBodySha256 ' +
+  'DirectTcpFlows UdpTargets Udp443Drops ProtectFailures BindFailures ' +
   'ResponseBodyBytes ResponseBodySha256 CaptureStopped TunClosed NativeStopJoined ConfigurationAbsent LifecycleJoined ' +
   'ActiveFlows OwnedSockets PendingOpens LiveWorkers FactoryClosed FactoryPendingOpens FactoryPendingCalls RetainedTransports ' +
   'FactoryLiveWorkers SessionLease StreamLeases ChargedBytes PendingIngressBytes BackendOutputBytes BackendIncomingBytes ' +

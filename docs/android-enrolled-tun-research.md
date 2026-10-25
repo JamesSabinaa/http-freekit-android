@@ -80,6 +80,13 @@ observation uses the `draftTun` prefix. Boolean true values represent actual
 observations; SessionLease is false after Stop. Version, selected-package count,
 intercepted-flow count and HTTP attempts are1; guard attempts/successes are2;
 other resource/failure counts are0. Body sizes/hashes must match the descriptor.
+The Android observation reports the actual returned response bytes/hash only.
+The host independently records actual received request bytes/hash; Android must
+not label fixed request-profile constants as measured upload observations.
+Command19 success establishes that its actual upload, flush, SHUT_WR and strict
+response checks returned successfully; preserve the existing three-field traffic
+reply. Its old CONFIGURE readiness uses the validated ephemeral gateway port
+(1024..65535), which command19 never uses as its destination.
 
 At `http-command-started` the driver starts the existing response-tail release;
 the fixture still requires actual decoded/drained client END_WRITE. At
