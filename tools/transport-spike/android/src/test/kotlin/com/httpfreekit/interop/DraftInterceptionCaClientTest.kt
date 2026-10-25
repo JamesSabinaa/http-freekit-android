@@ -12,6 +12,8 @@ import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 import javax.net.ssl.HttpsURLConnection
 import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLServerSocket
@@ -166,15 +168,26 @@ class DraftInterceptionCaClientTest {
         val f = DraftInterceptionCaFixture()
         val current = AtomicReference<DraftInterceptionCaClient?>()
         val delay = CountDownLatch(1)
+        val hookReached = AtomicBoolean()
+        val delayCompleted = AtomicBoolean()
+        val delayElapsedMillis = AtomicLong()
         val manager = observingManager(f.manager) {
             val s = current.get()?.snapshot()
-            if (s?.activeCall == true && s.tlsSocketOwned && !s.deadlineAlive && !s.tlsCloserAlive)
-                delay.await(10200, TimeUnit.MILLISECONDS)
+            if (s?.activeCall == true && s.tlsSocketOwned && !s.deadlineAlive && !s.tlsCloserAlive) {
+                hookReached.set(true)
+                val started = System.nanoTime()
+                delayCompleted.set(!delay.await(10200, TimeUnit.MILLISECONDS))
+                delayElapsedMillis.set(TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started))
+            }
         }
         CaPeer(f) { socket -> socket.outputStream.write(response(f)); socket.outputStream.flush() }.use { peer ->
             DraftInterceptionCaClient(f.record(), manager, listOf(f.original.certificate), f.recovery(peer.port),
                 InetSocketAddress("127.0.0.1", peer.port)).also(current::set).use { client ->
+                val started = System.nanoTime()
                 val failure = assertThrows(DraftInterceptionCaException::class.java) { client.fetch() }
+                assertTrue(hookReached.get()); assertTrue(delayCompleted.get())
+                assertTrue(delayElapsedMillis.get() >= 10000)
+                assertTrue(TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started) >= 10000)
                 assertEquals(DraftInterceptionCaFailure.TRANSPORT, failure.code); assertIdle(client, false)
             }
             peer.await()
