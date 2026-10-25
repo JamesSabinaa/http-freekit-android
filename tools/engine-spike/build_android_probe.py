@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import struct
 import subprocess
@@ -14,6 +15,16 @@ from run_linux import ENGINE_COMMIT, SUBMODULES, check
 NDK_VERSION = "28.2.13676358"
 ENGINE_URL = "https://github.com/heiher/hev-socks5-tunnel.git"
 ABIS = {"arm64-v8a": 183, "x86_64": 62}
+DEFAULT_JNI_PACKAGE = "com/httpfreekit/engineprobe"
+DEFAULT_JNI_CLASS = "NativeEngine"
+
+
+def build_identity(jni_package, jni_class, purpose):
+    check(isinstance(jni_package, str) and re.fullmatch(r"[a-z][A-Za-z0-9_]*(?:/[a-z][A-Za-z0-9_]*)+", jni_package) is not None
+          and len(jni_package) <= 192, "Invalid JNI package")
+    check(isinstance(jni_class, str) and re.fullmatch(r"[A-Z][A-Za-z0-9_]{0,63}", jni_class) is not None, "Invalid JNI class")
+    check(purpose in ("native-probe", "capture"), "Invalid native build purpose")
+    return f"{jni_package}/{jni_class}"
 
 
 def git(root, *arguments):
@@ -77,7 +88,8 @@ def inspect_elf(path, machine):
     return {"androidApi": android_api, "loadAlignments": alignments, "machine": machine}
 
 
-def build(root, ndk, output, application_mk):
+def build(root, ndk, output, application_mk, *, jni_package=DEFAULT_JNI_PACKAGE, jni_class=DEFAULT_JNI_CLASS, purpose="native-probe"):
+    jni_identity = build_identity(jni_package, jni_class, purpose)
     properties = dict((key.strip(), value.strip()) for line in (ndk / "source.properties").read_text().splitlines()
                       if "=" in line for key, value in [line.split("=", 1)])
     check(properties.get("Pkg.Revision") == NDK_VERSION, "Unexpected NDK revision")
@@ -92,7 +104,7 @@ def build(root, ndk, output, application_mk):
            for abi, machine in ABIS.items()}
     for abi in ABIS:
         binary = (output / "libs" / abi / "libhev-socks5-tunnel.so").read_bytes()
-        check(b"com/httpfreekit/engineprobe/NativeEngine" in binary, "JNI class override was not compiled")
+        check(jni_identity.encode("ascii") in binary, "JNI class override was not compiled")
         elf[abi]["sha256"] = hashlib.sha256(binary).hexdigest()
     notices = output / "assets" / "native-licenses"
     notices.mkdir(parents=True, exist_ok=True)
@@ -100,15 +112,16 @@ def build(root, ndk, output, application_mk):
                   "hev-task-system": "third-part/hev-task-system", "lwip": "third-part/lwip", "yaml": "third-part/yaml"}
     for name, relative in components.items():
         shutil.copyfile(root / relative / "LICENSE", notices / f"{name}-LICENSE.txt")
-    shutil.copyfile(Path(__file__).resolve().parents[2] / "LICENSE", notices / "http-freekit-probe-LICENSE.txt")
+    shutil.copyfile(Path(__file__).resolve().parents[2] / "LICENSE", notices / ("http-freekit-probe-LICENSE.txt" if purpose == "native-probe" else "http-freekit-capture-LICENSE.txt"))
     headers = []
     for name in ("Android.mk", "Application.mk"):
         lines = (root / name).read_text().splitlines()
         headers.append(name + ":\n" + "\n".join(line for line in lines if line.startswith("#")))
     (notices / "android-build-NOTICE.txt").write_text("\n\n".join(headers) + "\n")
     manifest = {"engineCommit": ENGINE_COMMIT, "submodules": SUBMODULES, "ndkVersion": NDK_VERSION,
-                "jniClass": "com/httpfreekit/engineprobe/NativeEngine", "elf": elf,
-                "scope": "synthetic Android JNI/datagram research; no VPN"}
+                "jniClass": jni_identity, "elf": elf,
+                "scope": "synthetic Android JNI/datagram research; no VPN" if purpose == "native-probe" else
+                         "Android capture native integration; policy/runtime acceptance recorded separately"}
     (output / "assets" / "engine-source.json").write_text(json.dumps(manifest, indent=2) + "\n")
     print(json.dumps(manifest, sort_keys=True))
 
@@ -119,10 +132,15 @@ def main():
     parser.add_argument("--ndk-root", type=Path, required=True)
     parser.add_argument("--output-root", type=Path, required=True)
     parser.add_argument("--application-mk", type=Path, required=True)
+    parser.add_argument("--jni-package", default=DEFAULT_JNI_PACKAGE)
+    parser.add_argument("--jni-class", default=DEFAULT_JNI_CLASS)
+    parser.add_argument("--purpose", choices=("native-probe", "capture"), default="native-probe")
     parser.add_argument("--fetch", action="store_true")
     arguments = parser.parse_args()
+    build_identity(arguments.jni_package, arguments.jni_class, arguments.purpose)
     prepare_source(arguments.engine_root.resolve(), arguments.fetch)
-    build(arguments.engine_root.resolve(), arguments.ndk_root.resolve(), arguments.output_root.resolve(), arguments.application_mk.resolve())
+    build(arguments.engine_root.resolve(), arguments.ndk_root.resolve(), arguments.output_root.resolve(), arguments.application_mk.resolve(),
+          jni_package=arguments.jni_package, jni_class=arguments.jni_class, purpose=arguments.purpose)
 
 
 if __name__ == "__main__":

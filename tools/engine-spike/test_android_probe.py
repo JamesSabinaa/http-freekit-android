@@ -25,6 +25,20 @@ def elf(api=26, alignment=16384, machine=62):
 
 
 class AndroidProbeTest(unittest.TestCase):
+    def test_capture_and_legacy_jni_identities_are_explicit_and_reject_build_injection(self):
+        self.assertEqual(build.build_identity(build.DEFAULT_JNI_PACKAGE, build.DEFAULT_JNI_CLASS, "native-probe"),
+                         "com/httpfreekit/engineprobe/NativeEngine")
+        self.assertEqual(build.build_identity("com/httpfreekit/capture", "NativeEngine", "capture"),
+                         "com/httpfreekit/capture/NativeEngine")
+        for package, name, purpose in (("com.httpfreekit.capture", "NativeEngine", "capture"),
+                ("com/httpfreekit/capture -DOTHER=1", "NativeEngine", "capture"),
+                ("com/../capture", "NativeEngine", "capture"),
+                ("com/httpfreekit/capture", "Engine;exit", "capture"),
+                ("com/httpfreekit/capture", "NativeEngine", "unknown")):
+            with self.subTest(package=package, name=name, purpose=purpose):
+                with self.assertRaisesRegex(AssertionError, "Invalid"):
+                    build.build_identity(package, name, purpose)
+
     def test_carrier_stop_requires_four_completed_streams_and_joined_workers(self):
         validate_carrier_stop({"socksCarrierCompleted": 4, "socksCarrierStopped": True})
         for count in (None, False, True, 0, 3, 5, "4", 4.0):
