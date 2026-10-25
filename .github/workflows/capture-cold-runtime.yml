@@ -1,0 +1,215 @@
+name: Android cold no-VPN TCP comparison
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: capture-cold-runtime-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  capture-cold:
+    name: Cold TCP API 26
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Require isolated cold comparison and unchanged receivers
+        run: |
+          test -f tools/capture-spike/runtime/src/androidTest/kotlin/com/httpfreekit/capturetest/CaptureColdTcpInteropTest.kt
+          test -f tools/capture-spike/capture-cold-results.mjs
+          test -f tools/capture-spike/run-capture-cold-runtime.mjs
+          test -f scripts/verify-capture-cold-runtime.py
+      - name: Require KVM and fixed receiver ports on this fresh runner
+        run: |
+          test -c /dev/kvm
+          sudo chown "$(id -u):$(id -g)" /dev/kvm
+          sudo chmod u+rw /dev/kvm
+          test -r /dev/kvm && test -w /dev/kvm
+          sudo sysctl -w net.ipv4.ip_unprivileged_port_start=0
+          test "$(sysctl -n net.ipv4.ip_unprivileged_port_start)" = 0
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends libpulse0
+      - name: Set up JDK 17
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - name: Set up pinned Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24.22.1'
+      - name: Prepare private ADB log
+        run: |
+          umask 077
+          adb_log_dir="$(mktemp -d "$RUNNER_TEMP/capture-adb.XXXXXX")"
+          : > "$adb_log_dir/server.log"
+          printf 'ANDROID_ADB_LOG_PATH=%s\n' "$adb_log_dir/server.log" >> "$GITHUB_ENV"
+      - name: Bootstrap verified Android tools
+        env:
+          ANDROID_TOOLS_ARCHIVE: commandlinetools-linux-15859902_latest.zip
+          ANDROID_TOOLS_SHA256: 4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583
+        run: |
+          sdk_root="$RUNNER_TEMP/capture-sdk"
+          archive="$RUNNER_TEMP/capture-tools.zip"
+          curl --fail --location --retry 3 "https://dl.google.com/android/repository/$ANDROID_TOOLS_ARCHIVE" --output "$archive"
+          printf '%s  %s\n' "$ANDROID_TOOLS_SHA256" "$archive" | sha256sum --check
+          mkdir -p "$sdk_root/cmdline-tools"
+          unzip -q "$archive" -d "$sdk_root/cmdline-tools"
+          mv "$sdk_root/cmdline-tools/cmdline-tools" "$sdk_root/cmdline-tools/latest"
+          {
+            printf 'ANDROID_HOME=%s\n' "$sdk_root"
+            printf 'ANDROID_SDK_ROOT=%s\n' "$sdk_root"
+            printf 'ANDROID_AVD_HOME=%s\n' "$RUNNER_TEMP/capture-avd"
+          } >> "$GITHUB_ENV"
+          printf '%s\n' "$sdk_root/cmdline-tools/latest/bin" "$sdk_root/platform-tools" "$sdk_root/emulator" >> "$GITHUB_PATH"
+      - name: Install pinned Android build and runtime packages
+        env:
+          SYSTEM_IMAGE: system-images;android-26;default;x86_64
+        run: |
+          printf 'y\n%.0s' {1..100} > "$RUNNER_TEMP/capture-licenses.txt"
+          sdkmanager --sdk_root="$ANDROID_HOME" --licenses < "$RUNNER_TEMP/capture-licenses.txt" > "$RUNNER_TEMP/capture-license.log"
+          sdkmanager --sdk_root="$ANDROID_HOME" 'platforms;android-37.0' 'build-tools;36.0.0' 'ndk;28.2.13676358' 'platform-tools' 'emulator' "$SYSTEM_IMAGE"
+          test "$(node --version)" = v24.22.1
+          java -version
+          emulator -version
+          emulator -accel-check
+          adb version
+      - name: Run one cold no-VPN TCP method on a fresh AVD
+        env:
+          API_LEVEL: '26'
+          SYSTEM_IMAGE: system-images;android-26;default;x86_64
+        run: |
+          mkdir -p "$ANDROID_AVD_HOME"
+          printf 'no\n' > "$RUNNER_TEMP/capture-avd-answers.txt"
+          avdmanager create avd --force --name freekit-capture-cold --package "$SYSTEM_IMAGE" --device pixel < "$RUNNER_TEMP/capture-avd-answers.txt"
+          emulator -avd freekit-capture-cold -port 5554 -accel on -gpu swiftshader \
+            -no-window -no-audio -no-boot-anim -no-snapshot -camera-front none -camera-back none \
+            -cores 2 -memory 3072 > "$RUNNER_TEMP/capture-emulator.log" 2>&1 &
+          emulator_pid=$!
+          driver_status=null
+          # BEGIN C1 OWNED EMULATOR CLEANUP
+          cleanup() {
+            local status="$1" cleanup_status=0 stop_status=0 wait_status=null attempt
+            local terminated=false joined=false
+            trap - EXIT
+            if timeout --kill-after=1s 10s adb -s emulator-5554 emu kill >/dev/null 2>&1; then stop_status=0; else stop_status=$?; fi
+            if kill -0 "$emulator_pid" 2>/dev/null; then
+              kill "$emulator_pid" 2>/dev/null || true
+              for ((attempt=0; attempt<50; attempt++)); do
+                if ! kill -0 "$emulator_pid" 2>/dev/null; then break; fi
+                sleep 0.1
+              done
+            fi
+            if kill -0 "$emulator_pid" 2>/dev/null; then
+              kill -KILL "$emulator_pid" 2>/dev/null || true
+              for ((attempt=0; attempt<50; attempt++)); do
+                if ! kill -0 "$emulator_pid" 2>/dev/null; then break; fi
+                sleep 0.1
+              done
+            fi
+            if kill -0 "$emulator_pid" 2>/dev/null; then cleanup_status=1
+            else
+              terminated=true
+              if wait "$emulator_pid" 2>/dev/null; then wait_status=0; else wait_status=$?; fi
+              if (( wait_status != 127 )); then joined=true; else cleanup_status=1; fi
+            fi
+            export C1_DRIVER_STATUS="$driver_status" C1_STOP_STATUS="$stop_status"
+            export C1_TERMINATED="$terminated" C1_JOINED="$joined" C1_EMULATOR_STATUS="$wait_status"
+            if ! node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          const number = value => value === 'null' ? null : Number(value);
+          const report = { format: 'http-freekit-capture-cold-host-cleanup', revision: 1,
+            sourceCommit: process.env.GITHUB_SHA, api: Number(process.env.API_LEVEL),
+            driverExitCode: number(process.env.C1_DRIVER_STATUS), emulatorStarted: true, stopAttempted: true,
+            stopExitCode: number(process.env.C1_STOP_STATUS), terminationObserved: process.env.C1_TERMINATED === 'true',
+            joinObserved: process.env.C1_JOINED === 'true', emulatorExitCode: number(process.env.C1_EMULATOR_STATUS) };
+          fs.mkdirSync('build/reports/capture-cold-tcp', { recursive: true });
+          fs.writeFileSync('build/reports/capture-cold-tcp/host-cleanup.json', JSON.stringify(report) + '\n', { mode: 0o600 });
+          JS
+            then cleanup_status=1; fi
+            printf 'Owned capture emulator cleanup: stop=%s terminated=%s joined=%s exit=%s\n' "$stop_status" "$terminated" "$joined" "$wait_status"
+            if (( status == 0 && cleanup_status != 0 )); then status=1; fi
+            return "$status"
+          }
+          # END C1 OWNED EMULATOR CLEANUP
+          trap 'status=$?; if cleanup "$status"; then exit 0; else exit $?; fi' EXIT
+          deadline=$((SECONDS + 600))
+          while true; do
+            kill -0 "$emulator_pid" 2>/dev/null || exit 1
+            if booted="$(timeout --kill-after=1s 5s adb -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null)"; then
+              if [[ "${booted//$'\r'/}" == 1 ]]; then break; fi
+            fi
+            if (( SECONDS >= deadline )); then echo '::error::Capture AVD boot deadline exceeded.'; exit 1; fi
+            sleep 5
+          done
+          actual_api="$(timeout --kill-after=1s 5s adb -s emulator-5554 shell getprop ro.build.version.sdk | tr -d '\r')"
+          test "$actual_api" = "$API_LEVEL"
+          # BEGIN C1 FRESH AVD CLOCK ALIGNMENT
+          align_capture_clock() {
+            local clock_uid automatic_time host_time root_status=0 root_deadline unroot_status=0 shell_deadline remaining
+            timeout --kill-after=1s 10s adb -s emulator-5554 root >/dev/null || root_status=$?
+            printf 'Capture ADB root transition exit: %s\n' "$root_status"
+            root_deadline=$((SECONDS + 30))
+            timeout --kill-after=1s 30s adb -s emulator-5554 wait-for-device >/dev/null || return "$?"
+            while true; do
+              remaining=$((root_deadline - SECONDS))
+              if (( remaining <= 0 )); then return 1; fi
+              if (( remaining > 10 )); then remaining=10; fi
+              clock_uid="$(timeout --kill-after=1s "${remaining}s" adb -s emulator-5554 shell id -u)" || return "$?"
+              clock_uid="${clock_uid//$'\r'/}"
+              if (( SECONDS >= root_deadline )); then return 1; fi
+              if [[ "$clock_uid" == 0 ]]; then break; fi
+              if [[ "$clock_uid" != 2000 ]]; then return 1; fi
+              sleep 1
+            done
+            timeout --kill-after=1s 10s adb -s emulator-5554 shell settings put global auto_time 0 >/dev/null || return "$?"
+            automatic_time="$(timeout --kill-after=1s 10s adb -s emulator-5554 shell settings get global auto_time)" || return "$?"
+            if [[ "${automatic_time//$'\r'/}" != 0 ]]; then return 1; fi
+            host_time="$(date +%s.%N)" || return "$?"
+            if [[ ! "$host_time" =~ ^[0-9]{10}\.[0-9]{9}$ ]]; then return 1; fi
+            timeout --kill-after=1s 10s adb -s emulator-5554 shell /system/bin/toybox date -u "@$host_time" >/dev/null || return "$?"
+            # adbd can close its transport while unroot is taking effect. Verify the resulting identity.
+            timeout --kill-after=1s 10s adb -s emulator-5554 unroot >/dev/null || unroot_status=$?
+            printf 'Capture ADB unroot transition exit: %s\n' "$unroot_status"
+            shell_deadline=$((SECONDS + 30))
+            timeout --kill-after=1s 30s adb -s emulator-5554 wait-for-device >/dev/null || return "$?"
+            while true; do
+              remaining=$((shell_deadline - SECONDS))
+              if (( remaining <= 0 )); then return 1; fi
+              if (( remaining > 10 )); then remaining=10; fi
+              clock_uid="$(timeout --kill-after=1s "${remaining}s" adb -s emulator-5554 shell id -u)" || return "$?"
+              clock_uid="${clock_uid//$'\r'/}"
+              if [[ "$clock_uid" == 2000 ]]; then break; fi
+              if [[ "$clock_uid" != 0 ]]; then return 1; fi
+              if (( SECONDS >= shell_deadline )); then return 1; fi
+              sleep 1
+            done
+            echo 'Fresh capture AVD clock aligned; ordinary ADB shell restored.'
+          }
+          # END C1 FRESH AVD CLOCK ALIGNMENT
+          align_capture_clock
+          export ANDROID_SERIAL=emulator-5554
+          started="$(date +%s)"
+          if node tools/capture-spike/run-capture-cold-runtime.mjs --serial emulator-5554; then driver_status=0; else driver_status=$?; fi
+          if cleanup "$driver_status"; then
+            python3 scripts/verify-capture-cold-runtime.py --source "$GITHUB_SHA" --api "$API_LEVEL" --started "$started"
+          else exit $?; fi
+      - name: Retain only bounded sanitized cold evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: capture-cold-api26-results
+          retention-days: 7
+          if-no-files-found: warn
+          path: |
+            build/reports/capture-cold-tcp/runtime.json
+            build/reports/capture-cold-tcp/TEST-capture-cold-tcp.xml
+            build/reports/capture-cold-tcp/host-cleanup.json

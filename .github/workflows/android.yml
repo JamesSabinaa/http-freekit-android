@@ -43,6 +43,8 @@ jobs:
           node scripts/check-enrollment-corpus.mjs
       - name: Test independent capture runtime evidence verification
         run: python3 -m unittest discover -s scripts/tests -p 'test_capture_runtime.py'
+      - name: Test independent cold TCP evidence verification
+        run: python3 -m unittest discover -s scripts/tests -p 'test_capture_cold_runtime.py'
       - name: Check committed whitespace
         run: git diff --check --no-renames "$(git hash-object -t tree --stdin </dev/null)" HEAD
       - name: Validate workflow syntax
