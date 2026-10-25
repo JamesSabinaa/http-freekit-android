@@ -32,6 +32,8 @@ class TrafficService : Service() {
     private val messenger = Messenger(Handler(Looper.getMainLooper()) { request ->
         val reply = request.replyTo
         val id = request.arg1
+        // Handler recycles the incoming Message after dispatch; the worker owns primitives only.
+        val command = request.what
         if (reply == null || id !in 1..1_000_000 || request.what !in COMMANDS) {
             if (reply != null) respond(reply, id, INVALID, 0, null)
             true
@@ -63,7 +65,7 @@ class TrafficService : Service() {
                 var size = 0
                 var digest: String? = null
                 try {
-                    val bytes = when (request.what) {
+                    val bytes = when (command) {
                         HTTP -> tcp(HOST, 80, HTTP_BYTES)
                         HTTPS_OPAQUE -> tcp(HOST, 443, BODY)
                         DIRECT_TCP -> tcp(HOST, directPort, BODY)
