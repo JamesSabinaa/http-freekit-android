@@ -1,10 +1,56 @@
 # Resume checkpoint
 
-Saved 25 October 2026 after the user paused implementation and requested a roadmap.
-The original goal is paused, not complete. No agent-owned test process remains
-live. Read [AGENTS.md](../AGENTS.md), [README](../README.md), the
-[roadmap](roadmap.md), required architecture/security/protocol documents and the
-[work board](../tasks/README.md) before resuming implementation.
+Updated 25 October 2026 after resuming in Linux. Read [AGENTS.md](../AGENTS.md),
+[README](../README.md), the [roadmap](roadmap.md), required architecture/security/
+protocol documents and the [work board](../tasks/README.md) before editing.
+The original goal is active and incomplete.
+
+## Current Linux resume position
+
+- Android public `main` is `6898ec8b08f4835e5ffa0b655ad53b94f2450610`.
+  The original Windows F worktree and ignored archive below are absent here;
+  no original unfinished files were overwritten. The eight-file A23 package
+  was reconstructed in an isolated branch and merged through `91c2a85`.
+- Corrected source `6898ec8` uses bounded exact-owned-package/User 0 `pm dump`
+  grant readback; the earlier unsupported `cmd package check-permission` path
+  is preserved as failed history, not acceptance.
+- [Pinned host run 40207877081](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40207877081)
+  passes all three jobs. Independent original-artifact/log audit: 318 JVM cases,
+  617 Android-job Node cases, 144 documentation-job Node cases, 46/46 source-bound
+  actual TLS CA receipts and nine zero-issue lint XMLs. The finite ignored export
+  is `dist/a23-host-audit.json`, SHA256
+  `2dbf81ad568bc3fc027cff902805b55269626731c47f792f458da3a503d972c1`.
+- [First A23 matrix 40190998118](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40190998118)
+  at `8526b0a`: API26 independently passes all three methods; API37 stops with
+  zero starts at unsupported permission readback exit255, after a successful
+  declared permission and owned grant. All cleanup joins.
+- [Second matrix 40209128345](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40209128345)
+  at `6898ec8`: API26 again independently passes all three methods. API37 stops
+  at `adb: unable to connect for root: closed` during fresh-AVD clock setup,
+  before driver admission. Only its host-cleanup record exists: driver exit null,
+  stop0, observed termination/join and emulator exit0. No API37 permission or
+  method result exists for this run. **A23 two-API acceptance remains open.**
+- Workflow owner has the exclusive two-file root-transition correction in their
+  isolated worktree: `.github/workflows/enrollment-runtime.yml` and
+  `scripts/tests/enrollment-emulator-clock.test.mjs`. Reuse capture-runtime's
+  bounded exact-UID observation, without repeating root/unroot or weakening the
+  clock gate. Root owns this checkpoint, evidence documents and integration.
+  Test/commit/review and ordinary host CI must precede another fresh full matrix.
+- User explicitly authorized Android main publication and hosted validation,
+  and separately authorized publication of the reviewed desktop ten-commit tip
+  `2ee70e86` as `codex/android-companion-trusted-https`. This supersedes only the
+  pending publication decision below. The exact desktop checkout/review patch is
+  absent here and that tip is absent from GitHub. The user said they can provide
+  it; await the actual file/checkout path, verify the original hash/tree and do
+  not substitute source. C5, physical USB, production freeze and deployment
+  restrictions remain in effect.
+
+## Historical Windows pause record
+
+The sections below preserve the original Windows-workspace inventory and
+unfinished-file provenance from the pause. They are not a claim those paths or
+ignored artifacts exist in this Linux workspace.
+
 
 ## Source locations
 

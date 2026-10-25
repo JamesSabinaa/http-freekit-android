@@ -19,7 +19,7 @@ and isolated research tests; those tests do not establish a finished capture app
 | Identity and enrollment | Keystore identity, scoped TLS, approval, saved credentials, restart/recovery, revocation and expiry research | Production credential/approval binding and remaining v1 decisions |
 | Capture and proxy transport | Native packet checks and local policy/HTTP/HTTPS H1/Upgrade composition | Actual enrolled selected-UID TUN execution, production integration and physical USB |
 | Public interception CA | Compiled getter and actual Node TLS endpoint; source-bound 46/46 receipts, 318 JVM host methods and nine clean lint reports at `8526b0a`; saved-credential Android retrieval passes API 26 | Run complete fresh API 26/37 acceptance after correcting API 37 permission readback; CA installation and target-app trust remain open |
-| Android CA runtime driver | Pinned host CI passes at `8526b0a`; API 26 passes all three same-run methods and cleanup in run 40190998118 | API 37 stops at unsupported permission readback with zero starts; check corrected readback in new host CI and fresh two-API matrix before A23 acceptance |
+| Android CA runtime driver | Corrected readback source `6898ec8` passes pinned host CI and API26 all three same-run methods in run 40209128345 | API37 stops at ADB root clock-setup transition before driver admission; validate bounded observed-UID correction, host CI and fresh two-API matrix before A23 acceptance |
 | Desktop dependency | User authorized publication of the reviewed ten-commit branch ending `2ee70e86` | Exact desktop checkout/review patch is absent from this Linux workspace and that commit is not on GitHub; obtain and verify it before publishing or running C5 |
 
 The original completed code checkpoint is `94a47c7` (CA proof input/source
@@ -31,21 +31,27 @@ The first [A23 matrix 40190998118](https://github.com/JamesSabinaa/http-freekit-
 passes API 26's three ordered methods and cleanup, but API 37 stops before any
 method when unsupported `cmd package check-permission` exits 255 after a
 successful owned grant. Both emulator cleanups join; A23 is not accepted. The
-bounded owned-package/User 0 `pm dump` readback correction awaits checked-source
-host CI and a new complete matrix. The prior independently audited hosted
+bounded owned-package/User 0 `pm dump` readback correction is committed as
+`6898ec8` and passes [host run 40207877081](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40207877081):
+318 JVM cases, 617 Android-job Node cases, 46/46 CA receipts and nine clean lints.
+The [second matrix 40209128345](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40209128345)
+again passes API26, but API37 exits at the ADB root clock-setup transition before
+any driver invocation. Its sole cleanup report confirms stop0 and emulator
+termination/join/exit0. No API37 readback result exists yet. Validate the bounded
+observed-UID workflow correction before the next full matrix. The older audited
 baseline is `1065657` in
 [run 40177081047](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40177081047).
 New checkpoint CI must be inspected before claiming hosted validation of later code.
 
 ## Next milestones, in order
 
-1. **Finish Android CA retrieval acceptance.** Validate the API 37
-   exact-package/User 0 grant-readback correction on pinned host CI, then run a
-   fresh three-invocation API 26/37 matrix. Require real Keystore enrollment,
-   worker restart, CA/hash continuity, final Forget and joined cleanup on both
-   APIs in that new run. The earlier API 26 pass and API 37 zero-start failure
-   stay separate. This uses the reference gateway and needs no desktop
-   publication. See the [Android CA profile](android-interception-ca-research.md).
+1. **Finish Android CA retrieval acceptance.** Validate the bounded root/ordinary
+   UID transition correction on pinned host CI, then run a fresh three-invocation
+   API 26/37 matrix. Require real Keystore enrollment, worker restart, CA/hash
+   continuity, final Forget and joined cleanup on both APIs in that new run.
+   Earlier API26 passes and API37 setup failures stay separate. This uses the
+   reference gateway and needs no desktop publication. See the
+   [Android CA profile](android-interception-ca-research.md).
 2. **Prove enrolled selected-app capture.** Resolve the separate desktop
    publication decision, then run the prepared factory and selected-UID TUN
    checks against the exact reviewed commits. Preserve original destinations,

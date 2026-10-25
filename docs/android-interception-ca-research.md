@@ -1,8 +1,9 @@
 # Android saved-credential public CA research
 
-Status: reconstructed A23b driver and hosted selection; API 26 passes the first
-fresh matrix, API 37 stops before method execution on an unsupported permission
-readback command. See the [retained runtime evidence](validation.md#authenticated-public-interception-ca-research).
+Status: reconstructed A23b driver and hosted selection; API26 passes both fresh
+matrices. API37 first stops at unsupported permission readback and then, with the
+readback correction, earlier at the ADB root clock-setup transition before driver
+admission. See the [retained runtime evidence](validation.md#authenticated-public-interception-ca-research).
 The checked software-key host proof remains a prerequisite for each dispatch. This
 suite uses the existing reference enrollment gateway and needs no desktop
 checkout, Linux alias or production app wiring.

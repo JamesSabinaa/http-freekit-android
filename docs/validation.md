@@ -133,7 +133,17 @@ check-permission` readback exits 255. Its sanitized report records three zero
 starts, `enrollment_fixture_failed`, a driver exit of 1, and complete package,
 worker, command and emulator cleanup. Do not combine the two API results into
 A23 acceptance. The correction uses the bounded, exact-package/User 0 `pm dump`
-readback described above; it needs checked-source host CI and a fresh full matrix.
+readback described above. Its corrected source `6898ec8` passes pinned
+[host run 40207877081](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40207877081)
+with 318 JVM cases, 617 Android-job Node cases, 144 documentation-job Node cases,
+46/46 actual CA TLS receipts and nine zero-issue lint reports. In the
+[second matrix 40209128345](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40209128345),
+API 26 again passes the independent three-method and cleanup verifier. API 37
+stops earlier during `adb root` clock setup (`unable to connect for root: closed`),
+before driver admission. Its only retained report is host cleanup, with driver
+exit null, stop0, observed termination/join and emulator exit0. This run contains
+no API37 permission-readback or method result. The workflow's bounded observed-UID
+transition correction must pass host checks before another full matrix.
 CA installation, target-app trust and physical USB remain open.
 
 ## Enrolled HTTP-origin factory research
