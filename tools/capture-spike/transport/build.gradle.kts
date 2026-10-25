@@ -38,6 +38,7 @@ val verifyDesktopIntegrationInput = tasks.register("verifyDesktopIntegrationInpu
 tasks.withType<Test>().configureEach {
     if (name != "testDesktopIntegration") exclude("**/EnrolledCaptureDesktopTest*.class")
     if (name != "testDesktopHttpsIntegration") exclude("**/EnrolledCaptureHttpsDesktopTest*.class")
+    if (name != "testDesktopPolicyIntegration") exclude("**/EnrolledCapturePolicyDesktopTest*.class")
 }
 
 val verifyDesktopHttpsIntegrationInput = tasks.register("verifyDesktopHttpsIntegrationInput") {
@@ -74,4 +75,18 @@ tasks.register<Test>("testDesktopIntegration") {
     workingDir = rootProject.projectDir
     useJUnit()
     filter { includeTestsMatching("com.httpfreekit.capture.transport.EnrolledCaptureDesktopTest") }
+}
+
+tasks.register<Test>("testDesktopPolicyIntegration") {
+    val unit = tasks.named<Test>("testDebugUnitTest").get()
+    dependsOn(verifyDesktopHttpsIntegrationInput, unit.testClassesDirs, unit.classpath)
+    testClassesDirs = unit.testClassesDirs
+    classpath = unit.classpath
+    javaLauncher.set(unit.javaLauncher)
+    workingDir = rootProject.projectDir
+    useJUnit()
+    outputs.upToDateWhen { false }
+    outputs.doNotCacheIf("Requires fresh policy and external desktop execution") { true }
+    systemProperty("com.sun.net.ssl.requireCloseNotify", "true")
+    filter { includeTestsMatching("com.httpfreekit.capture.transport.EnrolledCapturePolicyDesktopTest") }
 }

@@ -64,6 +64,12 @@ Assembling the app and security module's Android instrumentation APKs checks com
 
 ## Enrolled HTTP-origin factory research
 
+The separate [policy composition check](capture-policy-transport-research.md)
+uses the production authenticated SOCKS frontdoor with the actual enrolled
+factory. Its explicit `:capture-transport-research:testDesktopPolicyIntegration`
+task requires the clean pinned desktop and executes freshly; ordinary CI excludes
+it. Local JVM completion does not establish selected-UID Android capture.
+
 The [C2 contract](capture-transport.md), [small shared wire vectors](../protocol/fixtures/c2-draft-0.5/README.md)
 and [finite Android proof report](android-capture-factory-runtime.md) bind the optional
 http-origin-connect mode to its actual negotiated capability. Legacy A19 fixtures,

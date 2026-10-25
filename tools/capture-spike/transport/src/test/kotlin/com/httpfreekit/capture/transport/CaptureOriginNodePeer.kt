@@ -52,7 +52,7 @@ internal class CaptureOriginNodePeer(private val profile: String? = null, privat
     private var closed = false
 
     init {
-        check(profile == null || profile in setOf("https-h1", "http-upgrade", "wss-h1"))
+        check(profile == null || profile in setOf("http-h1", "https-h1", "http-upgrade", "wss-h1"))
         check(family in setOf("ipv4", "ipv6") && (profile != null || family == "ipv4"))
         val desktop = System.getenv("FREEKIT_DESKTOP_ROOT")
         check(desktop != null && Path.of(desktop).isAbsolute && Files.isDirectory(Path.of(desktop))) { "Explicit desktop checkout required" }
@@ -137,9 +137,25 @@ internal class CaptureOriginNodePeer(private val profile: String? = null, privat
     }
 
     fun release() { command(JsonObject(linkedMapOf("op" to JsonPrimitive("release")))); next("released") }
-    fun snapshot(): JsonObject {
+    fun snapshot(timeoutMillis: Long = 20_000): JsonObject {
         command(JsonObject(linkedMapOf("op" to JsonPrimitive("snapshot"))))
-        return next("snapshot")["snapshot"] as? JsonObject ?: error("Invalid origin fixture snapshot")
+        return next("snapshot", timeoutMillis)["snapshot"] as? JsonObject ?: error("Invalid origin fixture snapshot")
+    }
+
+    /** Observe actual peer completion before Stop without replaying a request or increasing the IPC bound. */
+    fun completedSnapshot(): JsonObject {
+        val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(3)
+        repeat(4) { index ->
+            if (index > 0) {
+                try { Thread.sleep(250L shl (index - 1)) }
+                catch (failure: InterruptedException) { Thread.currentThread().interrupt(); throw failure }
+            }
+            val remaining = TimeUnit.NANOSECONDS.toMillis(deadline - System.nanoTime())
+            check(remaining > 0) { "Origin stream did not complete" }
+            val state = snapshot(remaining)
+            if (state.bool("gatewayStreamComplete")) return state
+        }
+        error("Origin stream did not complete")
     }
 
     private fun command(value: JsonObject) {
@@ -149,9 +165,9 @@ internal class CaptureOriginNodePeer(private val profile: String? = null, privat
         process.outputStream.write(bytes); process.outputStream.flush()
     }
 
-    private fun next(event: String): JsonObject {
+    private fun next(event: String, timeoutMillis: Long = 20_000): JsonObject {
         try {
-            val value = events.poll(20, TimeUnit.SECONDS)
+            val value = events.poll(timeoutMillis, TimeUnit.MILLISECONDS)
             check(value != null && !failed.get() && value.text("format") == "http-freekit-origin-gateway-fixture" &&
                 value.number("revision") == 1L && value.text("event") == event)
             return value

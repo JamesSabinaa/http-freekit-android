@@ -30,7 +30,15 @@ import org.junit.Assert.fail
 import org.junit.Test
 
 /** Explicit C3 local proof. The factory's default required capability set is preserved. */
-class EnrolledCaptureHttpsDesktopTest {
+open class EnrolledCaptureHttpsDesktopTest {
+    protected interface ApplicationConnection : AutoCloseable {
+        val app: Socket
+        fun finish()
+    }
+
+    protected open fun application(factory: EnrolledCaptureTcpFactory, address: InetAddress, port: Int): ApplicationConnection =
+        ApplicationBridge(factory.open(address, port))
+
     @Test(timeout = 45_000) fun realVerifiedInnerHttpsUsesOriginalIpv4AndActualInterceptionCa() = positive("ipv4")
 
     @Test(timeout = 45_000) fun realVerifiedInnerHttpsUsesOriginalIpv6AndActualInterceptionCa() = positive("ipv6")
@@ -48,15 +56,16 @@ class EnrolledCaptureHttpsDesktopTest {
         CaptureOriginNodePeer(if (secure) "wss-h1" else "http-upgrade").use { peer ->
             val factory = EnrolledCaptureTcpFactory(peer.configuration, peer.endpoint, Guard())
             try {
-                ApplicationBridge(factory.open(original("ipv4"), if (secure) 443 else 80)).use { bridge ->
+                val snapshot = application(factory, original("ipv4"), if (secure) 443 else 80).use { bridge ->
                     val app = if (secure) tls(bridge.app, requireNotNull(peer.interceptionCa)).apply { startHandshake() } else bridge.app.apply { soTimeout = 8_000 }
                     app.use {
                         InnerUpgradePeer(app).exchange()
                         app.shutdownOutput()
                     }
                     bridge.finish()
+                    peer.completedSnapshot()
                 }
-                val origin = peer.snapshot().getValue("origin").jsonObject
+                val origin = snapshot.getValue("origin").jsonObject
                 assertEquals(1L, origin.number("upgradeRequests")); assertTrue(origin.bool("upgradeAccepted"))
                 assertEquals(1L, origin.number("clientTextMessages")); assertEquals(1L, origin.number("clientBinaryMessages"))
                 assertEquals(4097L, origin.number("clientBinaryBytes"))
@@ -74,7 +83,7 @@ class EnrolledCaptureHttpsDesktopTest {
             val guard = Guard()
             val factory = EnrolledCaptureTcpFactory(peer.configuration, peer.endpoint, guard)
             try {
-                ApplicationBridge(factory.open(original(family), 443)).use { bridge ->
+                val snapshot = application(factory, original(family), 443).use { bridge ->
                     tls(bridge.app, requireNotNull(peer.interceptionCa)).use { socket ->
                         socket.startHandshake()
                         assertEquals("http/1.1", socket.applicationProtocol)
@@ -89,8 +98,8 @@ class EnrolledCaptureHttpsDesktopTest {
                         socket.shutdownOutput()
                     }
                     bridge.finish()
+                    peer.completedSnapshot()
                 }
-                val snapshot = peer.snapshot()
                 val origin = snapshot.getValue("origin").jsonObject
                 assertEquals(1L, origin.number("requests"))
                 assertEquals(1L, origin.number("tlsConnections"))
@@ -110,7 +119,7 @@ class EnrolledCaptureHttpsDesktopTest {
         CaptureOriginNodePeer("https-h1").use { peer ->
             val factory = EnrolledCaptureTcpFactory(peer.configuration, peer.endpoint, Guard())
             try {
-                ApplicationBridge(factory.open(original("ipv4"), 443)).use { bridge ->
+                application(factory, original("ipv4"), 443).use { bridge ->
                     val trust = if (wrongCa) HeldCertificate.Builder().certificateAuthority(0).build().certificate else requireNotNull(peer.interceptionCa)
                     // Without SNI the MITM presents its numeric-IP leaf, which
                     // cannot identify the expected DNS peer HOST.
@@ -132,13 +141,13 @@ class EnrolledCaptureHttpsDesktopTest {
     }
 
     /** Real loopback app socket keeps JSSE socket semantics; only its bytes enter the factory. */
-    private class ApplicationBridge(private val flow: CaptureTcpConnection) : AutoCloseable {
+    private class ApplicationBridge(private val flow: CaptureTcpConnection) : ApplicationConnection {
         private val pair = ServerSocket(0, 1, InetAddress.getLoopbackAddress()).use { listener ->
             listener.soTimeout = 3_000
             val client = Socket(InetAddress.getLoopbackAddress(), listener.localPort)
             try { client to listener.accept() } catch (failure: Exception) { client.close(); throw failure }
         }
-        val app: Socket = pair.first
+        override val app: Socket = pair.first
         private val relay = pair.second
         private val workers = Executors.newFixedThreadPool(2)
         private val failed = AtomicBoolean()
@@ -164,7 +173,7 @@ class EnrolledCaptureHttpsDesktopTest {
             finally { try { relay.close() } catch (_: Exception) { /* Failure remains latched. */ } }
         }
 
-        fun finish() {
+        override fun finish() {
             app.close()
             outgoing.get(5, TimeUnit.SECONDS); incoming.get(5, TimeUnit.SECONDS)
             assertFalse(failed.get()); assertTrue(inputEof.get()); assertTrue(outputEof.get())
