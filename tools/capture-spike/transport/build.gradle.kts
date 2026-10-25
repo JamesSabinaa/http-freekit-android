@@ -22,6 +22,7 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.okhttp.tls)
     testImplementation(libs.serialization.json)
+    testImplementation(libs.java.websocket)
 }
 
 val verifyDesktopIntegrationInput = tasks.register("verifyDesktopIntegrationInput") {
@@ -36,6 +37,32 @@ val verifyDesktopIntegrationInput = tasks.register("verifyDesktopIntegrationInpu
 
 tasks.withType<Test>().configureEach {
     if (name != "testDesktopIntegration") exclude("**/EnrolledCaptureDesktopTest*.class")
+    if (name != "testDesktopHttpsIntegration") exclude("**/EnrolledCaptureHttpsDesktopTest*.class")
+}
+
+val verifyDesktopHttpsIntegrationInput = tasks.register("verifyDesktopHttpsIntegrationInput") {
+    doLast {
+        val source = System.getenv("FREEKIT_DESKTOP_ROOT")
+        check(source != null && File(source).isAbsolute && File(source).isDirectory &&
+            System.getenv("FREEKIT_DESKTOP_COMMIT") == "2ee70e86b17e2feb2fd2bf4842a85c66671eb4c6") {
+            "Explicit pinned HTTPS desktop source required"
+        }
+    }
+}
+
+tasks.register<Test>("testDesktopHttpsIntegration") {
+    val unit = tasks.named<Test>("testDebugUnitTest").get()
+    dependsOn(verifyDesktopHttpsIntegrationInput, unit.testClassesDirs, unit.classpath)
+    testClassesDirs = unit.testClassesDirs
+    classpath = unit.classpath
+    javaLauncher.set(unit.javaLauncher)
+    workingDir = rootProject.projectDir
+    useJUnit()
+    // The owned external desktop/Node fixture must execute for every requested proof.
+    outputs.upToDateWhen { false }
+    outputs.doNotCacheIf("Requires fresh external desktop execution") { true }
+    systemProperty("com.sun.net.ssl.requireCloseNotify", "true")
+    filter { includeTestsMatching("com.httpfreekit.capture.transport.EnrolledCaptureHttpsDesktopTest") }
 }
 
 tasks.register<Test>("testDesktopIntegration") {

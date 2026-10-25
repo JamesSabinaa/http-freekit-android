@@ -15,6 +15,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.security.KeyPairGenerator
 import java.security.KeyStore
+import java.security.MessageDigest
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 import java.security.spec.ECGenParameterSpec
@@ -33,7 +34,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 /** Explicit local fixture IPC. It never sends a private key or retains raw child diagnostics. */
-internal class CaptureOriginNodePeer : AutoCloseable {
+internal class CaptureOriginNodePeer(private val profile: String? = null, private val family: String = "ipv4") : AutoCloseable {
     private val executor = Executors.newFixedThreadPool(2)
     private val events = ArrayBlockingQueue<JsonObject>(4)
     private val failed = AtomicBoolean()
@@ -45,16 +46,22 @@ internal class CaptureOriginNodePeer : AutoCloseable {
     val configuration: CaptureTransportConfiguration
     val credentialExpiresAt: Long
     val endpoint: InetSocketAddress
+    val interceptionCa: X509Certificate?
+    private val desktopCommit = if (profile == null) DESKTOP_COMMIT else C3_DESKTOP_COMMIT
     private var commands = 0
     private var closed = false
 
     init {
+        check(profile == null || profile in setOf("https-h1", "http-upgrade", "wss-h1"))
+        check(family in setOf("ipv4", "ipv6") && (profile != null || family == "ipv4"))
         val desktop = System.getenv("FREEKIT_DESKTOP_ROOT")
         check(desktop != null && Path.of(desktop).isAbsolute && Files.isDirectory(Path.of(desktop))) { "Explicit desktop checkout required" }
         check(Files.isRegularFile(Path.of("tools/transport-spike/gateway-origin-fixture.mjs"))) { "Checked origin fixture required" }
         process = try {
-            ProcessBuilder(System.getenv("FREEKIT_NODE") ?: "node", "tools/transport-spike/gateway-origin-fixture.mjs",
-                "--desktop-root", desktop, "--desktop-commit", DESKTOP_COMMIT).start()
+            val command = mutableListOf(System.getenv("FREEKIT_NODE") ?: "node", "tools/transport-spike/gateway-origin-fixture.mjs",
+                "--desktop-root", desktop, "--desktop-commit", desktopCommit)
+            if (profile != null) command.addAll(listOf("--profile", profile, "--family", family))
+            ProcessBuilder(command).start()
         } catch (_: Exception) { executor.shutdownNow(); throw AssertionError("Origin fixture process unavailable") }
         output = executor.submit {
             try {
@@ -79,29 +86,42 @@ internal class CaptureOriginNodePeer : AutoCloseable {
         }
         try {
             val ready = next("ready")
-            check(ready.keys == setOf("format", "revision", "event", "metadata", "desktopCommit"))
-            check(ready.text("desktopCommit") == DESKTOP_COMMIT)
+            val profileFields = if (profile == null) emptySet() else setOf("profile", "family", "interceptionCaCertificateDer")
+            check(ready.keys == setOf("format", "revision", "event", "metadata", "desktopCommit") + profileFields)
+            check(ready.text("desktopCommit") == desktopCommit)
             metadata = ready.getValue("metadata").jsonObject
             check(metadata.keys == setOf("desktopId", "logicalName", "gatewayCertificateDer", "gatewaySpkiSha256", "enrollmentAuthorityDer",
                 "interceptionCaCertificateSha256", "setupPort", "credentialPort", "webSocketPort"))
+            interceptionCa = if (profile == null) null else {
+                check(ready.text("profile") == profile && ready.text("family") == family)
+                certificate(ready.text("interceptionCaCertificateDer")).also {
+                    check(it.basicConstraints >= 0); it.checkValidity(); it.verify(it.publicKey)
+                    val hash = Base64.getUrlEncoder().withoutPadding().encodeToString(MessageDigest.getInstance("SHA-256").digest(it.encoded))
+                    check(hash == metadata.text("interceptionCaCertificateSha256"))
+                }
+            }
             val port = metadata.getValue("webSocketPort").jsonPrimitive.content.toInt().also { check(it in 1..65535) }
             endpoint = InetSocketAddress(InetAddress.getByAddress(byteArrayOf(127, 0, 0, 1)), port)
             val csr = EnrollmentRequest.create(key.public, key.private)
             command(JsonObject(linkedMapOf("op" to JsonPrimitive("enroll"), "csrDer" to JsonPrimitive(Base64.getUrlEncoder().withoutPadding().encodeToString(csr)))))
             val enrolled = next("enrolled")
-            check(enrolled.keys == setOf("format", "revision", "event", "approved", "metadata"))
+            check(enrolled.keys == setOf("format", "revision", "event", "approved", "metadata") + profileFields)
             check(enrolled.getValue("metadata") == metadata)
+            if (profile != null) check(profileFields.all { enrolled[it] == ready[it] })
             val result = DraftEnrollmentCodec.decode(DraftEnrollmentChannel.STATUS_RESPONSE, enrolled.getValue("approved").toString().toByteArray(Charsets.UTF_8))
             val approved = (result as? DraftEnrollmentDecodeResult.Accepted)?.message as? DraftEnrollmentMessage.Approved
                 ?: error("Invalid approved fixture record")
             check(approved.desktopId == metadata.text("desktopId") && approved.enrollmentAuthorityDer == metadata.text("enrollmentAuthorityDer"))
-            check(approved.capabilities == listOf("tcp-http-origin-connect"))
+            check(approved.capabilities == if (profile == null) listOf("tcp-http-origin-connect") else listOf("tcp-http-origin-connect", "tcp-https-connect"))
+            check(approved.interceptionCaCertificateSha256 == metadata.text("interceptionCaCertificateSha256"))
             val client = certificate(approved.clientCertificateDer); val authority = certificate(approved.enrollmentAuthorityDer)
             check(client.publicKey.encoded.contentEquals(key.public.encoded)); client.verify(authority.publicKey); client.checkValidity()
             credentialExpiresAt = client.notAfter.time
             check(java.time.Instant.parse(approved.credentialExpiresAt).toEpochMilli() == credentialExpiresAt)
             val record = EnrolledCredentialRecord(approved.desktopId, certificate(metadata.text("gatewayCertificateDer")), metadata.text("gatewaySpkiSha256"),
                 metadata.text("logicalName"), listOf(client), authority)
+            if (interceptionCa != null) check(!interceptionCa.encoded.contentEquals(authority.encoded) &&
+                !interceptionCa.encoded.contentEquals(record.gatewayCertificate.encoded))
             val keyStore = KeyStore.getInstance(KeyStore.getDefaultType()).apply {
                 load(null, null); setKeyEntry("client", key.private, CharArray(0), arrayOf(client, authority))
             }
@@ -137,7 +157,8 @@ internal class CaptureOriginNodePeer : AutoCloseable {
             return value
         } catch (failure: Exception) {
             if (failure is InterruptedException) Thread.currentThread().interrupt()
-            throw AssertionError("Invalid origin fixture event")
+            // Keep startup failures inside the constructor's owned cleanup path.
+            throw IllegalStateException("Invalid origin fixture event")
         }
     }
 
@@ -173,18 +194,43 @@ internal class CaptureOriginNodePeer : AutoCloseable {
     private fun abort() {
         // The Node owner joins its own issuer groups before natural exit. Forced
         // leader termination is failure-only and never attests child cleanup.
+        var valid = true
+        var restoreInterrupt = Thread.interrupted()
         try {
             if (process.isAlive) {
                 process.outputStream.write("{\"op\":\"stop\"}\n".toByteArray(Charsets.US_ASCII)); process.outputStream.flush()
             }
         } catch (_: Exception) { /* Preserve the fixed original fixture failure. */ }
-        if (!process.waitFor(20, TimeUnit.SECONDS)) { process.destroyForcibly(); process.waitFor(5, TimeUnit.SECONDS) }
-        executor.shutdownNow(); executor.awaitTermination(5, TimeUnit.SECONDS)
+        try {
+            if (!process.waitFor(20, TimeUnit.SECONDS)) {
+                valid = false; process.destroyForcibly(); process.waitFor(5, TimeUnit.SECONDS)
+            }
+        } catch (_: InterruptedException) {
+            restoreInterrupt = true; valid = false
+            try { process.destroyForcibly(); process.waitFor(5, TimeUnit.SECONDS) }
+            catch (_: Exception) { /* Attempt every independent cleanup below. */ }
+        } catch (_: Exception) { valid = false }
+        for (stream in listOf(process.outputStream, process.inputStream, process.errorStream)) {
+            try { stream.close() } catch (_: Exception) { valid = false }
+        }
+        try { executor.shutdownNow() } catch (_: Exception) { valid = false }
+        val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5)
+        for (future in listOf(output, errors)) {
+            try { future.get(maxOf(1L, deadline - System.nanoTime()), TimeUnit.NANOSECONDS) }
+            catch (_: InterruptedException) { restoreInterrupt = true; valid = false }
+            catch (_: Exception) { valid = false }
+        }
+        try { if (!executor.awaitTermination(maxOf(1L, deadline - System.nanoTime()), TimeUnit.NANOSECONDS)) valid = false }
+        catch (_: InterruptedException) { restoreInterrupt = true; valid = false }
+        if (process.isAlive) valid = false
+        if (restoreInterrupt) Thread.currentThread().interrupt()
+        check(valid) { "Origin fixture startup cleanup failed" }
     }
     override fun toString() = "CaptureOriginNodePeer([REDACTED])"
 
     companion object {
         const val DESKTOP_COMMIT = "fd63f6940226c8e3401a165082dfa9325abaca69"
+        const val C3_DESKTOP_COMMIT = "2ee70e86b17e2feb2fd2bf4842a85c66671eb4c6"
         private fun certificate(value: String): X509Certificate {
             check(Regex("[A-Za-z0-9_-]{1,5462}").matches(value))
             val bytes = Base64.getUrlDecoder().decode(value)

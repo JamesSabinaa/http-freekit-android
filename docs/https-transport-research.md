@@ -1,6 +1,6 @@
 # Authenticated HTTPS transport research
 
-Status: C3 assigned, not verified. This profile extends the isolated [C2 transport proof](capture-transport.md). It uses the existing draft `tcp-https-connect` capability and legacy numeric CONNECT443 preface; it adds no wire fields and does not freeze [protocol v1](protocol.md). Production capture and physical USB acceptance remain open.
+Status: the local C3 H1 checkpoint is implemented and verified below. This profile extends the isolated [C2 transport proof](capture-transport.md). It uses the existing draft `tcp-https-connect` capability and legacy numeric CONNECT443 preface; it adds no wire fields and does not freeze [protocol v1](protocol.md). Android capture, production integration and physical USB acceptance remain open.
 
 ## Desktop ownership
 
@@ -27,3 +27,23 @@ B4 adds actionable help to the existing Setup preview: distinguish gateway ident
 The copyable example uses a debug-variant manifest and debug-only XML/public-CA resource. Explicit `overridePins="false"` preserves Network Security Configuration pin checks; independent library pinning can still reject interception. Preserve an existing application's configuration rather than suggesting a blind replacement. No CA downloader, installer, private-key transfer, target-app modification, permission expansion or success simulation is assigned. HTTPS and traffic remain Not verified after navigation, recreation and unavailable-handler outcomes.
 
 Primary references: [KeyChain CA installation](https://developer.android.com/reference/android/security/KeyChain#createInstallIntent()), [security settings action](https://developer.android.com/reference/android/provider/Settings#ACTION_SECURITY_SETTINGS), and [debug trust and pin behavior](https://developer.android.com/privacy-and-security/security-config).
+
+## Local checks and limits
+
+Desktop implementation `3d8b7b1` passes its 719-case Node 26 baseline. Composed testing then exposed premature HTTP `Connection: close` destruction before late client TLS shutdown and typed END_WRITE. Fix `2ee70e86b17e2feb2fd2bf4842a85c66671eb4c6` preserves the input lifetime on the new owned TLS socket; the identical asynchronous virtual-Duplex reproducer fails before and passes after. All 70 relevant cases pass on both Node 24 and 26 after that fix. The old reviewed C2 checkout remains unchanged and unpublished; the new desktop commits also remain local.
+
+The actual enrolled Node composition passes all six C3 cases on that exact fixed desktop, and all nine C2 regressions on `fd63f694`. Its actual public interception CA is bound to enrollment and differs from gateway, enrollment and origin trust. HTTP Upgrade captures distinguish the parent request from validated child frame records. Both Upgrade cases consume final EOF with zero trailing bytes before shutting down client output. The three-file fixture source `aaf3f89` is integrated here as `720b113`. Earlier failed harness/composition attempts remain separate evidence; none is promoted to success.
+
+The first actual JVM run passes six cases with zero failures, errors or skips in 27.459 seconds: verified IPv4/IPv6 HTTPS, wrong CA and wrong hostname before origin egress, HTTP Upgrade and WSS Upgrade. It preserves the factory's default two-capability requirement and uses actual enrolled mTLS, numeric destination routing, complete deterministic bodies, decrypted capture, echoed text/binary, ping/pong, maintained decoding of the peer's Close1000 and joined cleanup. The task sets `com.sun.net.ssl.requireCloseNotify=true` before JSSE initialization, so application TLS EOF cannot be substituted with a bare TCP close. Wrong-host testing explicitly omits SNI, leaving the expected DNS peer unmatched by the desktop's numeric-IP leaf; both negative cases require a certificate-rejection cause. These are JVM software-key checks, not Android Keystore/VpnService proof.
+
+After setting up the [developer toolchain](development.md), run the explicit local check against the clean reviewed desktop checkout:
+
+```powershell
+$env:FREEKIT_DESKTOP_ROOT = '<absolute path to the local reviewed desktop checkout>'
+$env:FREEKIT_DESKTOP_COMMIT = '2ee70e86b17e2feb2fd2bf4842a85c66671eb4c6'
+./gradlew.bat :capture-transport-research:testDesktopHttpsIntegration
+```
+
+The task requires that exact commit and checks the actual tracked desktop tree independently in the private fixture. Missing or dirty input fails; it is never an optional skip. Every requested proof executes freshly, with up-to-date reuse and build caching disabled for this task. Run it serially with no other owner of controlled loopback ports 80/443. It is excluded from ordinary unit tests and hosted CI, which do not have the unpublished desktop source. The separate C2 task and its original fixed desktop dependency remain intact.
+
+H1-only scope is explicit. Owner-scoped H2, successful Android capture, public-CA retrieval and production credential binding, real TUN/USB, physical-device checks and protocol freeze remain open. Node public readable EOF alone is not independent proof of TLS close_notify; the strict JVM cases provide that separate local gate. No successful Android, emulator cleanup, USB or production result is inferred from these host checks.
