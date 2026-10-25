@@ -63,7 +63,10 @@ host validation followed by a new full matrix. Boundary checkpoint `4192a41`
 fails [host run 40216911800](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40216911800)
 in the JVM directional-EOF test (`Socket is closed`, peer output-stream access
 at line33). Investigate and correct the concrete failure without weakening EOF
-or join assertions; no new matrix has been dispatched.
+or join assertions; no new matrix has been dispatched. Test-only correction
+`5758c20` (integrated `5a589d4`) adds deterministic publication-gap and exception
+retention regressions without production changes. Local JVM/lint execution is
+unavailable (no Java); require independent review and fresh pinned host CI.
 The older audited baseline is `1065657` in
 [run 40177081047](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40177081047).
 New checkpoint CI must be inspected before claiming hosted validation of later code.

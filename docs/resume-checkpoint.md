@@ -85,6 +85,11 @@ The original goal is active and incomplete.
   no edits. Fresh isolated owner aa5382bf319812ad8 owns only
   `CapturePolicyCompletionTest.kt` synchronization/evidence/regression changes.
   Do not skip assertions, bypass worktree restrictions or silently rerun.
+  Owner correction `5758c20` is integrated as `5a589d4`, test file only:
+  deterministic real-half-close/publication gap, bounded flag wait and two
+  primary/peer exception regressions. Static checks pass. JVM/lint execution
+  cannot run locally because JAVA_HOME/java are absent; independent review and
+  fresh pinned hosted compilation/tests are required before another A23 matrix.
 - User explicitly authorized continued publication of validated Android main
   checkpoints and existing hosted validation workflows for this goal without
   asking for every checkpoint. This does not authorize paid infrastructure,

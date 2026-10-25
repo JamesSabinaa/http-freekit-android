@@ -216,7 +216,19 @@ recover the lost primary failure, so this is not proof of its exact assertion.
 The owner is correcting only test synchronization and exception precedence,
 with deterministic publication-gap/primary-secondary failure regressions.
 Production EOF/half-close/join/charge semantics remain unchanged; no assertion
-is skipped and the failed run stays failed.
+is skipped and the failed run stays failed. Isolated test owner committed
+`5758c20`, integrated as `5a589d4`: actual `shutdownOutput` is deterministically
+gated before flag publication, the test witnesses peer EOF in that gap, then
+releases and awaits publication. The existing delayed/full reverse reply,
+no-interrupt and retained-charge/actual-join assertions remain. Two helper
+regressions require primary-failure identity with suppressed peer failure and
+peer-only failure propagation. Only the test file changed; static invariant
+checks and diff whitespace pass. Local Gradle execution is **unrun**: the
+attempted focused JVM/lint command exits immediately because `JAVA_HOME` is not
+set and no `java` command is available. Independent read-only review found no
+concrete correctness or lifecycle defect in the test correction; it also could
+not compile without Java. Fresh pinned host CI must compile and execute these
+tests before another emulator dispatch.
 CA installation, target-app trust and physical USB remain open.
 
 ## Enrolled HTTP-origin factory research
