@@ -47,8 +47,12 @@ test('plain HTTPS evidence is synchronous, fresh, approval-bound and copied; clo
     const filename = path.join(dir, 'interception.pem'), original = fs.readFileSync(filename);
     fs.writeFileSync(filename, 'corrupt', { mode: 0o600 });
     assert.throws(() => owner.interceptionCaEvidence(), error => error.code === 'pairing_unavailable');
-    const other = createCryptoFixture({ utcMillis: Date.now() }).certificate({ ca: true, eku: null });
-    fs.writeFileSync(filename, new X509Certificate(other).toString(), { mode: 0o600 });
+    const now = Math.floor(Date.now() / 1000) * 1000;
+    const other = new X509Certificate(createCryptoFixture({ utcMillis: now }).certificate({ ca: true, eku: null }));
+    assert(other.ca && other.verify(other.publicKey) && other.subject === other.issuer);
+    assert(Date.parse(other.validFrom) <= now && Date.parse(other.validTo) > now);
+    assert.notEqual(createHash('sha256').update(other.raw).digest('base64url'), actual.certificateSha256);
+    fs.writeFileSync(filename, other.toString(), { mode: 0o600 });
     assert.throws(() => owner.interceptionCaEvidence(), error => error.code === 'pairing_unavailable');
     fs.writeFileSync(filename, original, { mode: 0o600 }); evidence(owner.interceptionCaEvidence().material(), actual);
     assert.deepEqual(owner.metadata().material(), metadata); assert.deepEqual(Object.keys(owner.snapshot()), keys);
