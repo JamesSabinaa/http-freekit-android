@@ -13,6 +13,7 @@ on:
           - a22b
           - a22c
           - c2
+          - c5
 
 permissions:
   contents: read
@@ -30,6 +31,8 @@ jobs:
       A22_SUITE: ${{ inputs.suite }}
       C2_DESKTOP_COMMIT: fd63f6940226c8e3401a165082dfa9325abaca69
       C2_DESKTOP_ROOT: ${{ github.workspace }}/build/c2-desktop
+      C5_DESKTOP_COMMIT: 2ee70e86b17e2feb2fd2bf4842a85c66671eb4c6
+      C5_DESKTOP_ROOT: ${{ github.workspace }}/build/c5-desktop
     strategy:
       fail-fast: false
       matrix:
@@ -73,6 +76,14 @@ jobs:
               test -f tools/transport-spike/run-capture-factory-runtime.mjs
               test -f tools/transport-spike/android/src/androidTest/kotlin/com/httpfreekit/interop/DraftCaptureFactoryInteropTest.kt
               ;;
+            c5)
+              report_root=enrolled-tun
+              report_xml=TEST-enrolled-tun-research.xml
+              test -f tools/transport-spike/enrolled-tun-results.mjs
+              test -f tools/transport-spike/run-enrolled-tun-runtime.mjs
+              test -f tools/transport-spike/enrolled-tun-packages.mjs
+              test -f tools/transport-spike/android/src/androidTest/kotlin/com/httpfreekit/interop/DraftEnrolledTunInteropTest.kt
+              ;;
             *) echo '::error::Unknown enrollment research suite.'; exit 1 ;;
           esac
           {
@@ -93,6 +104,15 @@ jobs:
           repository: JamesSabinaa/http-freekit
           ref: ${{ env.C2_DESKTOP_COMMIT }}
           path: build/c2-desktop
+          persist-credentials: false
+      # C5 requires its distinct reviewed HTTPS commit to be separately authorized and public.
+      - name: Check out reviewed desktop dependency for C5
+        if: inputs.suite == 'c5'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: JamesSabinaa/http-freekit
+          ref: ${{ env.C5_DESKTOP_COMMIT }}
+          path: build/c5-desktop
           persist-credentials: false
       - name: Require Linux KVM
         run: |
@@ -132,19 +152,24 @@ jobs:
           fi
       - name: Install locked research dependencies
         run: npm --prefix tools/transport-spike ci --ignore-scripts --no-fund
-      - name: Prepare explicit C2 desktop dependency and low port
-        if: inputs.suite == 'c2'
+      - name: Prepare explicit desktop dependency and low port
+        if: inputs.suite == 'c2' || inputs.suite == 'c5'
         run: |
-          npm --prefix "$C2_DESKTOP_ROOT" ci --omit=dev --ignore-scripts --no-fund
+          if [[ "$A22_SUITE" == c5 ]]; then
+            export FREEKIT_DESKTOP_ROOT="$C5_DESKTOP_ROOT" FREEKIT_DESKTOP_COMMIT="$C5_DESKTOP_COMMIT"
+          else
+            export FREEKIT_DESKTOP_ROOT="$C2_DESKTOP_ROOT" FREEKIT_DESKTOP_COMMIT="$C2_DESKTOP_COMMIT"
+          fi
+          npm --prefix "$FREEKIT_DESKTOP_ROOT" ci --omit=dev --ignore-scripts --no-fund
           sudo sysctl -w net.ipv4.ip_unprivileged_port_start=0
           test "$(sysctl -n net.ipv4.ip_unprivileged_port_start)" = 0
           node --input-type=module <<'JS'
           import { createDesktopOriginBackend } from './tools/transport-spike/gateway-origin-desktop.mjs';
           try {
-            const backend = await createDesktopOriginBackend({ desktopRoot: process.env.C2_DESKTOP_ROOT,
-              desktopCommit: process.env.C2_DESKTOP_COMMIT, authorizeDestination: () => false });
+            const backend = await createDesktopOriginBackend({ desktopRoot: process.env.FREEKIT_DESKTOP_ROOT,
+              desktopCommit: process.env.FREEKIT_DESKTOP_COMMIT, authorizeDestination: () => false });
             await backend.close();
-          } catch { console.error('C2 desktop dependency could not be verified.'); process.exitCode = 1; }
+          } catch { console.error('Desktop research dependency could not be verified.'); process.exitCode = 1; }
           JS
       - name: Prepare private ADB server log
         run: |
@@ -179,7 +204,7 @@ jobs:
           answers="$RUNNER_TEMP/enrollment-sdk-license-answers.txt"
           printf 'y\n%.0s' {1..100} > "$answers"
           sdkmanager --sdk_root="$ANDROID_HOME" --licenses < "$answers" > "$RUNNER_TEMP/enrollment-sdk-licenses.log"
-          sdkmanager --sdk_root="$ANDROID_HOME" 'platforms;android-37.0' 'build-tools;36.0.0' 'platform-tools' 'emulator' "$SYSTEM_IMAGE"
+          sdkmanager --sdk_root="$ANDROID_HOME" 'platforms;android-37.0' 'build-tools;36.0.0' 'ndk;28.2.13676358' 'platform-tools' 'emulator' "$SYSTEM_IMAGE"
           emulator -version
           emulator -accel-check
           adb version
@@ -239,8 +264,8 @@ jobs:
             if ! node --input-type=module <<'JS'
           import fs from 'node:fs';
           const suite = process.env.A22_SUITE;
-          if (!['a22a', 'a22b', 'a22c', 'c2'].includes(suite)) throw Error('invalid_runtime_suite');
-          const root = { a22a: 'enrollment-runtime', a22b: 'enrollment-streaming', a22c: 'enrollment-adversarial', c2: 'capture-factory' }[suite];
+          if (!['a22a', 'a22b', 'a22c', 'c2', 'c5'].includes(suite)) throw Error('invalid_runtime_suite');
+          const root = { a22a: 'enrollment-runtime', a22b: 'enrollment-streaming', a22c: 'enrollment-adversarial', c2: 'capture-factory', c5: 'enrolled-tun' }[suite];
           const number = value => value === 'null' ? null : Number(value);
           const record = {
             format: `http-freekit-${suite}-host-cleanup`, revision: 1,
@@ -308,6 +333,9 @@ jobs:
           if [[ "$A22_SUITE" == c2 ]]; then
             driver_args+=(--desktop-root "$C2_DESKTOP_ROOT" --desktop-commit "$C2_DESKTOP_COMMIT")
             verify_args+=(--desktop-source "$C2_DESKTOP_COMMIT")
+          elif [[ "$A22_SUITE" == c5 ]]; then
+            driver_args+=(--desktop-root "$C5_DESKTOP_ROOT" --desktop-commit "$C5_DESKTOP_COMMIT")
+            verify_args+=(--desktop-source "$C5_DESKTOP_COMMIT")
           fi
           if node tools/transport-spike/run-enrollment-runtime.mjs "${driver_args[@]}"; then driver_status=0; else driver_status=$?; fi
           if cleanup "$driver_status"; then
@@ -320,7 +348,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: ${{ inputs.suite == 'c2' && 'capture-factory' || inputs.suite == 'a22c' && 'enrollment-adversarial' || inputs.suite == 'a22b' && 'enrollment-streaming' || 'enrollment' }}-api-${{ matrix.api }}-results
+          name: ${{ inputs.suite == 'c5' && 'enrolled-tun' || inputs.suite == 'c2' && 'capture-factory' || inputs.suite == 'a22c' && 'enrollment-adversarial' || inputs.suite == 'a22b' && 'enrollment-streaming' || 'enrollment' }}-api-${{ matrix.api }}-results
           retention-days: 7
           if-no-files-found: warn
           path: |
