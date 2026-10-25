@@ -33,7 +33,7 @@ class CapturePolicyCompletionTest {
             socket.getOutputStream().write(reply)
             socket.shutdownOutput()
         }) { receiver ->
-            val factory = StrictFactory(receiver)
+            val factory = StrictFactory(receiver, gateOutputPublication = true)
             policy(factory) { server, egress ->
                 try {
                     client(server).use { socket ->
@@ -41,7 +41,11 @@ class CapturePolicyCompletionTest {
                         socket.shutdownOutput()
                         assertTrue(uploadEnded.await(3, TimeUnit.SECONDS))
                         val connection = factory.connection()
-                        assertTrue(connection.outputEnded.get())
+                        assertTrue(connection.outputShutdownReturned.await(3, TimeUnit.SECONDS))
+                        // Real FIN can reach the peer before the successful half-close is published.
+                        assertFalse(connection.outputEnded.get())
+                        connection.releaseOutputPublication.countDown()
+                        await { connection.outputEnded.get() }
                         assertFalse(connection.closeEntered.await(100, TimeUnit.MILLISECONDS))
                         releaseReply.countDown()
                         assertArrayEquals(reply, socket.getInputStream().readBytes())
@@ -127,21 +131,56 @@ class CapturePolicyCompletionTest {
         }
     }
 
+    @Test(timeout = 20_000) fun peerFailureIsSuppressedWhenActionFails() {
+        val primary = AssertionError("action failure")
+        val secondary = AssertionError("peer failure")
+        val peerFailed = CountDownLatch(1)
+        val thrown = assertThrows(AssertionError::class.java) {
+            peer({
+                try { throw secondary } finally { peerFailed.countDown() }
+            }) { port ->
+                Socket(loopback, port).use {
+                    assertTrue(peerFailed.await(3, TimeUnit.SECONDS))
+                    throw primary
+                }
+            }
+        }
+        assertSame(primary, thrown)
+        assertArrayEquals(arrayOf<Throwable>(secondary), thrown.suppressed)
+    }
+
+    @Test(timeout = 20_000) fun peerFailureStillFailsWhenActionSucceeds() {
+        val secondary = AssertionError("peer failure")
+        val peerFailed = CountDownLatch(1)
+        val thrown = assertThrows(AssertionError::class.java) {
+            peer({
+                try { throw secondary } finally { peerFailed.countDown() }
+            }) { port ->
+                Socket(loopback, port).use { assertTrue(peerFailed.await(3, TimeUnit.SECONDS)) }
+            }
+        }
+        assertSame(secondary, thrown)
+    }
+
     private class StrictFactory(private val receiver: Int, private val gatePositiveRead: Boolean = false,
         private val failClose: Boolean = false, private val throwInterrupt: Boolean = false,
-        private val holdInterruptedRead: Boolean = false) : InterceptedTcpFactory {
+        private val holdInterruptedRead: Boolean = false,
+        private val gateOutputPublication: Boolean = false) : InterceptedTcpFactory {
         private val opened = AtomicReference<StrictConnection>()
         override fun open(originalAddress: InetAddress, originalPort: Int): CaptureTcpConnection {
             check(originalAddress.address.contentEquals(byteArrayOf(127, 0, 0, 1)) && originalPort == 80)
             val socket = Socket()
-            val connection = StrictConnection(socket, gatePositiveRead, failClose, throwInterrupt, holdInterruptedRead)
+            val connection = StrictConnection(socket, gatePositiveRead, failClose, throwInterrupt, holdInterruptedRead, gateOutputPublication)
             check(opened.compareAndSet(null, connection))
             socket.connect(InetSocketAddress(InetAddress.getByAddress(byteArrayOf(127, 0, 0, 1)), receiver), 2000)
             return connection
         }
         fun connection(): StrictConnection = checkNotNull(opened.get())
         fun release() {
-            opened.get()?.let { it.releaseClose.countDown(); it.releasePositiveRead.countDown(); it.releaseInterruptedRead.countDown() }
+            opened.get()?.let {
+                it.releaseClose.countDown(); it.releasePositiveRead.countDown(); it.releaseInterruptedRead.countDown()
+                it.releaseOutputPublication.countDown()
+            }
         }
         override fun close() {
             opened.get()?.let { it.releaseClose.countDown(); it.releasePositiveRead.countDown(); it.socket.close() }
@@ -150,7 +189,9 @@ class CapturePolicyCompletionTest {
 
     private class StrictConnection(val socket: Socket, private val gatePositiveRead: Boolean,
         private val failClose: Boolean, private val throwInterrupt: Boolean,
-        private val holdInterruptedRead: Boolean) : CaptureTcpConnection {
+        private val holdInterruptedRead: Boolean, private val gateOutputPublication: Boolean) : CaptureTcpConnection {
+        val outputShutdownReturned = CountDownLatch(1)
+        val releaseOutputPublication = CountDownLatch(1)
         val inputEnded = AtomicBoolean()
         val outputEnded = AtomicBoolean()
         val reverseAliveAtClose = AtomicBoolean()
@@ -189,7 +230,12 @@ class CapturePolicyCompletionTest {
             }
         }
         override val output get() = socket.getOutputStream()
-        override fun shutdownOutput() { socket.shutdownOutput(); outputEnded.set(true) }
+        override fun shutdownOutput() {
+            socket.shutdownOutput()
+            outputShutdownReturned.countDown()
+            if (gateOutputPublication) check(releaseOutputPublication.await(5, TimeUnit.SECONDS))
+            outputEnded.set(true)
+        }
         override fun interrupt() {
             events.add("interrupt"); socket.close(); interruptEntered.countDown()
             if (throwInterrupt) throw CaptureException("cleanup_failed")
@@ -246,21 +292,33 @@ class CapturePolicyCompletionTest {
     }
 
     private fun peer(exchange: (Socket) -> Unit, action: (Int) -> Unit) {
-        ServerSocket(0, 1, loopback).use { listener ->
-            listener.soTimeout = 3000
-            val accepted = AtomicReference<Socket>()
-            val failure = AtomicReference<Throwable>()
-            val thread = Thread({
-                try { listener.accept().also(accepted::set).use { socket -> socket.soTimeout = 5000; exchange(socket) } }
-                catch (caught: Throwable) { failure.set(caught) }
-            }, "capture-completion-peer").apply { start() }
-            try { action(listener.localPort) }
-            finally {
-                listener.close(); accepted.get()?.close(); thread.join(6000)
-                assertFalse(thread.isAlive)
-                failure.get()?.let { throw it }
-            }
+        val listener = ServerSocket(0, 1, loopback)
+        listener.soTimeout = 3000
+        val accepted = AtomicReference<Socket>()
+        val peerFailure = AtomicReference<Throwable>()
+        val thread = Thread({
+            try { listener.accept().also(accepted::set).use { socket -> socket.soTimeout = 5000; exchange(socket) } }
+            catch (caught: Throwable) { peerFailure.set(caught) }
+        }, "capture-completion-peer").apply { start() }
+        var failure: Throwable? = null
+        fun retain(caught: Throwable) {
+            val primary = failure
+            if (primary == null) failure = caught
+            else if (primary !== caught) primary.addSuppressed(caught)
         }
+        fun cleanup(attempt: () -> Unit) {
+            try { attempt() } catch (caught: Throwable) { retain(caught) }
+        }
+        try { action(listener.localPort) }
+        catch (caught: Throwable) { retain(caught) }
+        finally {
+            cleanup { listener.close() }
+            cleanup { accepted.get()?.close() }
+            cleanup { thread.join(6000) }
+            cleanup { assertFalse("Peer did not join", thread.isAlive) }
+            peerFailure.get()?.let(::retain)
+        }
+        failure?.let { throw it }
     }
 
     private fun await(condition: () -> Boolean) {
