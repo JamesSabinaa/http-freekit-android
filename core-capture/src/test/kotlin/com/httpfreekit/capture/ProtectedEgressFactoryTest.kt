@@ -39,6 +39,45 @@ class ProtectedEgressFactoryTest {
             }
         }
     }
+    @Test fun directAndRawTcpAreOwnedAndConfiguredBeforeProtectWithoutPriorBindOrConnect() {
+        lateinit var factory: ProtectedEgressFactory
+        var protections = 0
+        var bindings = 0
+        val guard = object : CaptureSocketGuard {
+            override fun protect(socket: Socket): Boolean {
+                // This checks public option/order behavior; Android descriptor protection still needs runtime proof.
+                assertTrue(socket.tcpNoDelay)
+                assertFalse(socket.isBound); assertFalse(socket.isConnected)
+                assertEquals(1, factory.ownedCount()); assertEquals(1, factory.budget.count())
+                assertEquals(1, factory.pendingOpens())
+                protections++
+                return true
+            }
+            override fun bind(socket: Socket) {
+                assertEquals(bindings + 1, protections)
+                assertFalse(socket.isBound); assertFalse(socket.isConnected)
+                bindings++
+            }
+            override fun protect(socket: DatagramSocket): Boolean = error("Unexpected UDP socket")
+            override fun bind(socket: DatagramSocket): Unit = error("Unexpected UDP socket")
+        }
+        factory = ProtectedEgressFactory(guard)
+        factory.use {
+            ServerSocket(0, 1, loopback).use { receiver ->
+                receiver.soTimeout = 2000
+                factory.openTcp(loopback, receiver.localPort).use { connection ->
+                    receiver.accept().use { peer -> connection.output.write(7); assertEquals(7, peer.inputStream.read()) }
+                }
+                factory.rawSocketFactory().createSocket().use { socket ->
+                    assertFalse(socket.isBound); assertFalse(socket.isConnected)
+                    socket.connect(InetSocketAddress(loopback, receiver.localPort), 1000)
+                    receiver.accept().use { peer -> socket.outputStream.write(9); assertEquals(9, peer.inputStream.read()) }
+                }
+            }
+            assertEquals(2, protections); assertEquals(2, bindings)
+            assertEquals(0, factory.ownedCount()); assertEquals(0, factory.budget.count())
+        }
+    }
     @Test fun udpIsConnectedOnlyAfterGuardAndPreservesDatagrams() {
         DatagramSocket(InetSocketAddress(loopback, 0)).use { receiver ->
             receiver.soTimeout = 2000

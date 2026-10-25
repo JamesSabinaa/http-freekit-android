@@ -52,11 +52,12 @@ class ProtectedEgressFactory(private val guard: CaptureSocketGuard) : AutoClosea
             try { Tcp(lease).also(sockets::add) } catch (_: Exception) { lease.release(); throw CaptureException("connect_failed") }
         }
         try {
+            // Android Socket() is lazy: create its descriptor without binding or connecting before protect.
+            socket.tcpNoDelay = true
             val protected = try { guard.protect(socket) } catch (_: Exception) { false }
             if (!protected) { refusedProtect.incrementAndGet(); throw CaptureException("protect_failed") }
             try { guard.bind(socket) } catch (_: Exception) { refusedBind.incrementAndGet(); throw CaptureException("bind_failed") }
             if (synchronized(lock) { closed } || socket.isClosed) throw CaptureException("closed")
-            socket.tcpNoDelay = true
             return socket
         } catch (failure: Exception) {
             try { socket.close() } catch (_: Exception) { throw CaptureException("cleanup_failed") }
