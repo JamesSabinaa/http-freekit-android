@@ -123,6 +123,7 @@ export async function startOriginGatewayFixture({ desktopRoot, desktopCommit, op
     metadata: () => enrollment.metadata(), createInvitation: () => enrollment.createInvitation(),
     waitForRegistered: (id, options) => enrollment.waitForRegistered(id, options),
     approve(id) { enrollmentId = id; return enrollment.approve(id); },
+    readResult: id => enrollment.readResult(id),
     async enroll(csr) {
       if (enrollmentId !== null) throw failure();
       const approved = await enrollOriginCsr(enrollment, csr); enrollmentId = approved.material().enrollmentId; return approved;
@@ -153,6 +154,7 @@ export async function startOriginGatewayFixture({ desktopRoot, desktopCommit, op
       releaseTask.catch(() => {}); return releaseTask;
     },
     inspect: () => enrollmentId === null ? null : enrollment.inspectEnrollment(enrollmentId), snapshot, close,
+    inspectEnrollment: id => enrollment.inspectEnrollment(id),
     toJSON: snapshot, [inspect.custom]: () => '[Origin gateway research fixture]',
   });
 }

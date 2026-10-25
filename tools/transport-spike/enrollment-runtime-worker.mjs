@@ -3,7 +3,7 @@ import { fork, execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { inspect } from 'node:util';
 
-const OPS = new Set(['start', 'startStreaming', 'startAdversarial', 'metadata', 'createInvitation', 'waitForRegistered', 'approve', 'reject',
+const OPS = new Set(['start', 'startStreaming', 'startAdversarial', 'startOrigin', 'releaseOriginTail', 'metadata', 'createInvitation', 'waitForRegistered', 'approve', 'reject',
   'revoke', 'readResult', 'inspectEnrollment', 'dropNextApprovedStatus', 'snapshot', 'close']);
 const WIRE_ERRORS = new Set(['invalid_fixture_command', 'fixture_unavailable', 'fixture_timeout',
   'fixture_closing', 'fixture_cleanup_failed', 'invalid_message', 'message_too_large', 'unsupported_version',

@@ -1,10 +1,12 @@
 // Private parent IPC only. No invitation/operator commands are served over HTTP.
 import { startEnrollmentHttpsFixture } from './companion-enrollment-https.mjs';
+import path from 'node:path';
 
 const codes = new Set(['invalid_message', 'message_too_large', 'unsupported_version', 'unsupported_capability', 'authentication_failed', 'invitation_expired', 'invitation_used', 'pairing_limit', 'pairing_unavailable']);
 const schema = {
   start: ['directory', 'mode', 'openssl', 'setupPort', 'credentialPort'], metadata: [], createInvitation: [],
   startAdversarial: ['directory', 'mode', 'openssl', 'setupPort', 'credentialPort'],
+  startOrigin: ['desktopRoot', 'desktopCommit', 'openssl'], releaseOriginTail: [],
   startStreaming: ['directory', 'mode', 'openssl', 'setupPort', 'credentialPort', 'streamPort', 'credentialLifetimeSeconds', 'sessionLifetimeMillis'],
   waitForRegistered: ['invitationId', 'timeoutMillis'], approve: ['enrollmentId'], reject: ['enrollmentId'], revoke: ['enrollmentId'],
   readResult: ['enrollmentId'], inspectEnrollment: ['enrollmentId'], dropNextApprovedStatus: [], snapshot: [], close: [],
@@ -17,6 +19,8 @@ function valid(message) {
   if (!exact(message, ['revision', 'id', 'op', 'args']) || message.revision !== 1 || !Number.isSafeInteger(message.id) || message.id < 1 ||
       !Object.hasOwn(schema, message.op) || !exact(message.args, schema[message.op])) return false;
   const args = message.args;
+  if (message.op === 'startOrigin') return text(args.desktopRoot) && path.isAbsolute(args.desktopRoot) &&
+    full(args.desktopCommit, /^[0-9a-f]{40}$/) && text(args.openssl);
   if (['start', 'startStreaming', 'startAdversarial'].includes(message.op)) {
     const streaming = message.op === 'startStreaming';
     const ports = [args.setupPort, args.credentialPort, ...(streaming ? [args.streamPort] : [])];
@@ -33,7 +37,7 @@ function valid(message) {
   return true;
 }
 
-let fixture, starting, startAccepted = false, closing = false, shutdown;
+let fixture, starting, startAccepted = false, originFixture = false, closing = false, shutdown;
 const pending = new Map(), sends = new Set();
 function send(reply) {
   if (!process.connected || typeof process.send !== 'function' || sends.size >= 4) return Promise.reject(Error('private_ipc_unavailable'));
@@ -56,9 +60,14 @@ function stopWithoutReply() {
   shutdown.catch(() => {}); return shutdown;
 }
 async function invoke(op, args) {
-  if (['start', 'startStreaming', 'startAdversarial'].includes(op)) {
+  if (['start', 'startStreaming', 'startAdversarial', 'startOrigin'].includes(op)) {
     startAccepted = true;
+    originFixture = op === 'startOrigin';
     starting = op === 'start' ? startEnrollmentHttpsFixture(args) : (async () => {
+      if (op === 'startOrigin') {
+        const { startOriginGatewayFixture } = await import('./gateway-origin-fixture.mjs');
+        return startOriginGatewayFixture(args);
+      }
       if (op === 'startStreaming') {
         const { startEnrollmentStreamFixture } = await import('./companion-enrollment-stream.mjs');
         return startEnrollmentStreamFixture(args);
@@ -70,6 +79,10 @@ async function invoke(op, args) {
     return fixture.metadata().material();
   }
   if (!fixture) throw Object.assign(Error(), { code: 'pairing_unavailable' });
+  if (op === 'releaseOriginTail') {
+    if (!originFixture) throw Object.assign(Error(), { code: 'pairing_unavailable' });
+    return fixture.releaseTail();
+  }
   if (op === 'metadata') return fixture.metadata().material();
   if (op === 'createInvitation') return fixture.createInvitation().material();
   if (op === 'waitForRegistered') return (await fixture.waitForRegistered(args.invitationId, { timeoutMillis: args.timeoutMillis })).material();
@@ -91,7 +104,7 @@ function receive(message) {
   if (size > 16384) { refuse('message_too_large'); return; }
   if (!valid(message)) { refuse('invalid_message'); return; }
   if (pending.has(safeId)) { refuse('invalid_message'); return; }
-  const starts = ['start', 'startStreaming', 'startAdversarial'].includes(message.op);
+  const starts = ['start', 'startStreaming', 'startAdversarial', 'startOrigin'].includes(message.op);
   if (closing || (starts ? startAccepted : message.op !== 'close' && !startAccepted)) { refuse('pairing_unavailable'); return; }
   if (message.op !== 'close' && pending.size >= 3) { refuse('pairing_limit'); return; }
   if (message.op === 'close') closing = true;
@@ -111,7 +124,10 @@ function receive(message) {
           result = { initializationAttempted: false, closed: true,
             admissionClosed: true, listenersClosed: true, storeClosed: true, issuerChildrenJoined: true,
             activeSockets: 0, pendingCallbacks: 0, pendingTimers: 0, issuerJobs: 0, signerGroups: 0, workers: 0 };
-        } else result = await fixture.close();
+        } else {
+          result = await fixture.close();
+          if (originFixture) result = originClosed(result);
+        }
         await Promise.allSettled([...pending].filter(([id]) => id !== safeId).map(([, task]) => task));
         await Promise.allSettled([...sends]);
       } else result = await invoke(message.op, message.args);
@@ -126,6 +142,22 @@ function receive(message) {
       }
     }
   })();
+}
+function originClosed(value) {
+  const nested = value?.enrollment, backend = value?.backend;
+  const counts = ['activeSockets', 'pendingCallbacks', 'pendingTimers', 'workers'];
+  if (!nested || !backend || value.privateDirectoryRemoved !== true || value.listenerClosed !== true ||
+      backend.activeOwners !== 0 || backend.admitted !== backend.settled ||
+      counts.some(key => !Number.isSafeInteger(value[key]) || value[key] < 0 || !Number.isSafeInteger(nested[key]) || nested[key] < 0)) {
+    throw Object.assign(Error(), { code: 'pairing_unavailable' });
+  }
+  return { admissionClosed: value.admissionClosed === true && nested.admissionClosed === true && backend.closing === true,
+    listenersClosed: value.listenerClosed === true && nested.listenersClosed === true,
+    storeClosed: nested.storeClosed === true, issuerChildrenJoined: nested.issuerChildrenJoined === true,
+    activeSockets: value.activeSockets + nested.activeSockets, pendingCallbacks: value.pendingCallbacks + nested.pendingCallbacks,
+    pendingTimers: value.pendingTimers + nested.pendingTimers, workers: value.workers + nested.workers,
+    issuerJobs: nested.issuerJobs, signerGroups: nested.signerGroups,
+    privateDirectoryRemoved: value.privateDirectoryRemoved, gatewayStreamComplete: value.gatewayStreamComplete };
 }
 if (typeof process.send !== 'function') process.exitCode = 1;
 else {

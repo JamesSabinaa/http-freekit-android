@@ -128,3 +128,13 @@ The explicit gateway-origin-fixture.local.test.mjs verifies that held boundary,
 full response/END_WRITE, actual public-CSR child IPC and negative command cleanup.
 Run it separately from the other port80 group; neither belongs to the default
 host globs before the desktop publication gate.
+
+The existing private EnrollmentRuntimeWorker also accepts startOrigin with only
+desktopRoot, desktopCommit and openssl, and releaseOriginTail with no arguments.
+Existing metadata/invitation/registration/approval/snapshot/close operations reuse
+the same child and reserved cleanup slot. Legacy starts keep their original
+schemas. Origin close projects the actual origin plus enrollment resource counts,
+issuer/store/listener joins, privateDirectoryRemoved and gatewayStreamComplete;
+it waits all pending business replies before actual child/stdio/group closure.
+The explicit gateway-origin-worker.local.test.mjs exercises this same owner,
+without a second process framework or an optional skipped acceptance path.
