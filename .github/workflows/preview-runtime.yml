@@ -128,32 +128,113 @@ jobs:
           emulator_pid=$!
           fixture_package=com.httpfreekit.fixture.installedapps
           fixture_install_attempted=false
+          # BEGIN B4 OWNED EMULATOR CLEANUP
           cleanup() {
-            local status="$1" cleanup_status=0 command_status
+            local status="$1" cleanup_status=0 enable_status=null uninstall_status=null stop_status=0 wait_status=null attempt
+            local terminated=false joined=false term_attempted=false kill_attempted=false
             trap - EXIT
             if [[ "$fixture_install_attempted" == true ]]; then
-              if timeout 15s adb -s emulator-5554 shell pm enable --user 0 "$fixture_package" >/dev/null 2>&1; then
+              if timeout --kill-after=1s 15s adb -s emulator-5554 shell pm enable --user 0 "$fixture_package" >/dev/null 2>&1; then
+                enable_status=0
                 echo 'Fixture enable cleanup: exit=0'
               else
-                command_status=$?
-                printf '::error::Fixture enable cleanup failed: exit=%s\n' "$command_status"
+                enable_status=$?
+                printf '::error::Fixture enable cleanup failed: exit=%s\n' "$enable_status"
                 cleanup_status=1
               fi
-              if timeout 15s adb -s emulator-5554 uninstall "$fixture_package" >/dev/null 2>&1; then
+              if timeout --kill-after=1s 15s adb -s emulator-5554 uninstall "$fixture_package" >/dev/null 2>&1; then
+                uninstall_status=0
                 echo 'Fixture uninstall cleanup: exit=0'
               else
-                command_status=$?
-                printf '::error::Fixture uninstall cleanup failed: exit=%s\n' "$command_status"
+                uninstall_status=$?
+                printf '::error::Fixture uninstall cleanup failed: exit=%s\n' "$uninstall_status"
                 cleanup_status=1
               fi
             fi
-            adb -s emulator-5554 emu kill >/dev/null 2>&1 || true
-            kill "$emulator_pid" >/dev/null 2>&1 || true
-            wait "$emulator_pid" >/dev/null 2>&1 || true
+            if timeout --kill-after=1s 10s adb -s emulator-5554 emu kill >/dev/null 2>&1; then stop_status=0; else stop_status=$?; fi
+            if kill -0 "$emulator_pid" 2>/dev/null; then
+              term_attempted=true
+              kill -TERM "$emulator_pid" 2>/dev/null || true
+              for ((attempt=0; attempt<50; attempt++)); do
+                if ! kill -0 "$emulator_pid" 2>/dev/null; then break; fi
+                if ! timeout --kill-after=1s 1s sleep 0.1; then cleanup_status=1; break; fi
+              done
+            fi
+            if kill -0 "$emulator_pid" 2>/dev/null; then
+              kill_attempted=true
+              kill -KILL "$emulator_pid" 2>/dev/null || true
+              for ((attempt=0; attempt<50; attempt++)); do
+                if ! kill -0 "$emulator_pid" 2>/dev/null; then break; fi
+                if ! timeout --kill-after=1s 1s sleep 0.1; then cleanup_status=1; break; fi
+              done
+            fi
+            if kill -0 "$emulator_pid" 2>/dev/null; then
+              cleanup_status=1
+            else
+              terminated=true
+              if wait "$emulator_pid" 2>/dev/null; then wait_status=0; else wait_status=$?; fi
+              if (( wait_status != 127 )); then joined=true; else cleanup_status=1; fi
+            fi
+            export PREVIEW_RUNTIME_STATUS="$status" PREVIEW_FIXTURE_ATTEMPTED="$fixture_install_attempted"
+            export PREVIEW_ENABLE_STATUS="$enable_status" PREVIEW_UNINSTALL_STATUS="$uninstall_status" PREVIEW_STOP_STATUS="$stop_status"
+            export PREVIEW_TERM_ATTEMPTED="$term_attempted" PREVIEW_KILL_ATTEMPTED="$kill_attempted"
+            export PREVIEW_TERMINATED="$terminated" PREVIEW_JOINED="$joined" PREVIEW_EMULATOR_STATUS="$wait_status" PREVIEW_CLEANUP_STATUS="$cleanup_status"
+            if ! timeout --kill-after=1s 5s python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import re
+
+          def number(name, nullable=False):
+              value = os.environ[name]
+              if nullable and value == "null":
+                  return None
+              if not re.fullmatch(r"[0-9]{1,3}", value) or int(value) > 255:
+                  raise ValueError()
+              return int(value)
+
+          def boolean(name):
+              value = os.environ[name]
+              if value not in ("true", "false"):
+                  raise ValueError()
+              return value == "true"
+
+          try:
+              source = os.environ["GITHUB_SHA"]
+              api = int(os.environ["API_LEVEL"])
+              if not re.fullmatch(r"[a-f0-9]{40}", source) or api not in (26, 37):
+                  raise ValueError()
+              record = {
+                  "format": "http-freekit-preview-host-cleanup", "revision": 1,
+                  "sourceCommit": source, "api": api, "runtimeExitCode": number("PREVIEW_RUNTIME_STATUS"),
+                  "fixtureInstallAttempted": boolean("PREVIEW_FIXTURE_ATTEMPTED"),
+                  "fixtureEnableExitCode": number("PREVIEW_ENABLE_STATUS", True),
+                  "fixtureUninstallExitCode": number("PREVIEW_UNINSTALL_STATUS", True),
+                  "emulatorStarted": True, "stopAttempted": True, "stopExitCode": number("PREVIEW_STOP_STATUS"),
+                  "termAttempted": boolean("PREVIEW_TERM_ATTEMPTED"), "killAttempted": boolean("PREVIEW_KILL_ATTEMPTED"),
+                  "terminationObserved": boolean("PREVIEW_TERMINATED"), "joinObserved": boolean("PREVIEW_JOINED"),
+                  "emulatorExitCode": number("PREVIEW_EMULATOR_STATUS", True),
+              }
+              fixture_complete = not record["fixtureInstallAttempted"] or (
+                  record["fixtureEnableExitCode"] == 0 and record["fixtureUninstallExitCode"] == 0)
+              record["cleanupComplete"] = number("PREVIEW_CLEANUP_STATUS") == 0 and fixture_complete and (
+                  record["terminationObserved"] and record["joinObserved"] and record["emulatorExitCode"] is not None)
+              record["accepted"] = record["runtimeExitCode"] == 0 and record["fixtureInstallAttempted"] and record["cleanupComplete"]
+              destination = Path("build/reports/preview/host-cleanup.json")
+              destination.parent.mkdir(parents=True, exist_ok=True)
+              destination.write_text(json.dumps(record, sort_keys=True) + "\n", encoding="utf-8")
+          except (OSError, ValueError, KeyError):
+              raise SystemExit("Preview cleanup report unavailable")
+          if not record["accepted"]:
+              raise SystemExit("Preview runtime or owned cleanup did not pass")
+          PY
+            then cleanup_status=1; fi
+            printf 'Owned preview emulator cleanup: stop=%s terminated=%s joined=%s exit=%s\n' "$stop_status" "$terminated" "$joined" "$wait_status"
             if (( status == 0 && cleanup_status != 0 )); then status=1; fi
             return "$status"
           }
           trap 'status=$?; if cleanup "$status"; then exit 0; else exit $?; fi' EXIT
+          # END B4 OWNED EMULATOR CLEANUP
           deadline=$((SECONDS + 600))
           while true; do
             if ! kill -0 "$emulator_pid" 2>/dev/null; then
@@ -287,3 +368,4 @@ jobs:
             app/build/reports/androidTests/connected/
             build/reports/preview/sample-preview-ready-api-*.png
             build/reports/preview/certificate-help-api-*.png
+            build/reports/preview/host-cleanup.json
