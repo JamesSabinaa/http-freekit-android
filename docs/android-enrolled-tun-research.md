@@ -17,6 +17,10 @@ synthetic traffic app's new finite command and focused response-reader tests,
 plus the additive `startTunOrigin` operation in the existing private worker and
 parent wrapper with focused tests. F owns the finite report/driver, alias and
 acknowledgment ownership helpers, and hosted wiring after the C4 host audit.
+After the worker handoff, D also owns only the new fixed research-package owner
+helper and focused tests: verify all three APK signers, install/clean up the two
+extra packages and grant only the fixed research permissions. The existing host
+continues to own the interop test APK; no existing driver ownership is replaced.
 Each source owner uses a separate branch/worktree from
 this committed contract; root alone edits shared docs/build files.
 
