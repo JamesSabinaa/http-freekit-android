@@ -9,7 +9,7 @@ const workflow = fs.readFileSync(new URL('../../.github/workflows/enrollment-run
 const cleanup = /# BEGIN A22 OWNED EMULATOR CLEANUP\n([\s\S]*?)          # END A22 OWNED EMULATOR CLEANUP/.exec(workflow)?.[1].replace(/^ {10}/gm, '');
 assert(cleanup);
 const bash = process.platform === 'win32' ? 'C:/Program Files/Git/bin/bash.exe' : '/bin/bash';
-for (const suite of ['c2', 'c5']) for (const trapped of [true, false]) for (const status of [0, 7, 124]) {
+for (const suite of ['c2', 'c5', 'a23']) for (const trapped of [true, false]) for (const status of [0, 7, 124]) {
   test(`actual ${suite} ${trapped ? 'EXIT' : 'explicit'} cleanup preserves ${status} and joins its owned emulator substitute`, () => {
     const root = fs.realpathSync(os.tmpdir()), directory = fs.mkdtempSync(path.join(root, 'freekit-c2-cleanup-'));
     try {
@@ -21,7 +21,7 @@ for (const suite of ['c2', 'c5']) for (const trapped of [true, false]) for (cons
       const result = spawnSync(bash, ['-c', setup + child + cleanup + end], { cwd: directory, timeout: 15000, encoding: 'utf8', windowsHide: true,
         env: { ...process.env, TEST_DIRECTORY: directory, TEST_NODE_DIRECTORY: path.dirname(process.execPath), TEST_STATUS: String(status), A22_SUITE: suite, GITHUB_SHA: 'a'.repeat(40), API_LEVEL: '26' } });
       assert.equal(result.error, undefined); assert.equal(result.status, status, result.stderr);
-      const reportRoot = suite === 'c2' ? 'capture-factory' : 'enrolled-tun';
+      const reportRoot = { c2: 'capture-factory', c5: 'enrolled-tun', a23: 'interception-ca-runtime' }[suite];
       const value = JSON.parse(fs.readFileSync(path.join(directory, `build/reports/${reportRoot}/host-cleanup.json`)));
       assert.equal(value.format, `http-freekit-${suite}-host-cleanup`); assert.equal(value.driverExitCode, status); assert.equal(value.stopExitCode, status === 0 ? 0 : 9);
       assert(value.terminationObserved && value.joinObserved); assert.notEqual(value.emulatorExitCode, 127);

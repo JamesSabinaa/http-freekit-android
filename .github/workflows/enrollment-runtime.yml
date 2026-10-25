@@ -12,6 +12,7 @@ on:
           - a22a
           - a22b
           - a22c
+          - a23
           - c2
           - c5
 
@@ -69,6 +70,14 @@ jobs:
               test -f tools/transport-spike/run-enrollment-adversarial-runtime.mjs
               test -f tools/transport-spike/android/src/androidTest/kotlin/com/httpfreekit/interop/DraftEnrollmentAdversarialInteropTest.kt
               ;;
+            a23)
+              report_root=interception-ca
+              report_xml=TEST-interception-ca-research.xml
+              test -f tools/transport-spike/interception-ca-runtime-descriptor.mjs
+              test -f tools/transport-spike/interception-ca-runtime-results.mjs
+              test -f tools/transport-spike/run-interception-ca-runtime.mjs
+              test -f tools/transport-spike/android/src/androidTest/kotlin/com/httpfreekit/interop/DraftInterceptionCaInteropTest.kt
+              ;;
             c2)
               report_root=capture-factory
               report_xml=TEST-capture-factory-research.xml
@@ -86,11 +95,13 @@ jobs:
               ;;
             *) echo '::error::Unknown enrollment research suite.'; exit 1 ;;
           esac
+          host_root="$report_root"
+          if [[ "$A22_SUITE" == a23 ]]; then host_root=interception-ca-runtime; fi
           {
             printf 'runtime=tools/transport-spike/android/build/outputs/androidTest-results/%s/debug/runtime.json\n' "$report_root"
             printf 'xml=tools/transport-spike/android/build/outputs/androidTest-results/%s/debug/%s\n' "$report_root" "$report_xml"
             printf 'html=tools/transport-spike/android/build/reports/androidTests/%s/debug/index.html\n' "$report_root"
-            printf 'host=build/reports/%s/host-cleanup.json\n' "$report_root"
+            printf 'host=build/reports/%s/host-cleanup.json\n' "$host_root"
           } >> "$GITHUB_OUTPUT"
           test -f tools/transport-spike/run-enrollment-runtime.mjs
           test -f tools/transport-spike/companion-enrollment-worker.mjs
@@ -264,8 +275,8 @@ jobs:
             if ! node --input-type=module <<'JS'
           import fs from 'node:fs';
           const suite = process.env.A22_SUITE;
-          if (!['a22a', 'a22b', 'a22c', 'c2', 'c5'].includes(suite)) throw Error('invalid_runtime_suite');
-          const root = { a22a: 'enrollment-runtime', a22b: 'enrollment-streaming', a22c: 'enrollment-adversarial', c2: 'capture-factory', c5: 'enrolled-tun' }[suite];
+          if (!['a22a', 'a22b', 'a22c', 'a23', 'c2', 'c5'].includes(suite)) throw Error('invalid_runtime_suite');
+          const root = { a22a: 'enrollment-runtime', a22b: 'enrollment-streaming', a22c: 'enrollment-adversarial', a23: 'interception-ca-runtime', c2: 'capture-factory', c5: 'enrolled-tun' }[suite];
           const number = value => value === 'null' ? null : Number(value);
           const record = {
             format: `http-freekit-${suite}-host-cleanup`, revision: 1,
@@ -328,6 +339,8 @@ jobs:
           # END A22 FRESH AVD CLOCK ALIGNMENT
           align_enrollment_clock
           started="$(date +%s)"
+          # A23's driver installs the owned package before its API 37 ACCESS_LOCAL_NETWORK
+          # declaration/grant/exact-package readback; API 26 records not_required.
           driver_args=(--serial emulator-5554 --suite "$A22_SUITE")
           verify_args=(--source "$GITHUB_SHA" --api "$API_LEVEL" --started "$started" --suite "$A22_SUITE")
           if [[ "$A22_SUITE" == c2 ]]; then
@@ -348,7 +361,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: ${{ inputs.suite == 'c5' && 'enrolled-tun' || inputs.suite == 'c2' && 'capture-factory' || inputs.suite == 'a22c' && 'enrollment-adversarial' || inputs.suite == 'a22b' && 'enrollment-streaming' || 'enrollment' }}-api-${{ matrix.api }}-results
+          name: ${{ inputs.suite == 'a23' && 'interception-ca' || inputs.suite == 'c5' && 'enrolled-tun' || inputs.suite == 'c2' && 'capture-factory' || inputs.suite == 'a22c' && 'enrollment-adversarial' || inputs.suite == 'a22b' && 'enrollment-streaming' || 'enrollment' }}-api-${{ matrix.api }}-results
           retention-days: 7
           if-no-files-found: warn
           path: |

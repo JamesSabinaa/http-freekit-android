@@ -11,6 +11,7 @@ import { enrolledStreamingReportPaths, enrolledStreamingRuntimeXml, enrolledStre
 import { runtime, source, commandResult } from '../../tools/transport-spike/enrollment-runtime-stream-test-fixtures.mjs';
 import { host } from '../../tools/transport-spike/enrollment-runtime-test-fixtures.mjs';
 import { enrollmentAdversarialReportPaths } from '../../tools/transport-spike/enrollment-runtime-adversarial-descriptor.mjs';
+import { interceptionCaRuntimeReportPaths } from '../../tools/transport-spike/interception-ca-runtime-descriptor.mjs';
 const cli = fileURLToPath(new URL('../verify-enrollment-runtime.mjs', import.meta.url));
 const started = Math.floor(Date.now() / 1000) - 1;
 function setup(directory) {
@@ -77,13 +78,16 @@ const workflow = fs.readFileSync(new URL('../../.github/workflows/enrollment-run
 const selection = /id: suite\n        run: \|\n([\s\S]*?)(?=      - name:)/.exec(workflow)?.[1].replace(/^ {10}/gm, '');
 assert.ok(selection);
 const bash = process.platform === 'win32' ? 'C:/Program Files/Git/bin/bash.exe' : '/bin/bash';
-for (const suite of ['a22a', 'a22b', 'a22c', 'c2']) test(`actual workflow ${suite} selection exposes only the four fixed selected paths`, () => temporary(directory => {
+for (const suite of ['a22a', 'a22b', 'a22c', 'a23', 'c2']) test(`actual workflow ${suite} selection exposes only the four fixed selected paths`, () => temporary(directory => {
   const paths = ['tools/transport-spike/run-enrollment-runtime.mjs', 'tools/transport-spike/companion-enrollment-worker.mjs',
     'tools/transport-spike/enrollment-runtime-results.mjs', 'scripts/verify-enrollment-runtime.mjs',
     ...(suite === 'a22b' ? ['tools/transport-spike/enrollment-runtime-stream-results.mjs', 'tools/transport-spike/run-enrolled-stream-runtime.mjs',
       'tools/transport-spike/android/src/androidTest/kotlin/com/httpfreekit/interop/DraftEnrolledStreamingInteropTest.kt'] :
       suite === 'a22c' ? ['tools/transport-spike/enrollment-runtime-adversarial-results.mjs', 'tools/transport-spike/run-enrollment-adversarial-runtime.mjs',
         'tools/transport-spike/android/src/androidTest/kotlin/com/httpfreekit/interop/DraftEnrollmentAdversarialInteropTest.kt'] :
+      suite === 'a23' ? ['tools/transport-spike/interception-ca-runtime-descriptor.mjs',
+        'tools/transport-spike/interception-ca-runtime-results.mjs', 'tools/transport-spike/run-interception-ca-runtime.mjs',
+        'tools/transport-spike/android/src/androidTest/kotlin/com/httpfreekit/interop/DraftInterceptionCaInteropTest.kt'] :
       suite === 'c2' ? ['tools/transport-spike/capture-factory-results.mjs', 'tools/transport-spike/run-capture-factory-runtime.mjs',
         'tools/transport-spike/android/src/androidTest/kotlin/com/httpfreekit/interop/DraftCaptureFactoryInteropTest.kt'] :
       ['tools/transport-spike/android/src/androidTest/kotlin/com/httpfreekit/interop/DraftEnrollmentInteropTest.kt'])];
@@ -94,6 +98,7 @@ for (const suite of ['a22a', 'a22b', 'a22c', 'c2']) test(`actual workflow ${suit
   const lines = fs.readFileSync(output, 'utf8').trim().split('\n'); assert.equal(lines.length, 4);
   if (suite === 'a22b') assert.deepEqual(Object.fromEntries(lines.map(line => line.split('='))), enrolledStreamingReportPaths);
   else if (suite === 'a22c') assert.deepEqual(Object.fromEntries(lines.map(line => line.split('='))), enrollmentAdversarialReportPaths);
+  else if (suite === 'a23') assert.deepEqual(Object.fromEntries(lines.map(line => line.split('='))), interceptionCaRuntimeReportPaths);
   else if (suite === 'c2') assert.deepEqual(Object.fromEntries(lines.map(line => line.split('='))), {
     runtime: 'tools/transport-spike/android/build/outputs/androidTest-results/capture-factory/debug/runtime.json',
     xml: 'tools/transport-spike/android/build/outputs/androidTest-results/capture-factory/debug/TEST-capture-factory-research.xml',
@@ -101,3 +106,21 @@ for (const suite of ['a22a', 'a22b', 'a22c', 'c2']) test(`actual workflow ${suit
   });
   else assert.ok(lines.every(line => line.includes('enrollment-runtime')));
 }));
+
+test('actual A23 invocation keeps desktop arguments and setup out of the owned permission profile', () => {
+  assert.match(workflow, /          - a23\n/);
+  assert.match(workflow, /if: inputs\.suite == 'c2' \|\| inputs\.suite == 'c5'/);
+  for (const name of ['Check out reviewed desktop dependency for C2', 'Check out reviewed desktop dependency for C5']) {
+    const step = workflow.slice(workflow.indexOf('      - name: ' + name));
+    assert.match(step.slice(0, step.indexOf('      - name:', 1)), /if: inputs\.suite == 'c[25]'/);
+  }
+  assert.match(workflow, /API 37 ACCESS_LOCAL_NETWORK\n          # declaration\/grant\/exact-package readback; API 26 records not_required/);
+  const invocation = /          driver_args=\(--serial emulator-5554 --suite "\$A22_SUITE"\)\n([\s\S]*?)          if node tools\/transport-spike\/run-enrollment-runtime\.mjs/.exec(workflow)?.[0];
+  assert.ok(invocation);
+  const script = invocation.slice(0, invocation.lastIndexOf('          if node')).replace(/^ {10}/gm, '') +
+    'printf "driver=%s\\n" "${driver_args[*]}"\nprintf "verify=%s\\n" "${verify_args[*]}"\n';
+  const result = spawnSync(bash, ['-c', 'set -euo pipefail\n' + script], { encoding: 'utf8', timeout: 5000,
+    env: { ...process.env, A22_SUITE: 'a23', GITHUB_SHA: source, API_LEVEL: '37', started: '123' } });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, `driver=--serial emulator-5554 --suite a23\nverify=--source ${source} --api 37 --started 123 --suite a23\n`);
+});
