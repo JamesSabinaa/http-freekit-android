@@ -23,6 +23,14 @@ hostile/stale inputs, mutation isolation and redaction. Host JVM/assembly/lint
 validation remains required; local Java is unavailable. This advances a local
 boundary only and does not unblock C5, CA trust or physical USB.
 
+Owner commit `32c92f7` is integrated as `66eb9da`, exactly four new files and
+25 authored JVM methods. Static scope/whitespace/service-regex checks pass;
+compilation/JVM/assembly/instrumentation/lint remain unrun locally (no Java/SDK).
+Fresh isolated reviewer a3211be739795ffd8 owns read-only review; root retains
+all documentation/integration. Independent review found no concrete defect;
+status: pinned hosted compilation/JVM/assembly/lint validation pending, not
+capture or a checked runtime feature.
+
 A21 enrollment is assigned from 4ca2fea against [draft 0.4](../docs/protocol-enrollment.md) and [decision 0013](../docs/decisions/0013-enrollment-transactions.md). The coordinator owns the normative contract, new Node modules/tests prefixed companion-enrollment-codec and companion-enrollment-authority, and integration in plan/a-foundation. UI owns only new DraftEnrollment-prefixed Kotlin implementation/test files in core-protocol on feat/a21-kotlin-enrollment in its isolated runtime worktree. D owns only new Node crypto/store modules/tests/helpers prefixed companion-enrollment-crypto or companion-enrollment-store on feat/a21-enrollment-store in its isolated carrier worktree. F owns protocol/fixtures/a21-draft-0.4/, new enrollment corpus/comparison scripts/tests, host workflow wiring and current validation documentation on test/f-a21-enrollment in its isolated worktree. The root grammar commit precedes implementation; F's fixture/adapter contract commit precedes corpus adapter coding. Preserve the verified A19/A20 sources, existing invitation parser, core security, app and production desktop files. No new listener or app pairing flow is assigned yet. A21 must deliver actual codec/proof/state/store implementations and real owned-process crash evidence; A22 then integrates live HTTPS/Keystore/approval/save/recovery before production and v1 freeze.
 
 A21 implementation is integrated through 97a810a, with the focused year-boundary follow-up f49fefe. UI's codec/proof and actual adapter are integrated as 3bc8b82/93530c7; D's crypto/store/crash work through 09b4556; F's independent corpus/guards through 784ed12 and CI/gate work as 155f013. Gradle declares the Kotlin report output; deleting it causes an ordinary test run to regenerate the report. Local evidence preceded the hosted acceptance below.

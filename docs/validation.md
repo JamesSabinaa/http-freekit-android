@@ -63,6 +63,30 @@ node scripts/compare-enrollment-conformance.mjs
 
 Assembling the app and security module's Android instrumentation APKs checks compilation only; no UI, Keystore, or device result is inferred from it.
 
+## Installed-selection capture admission
+
+B5 is a callable, inert app-only boundary, not a service start or capture proof.
+Owner `32c92f7`, integrated as `66eb9da`, adds immutable selected-package plans
+and typed finite admission results. It requires installed mode, a successful
+loaded/nonloading/nonfailed catalog, 1..64 exact selected packages present in the
+full inventory, service-compatible syntax and companion exclusion. Search and
+filters cannot prune the admitted selection; failed refreshes cannot reuse a
+retained old inventory as ready. Package sets are copied/unmodifiable and
+plan/result strings redact state. The fixed local policy descriptor is not a
+negotiated capability, active enforcement or HTTPS/USB readiness claim.
+
+Twenty-five new JVM test methods cover reducer-produced and hostile inputs,
+limits, sample collisions, failed/stale catalog state, mutation isolation,
+redaction and fixed policy. Static scope/whitespace/regex-parity checks pass.
+Compilation, JVM execution, app/instrumentation assembly and lint are **unrun
+locally** because Java/JDK and Android SDK are absent; no toolchain was installed.
+Independent read-only correctness/privacy review found no concrete defect and
+confirmed service syntax/count and fixed policy parity. Compilation/runtime
+validation remains pending: fresh pinned host CI is required before acceptance.
+Later capture start still requires platform package revalidation, consent,
+trusted transport and target trust; C5, protocol freeze and physical USB are
+not established by this local boundary.
+
 ## Authenticated public interception CA research
 
 The [A23 contract](protocol-interception-ca.md) is checked by the compiled shared

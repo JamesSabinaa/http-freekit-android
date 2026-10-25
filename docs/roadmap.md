@@ -88,9 +88,12 @@ New checkpoint CI must be inspected before claiming hosted validation of later c
    Forget and joined cleanup pass on both APIs in the same matrix. See the
    [Android CA profile](android-interception-ca-research.md).
 2. **Prove enrolled selected-app capture — next, externally blocked.** Android-only
-   B5 selection admission is being implemented independently: a callable inert,
-   immutable plan from a successful installed catalog, with fail-closed validation
-   and no VPN/network/service wiring. This does not establish capture or unblock
+   B5 selection admission is implemented as owner `32c92f7`, integrated `66eb9da`:
+   a callable inert, immutable plan from a successful installed catalog, with
+   fail-closed validation and 25 authored JVM cases. Independent review found no
+   concrete defect; pinned hosted compilation/JVM/assembly/lint are pending
+   (no local Java/SDK).
+   There is no VPN/network/service wiring; this does not establish capture or unblock
    C5. Obtain and verify the exact already-authorized reviewed desktop source
    (currently absent), then publish that branch and run the prepared factory and
    selected-UID TUN checks against the exact reviewed commits. Preserve original destinations,

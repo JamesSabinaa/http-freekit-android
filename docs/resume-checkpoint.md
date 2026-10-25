@@ -7,8 +7,10 @@ The original goal is active and incomplete.
 
 ## Current Linux resume position
 
-- Android public `main` is `fa2d845086e4157dc6d455775fc541a4fc67071f` before
-  this accepted-A23 evidence checkpoint. **A23 runtime research acceptance passes**
+- Android public `main` is `77129a04b6cf171dbaabc66d29a5e8ffb9fb4f38` before
+  this B5 admission checkpoint. Its host run 40222553649 independently verifies
+  320 JVM methods, 46 CA receipts and nine clean lint XMLs (B5 is not in that run).
+  **A23 runtime research acceptance passes** at `fa2d845`
   on both API26 and API37 in fresh matrix 40222004218; see the evidence below.
   The next milestone is C5 enrolled selected-app capture, blocked on the absent
   exact reviewed desktop source. Production freeze and physical USB remain open.
@@ -105,6 +107,13 @@ The original goal is active and incomplete.
   completes A23 runtime research only, not CA installation/target trust/TUN/USB.
   The exact desktop checkout remains absent at the next-milestone check; no C5
   dispatch or substitute publication is authorized by this acceptance.
+- B5 independent installed-selection admission is integrated as `66eb9da`
+  (owner `32c92f7`): four new app-only plan/admission/test files, 25 authored JVM
+  cases. It is inert and has no service/network/wire integration. Static checks
+  pass; compilation/JVM/assembly/lint are unrun locally (no Java/SDK).
+  Independent review found no concrete defect; pinned hosted validation is
+  pending. Exact desktop/C5, production freeze, target trust and physical USB
+  gates remain unchanged.
 - User explicitly authorized continued publication of validated Android main
   checkpoints and existing hosted validation workflows for this goal without
   asking for every checkpoint. This does not authorize paid infrastructure,
