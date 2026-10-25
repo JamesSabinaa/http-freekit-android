@@ -31,7 +31,7 @@ def fixture(api=26):
     for definition in definitions:
         before, after = dict(previous), dict(previous)
         if definition != V.PERMISSION:
-            counts = [dict(interceptedHttp=1, interceptedOpaque=1, directHttp=1, directOpaque=1, tcpConnections=4), dict(directTcp=1, udp=1, dns=1, udp443=1, tcpConnections=1, udpDatagrams=3), dict(interceptedIpv6=1, tcpConnections=1), dict(heldRequestsClosed=1, interceptedHttp=1, tcpConnections=2), {}][V.CASES.index(definition)]
+            counts = [dict(interceptedHttp=1, interceptedOpaque=1, directHttp=1, directOpaque=1, tcpConnections=4), dict(directTcp=1, udp=1, dns=1, udp443=1, tcpConnections=1, udpDatagrams=3), dict(interceptedIpv6=1, tcpConnections=1), dict(heldRequestsClosed=1, heldCloseRequests=1, interceptedHttp=1, tcpConnections=2), {}][V.CASES.index(definition)]
             for key, count in counts.items():
                 after[key] += count
         invocation = dict(method=definition[0], state='passed', actualStarted=1, actualCompleted=1, terminalCount=1, terminalCode=-1,
@@ -83,6 +83,14 @@ class CaptureRuntimeTests(unittest.TestCase):
         for index, name in [(0, 'dns'), (1, 'interceptedHttp'), (4, 'tcpConnections'), (1, 'udpDatagrams')]:
             runtime, host = fixture(); runtime['methods'][index]['receiversAfter'][name] += 1; self.rejects(runtime, host)
         runtime, host = fixture(); runtime['methods'][1]['receiversBefore']['directHttp'] = 0; self.rejects(runtime, host)
+
+    def test_owned_fixture_cleanup_cannot_replace_actual_close_or_local_stop_join(self):
+        for name, value in [('heldCloseRequests', 0), ('heldCloseRequests', 2), ('heldRequestsClosed', 0), ('heldConnections', 1), ('activeSockets', 1), ('pendingCallbacks', 1), ('timers', 1)]:
+            runtime, host = fixture(); runtime['methods'][3]['receiversAfter'][name] = value; self.rejects(runtime, host)
+        for index in [0, 1, 2, 4]:
+            runtime, host = fixture(); runtime['methods'][index]['receiversAfter']['heldCloseRequests'] += 1; self.rejects(runtime, host)
+        runtime, host = fixture(); runtime['methods'][3]['invocation']['observation']['captureHeldFixtureCleanupJoined'] = 'false'; self.rejects(runtime, host)
+        runtime, host = fixture(); runtime['methods'][3]['invocation']['observation']['captureAllStopsJoined'] = 'false'; self.rejects(runtime, host)
 
     def test_denial_case_is_required_and_cannot_create_factory_or_tun(self):
         for key, value in [('captureFactoryCalls', '1'), ('captureTunEstablished', 'true'), ('captureCaptureOwnerAbsent', 'false')]:

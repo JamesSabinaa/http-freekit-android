@@ -16,6 +16,7 @@ import android.view.InputDevice
 import android.view.MotionEvent
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.httpfreekit.capture.CaptureSnapshot
 import com.httpfreekit.capture.CaptureVpnService
 import java.net.InetAddress
 import java.net.InetSocketAddress
@@ -86,9 +87,9 @@ class CapturePolicyInteropTest {
         check(uid != Process.myUid() && uid != context.packageManager.getApplicationInfo(ResearchCaptureService.INERT, 0).uid) { "separate_uid" }
         withTraffic { traffic ->
             start()
+            phase = "local-auth-baseline"
+            val (admissions, guards) = authenticationBaseline()
             phase = "local-auth-refusal"
-            val admissions = snapshot().capture!!
-            val guards = current().guardObservation()
             rejectLocalAuthentication()
             await { snapshot().capture!!.activeFlows == 0 }
             val afterAuth = snapshot().capture!!
@@ -157,7 +158,7 @@ class CapturePolicyInteropTest {
         withTraffic { traffic ->
             start()
             phase = "held-intercepted-request"
-            receiver.armHeld()
+            val heldBaseline = receiver.armHeld()
             val result = AtomicReference<TrafficClient.Result?>()
             val failure = AtomicReference<Throwable?>()
             val request = Thread({ try { result.set(traffic.command(10)) } catch (caught: Throwable) { failure.set(caught) } }, "capture-held-fixture-command")
@@ -170,7 +171,18 @@ class CapturePolicyInteropTest {
                 check(!request.isAlive && SystemClock.elapsedRealtime() - requestStarted < 4000) { "stop_did_not_interrupt_before_request_deadline" }
                 failure.get()?.let { throw it }
                 check(result.get()?.status in setOf(2, 3)) { "held_request_completed" }
-                await { receiver.snapshot().getValue("heldConnections") == 0 }
+                phase = "held-fixture-cleanup"
+                receiver.closeHeld()
+                await {
+                    val closed = receiver.snapshot()
+                    // The synchronous HTTP snapshot includes exactly its own control socket and timer.
+                    closed.getValue("heldConnections") == 0 && closed.getValue("pendingCallbacks") == 0 &&
+                        closed.getValue("activeSockets") == 1 && closed.getValue("timers") == 1
+                }
+                val closed = receiver.snapshot()
+                check(closed.getValue("heldConnections") == 0 &&
+                    closed.getValue("heldRequestsClosed") - heldBaseline.getValue("heldRequestsClosed") == 1 &&
+                    closed.getValue("heldCloseRequests") - heldBaseline.getValue("heldCloseRequests") == 1) { "receiver_path_count" }
             } catch (caught: Throwable) {
                 if (caught is Exception || caught is AssertionError) observeFailure(caught)
                 throw caught
@@ -183,7 +195,7 @@ class CapturePolicyInteropTest {
             tcp(traffic, 10)
             stop()
         }
-        facts.putAll(mapOf("HeldRequestObserved" to "true", "HeldRequestInterrupted" to "true", "FreshStartForwards" to "true"))
+        facts.putAll(mapOf("HeldRequestObserved" to "true", "HeldRequestInterrupted" to "true", "HeldFixtureCleanupJoined" to "true", "FreshStartForwards" to "true"))
     }
 
     @Test(timeout = 120000)
@@ -347,6 +359,26 @@ class CapturePolicyInteropTest {
             val event = MotionEvent.obtain(down, SystemClock.uptimeMillis(), action, bounds.exactCenterX(), bounds.exactCenterY(), 0)
             event.source = InputDevice.SOURCE_TOUCHSCREEN
             check(instrumentation.uiAutomation.injectInputEvent(event, true)) { "consent_touch" }; event.recycle()
+        }
+    }
+
+    private fun authenticationBaseline(): Pair<CaptureSnapshot, ResearchCaptureService.GuardObservation> {
+        val end = SystemClock.elapsedRealtime() + 15000
+        var candidate: ResearchCaptureService.GuardObservation? = null
+        var since = 0L
+        while (true) {
+            val state = snapshot()
+            val capture = state.capture
+            val guards = current().guardObservation()
+            val now = SystemClock.elapsedRealtime()
+            check(now < end) { "research_condition_timeout" }
+            if (state.state == "active" && state.failureCode == null && state.tunEstablished && state.underlyingNetworkPresent &&
+                state.lifecycleThreadAlive && capture != null && capture.started && capture.nativeRunning && !capture.failed &&
+                !capture.admissionClosed && capture.activeFlows == 0 && capture.ownedSockets == 0 && capture.pendingOpens == 0) {
+                if (candidate != guards) { candidate = guards; since = now }
+                if (now - since >= 250) return capture to guards
+            } else { candidate = null; since = 0L }
+            Thread.sleep(25)
         }
     }
 

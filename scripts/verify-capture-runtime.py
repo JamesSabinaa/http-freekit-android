@@ -13,11 +13,11 @@ CASES = [
     ('selectedTcpUsesTunAndNonselectedUidBypasses', 'uid', 2, dict(SelectedUidStable='true', SelectedHttp='1', SelectedOpaque='1', BypassHttp='1', BypassOpaque='1', MissingAuthRejected='true', WrongAuthRejected='true')),
     ('directTcpUdpDnsAndUdp443Policy', 'direct', 1, dict(DirectTcp='1', Udp='1', Dns='1', Udp443PositiveControl='true', Udp443NoDelivery='true', Udp443DropObserved='true')),
     ('selectedIpv6UsesTun', 'ipv6', 1, dict(OriginalIpv6Validated='true', InterceptedIpv6='1')),
-    ('stopJoinsCaptureAndAllowsFreshStart', 'stop', 2, dict(HeldRequestObserved='true', HeldRequestInterrupted='true', FreshStartForwards='true')),
+    ('stopJoinsCaptureAndAllowsFreshStart', 'stop', 2, dict(HeldRequestObserved='true', HeldRequestInterrupted='true', HeldFixtureCleanupJoined='true', FreshStartForwards='true')),
     ('protectAndBindFailuresFailClosed', 'guards', 2, dict(ProtectRefused='true', BindRefused='true', NoFlowConnect='true', RefusedSocketsClosed='true', RouteRetainedUntilStop='true')),
 ]
 PERMISSION = ('localNetworkDenialPreventsTun', 'permission', 0, {})
-FLOW = ['directHttp', 'directOpaque', 'directTcp', 'udp', 'dns', 'udp443', 'interceptedHttp', 'interceptedOpaque', 'interceptedIpv6', 'heldRequestsClosed', 'tcpConnections', 'udpDatagrams']
+FLOW = ['directHttp', 'directOpaque', 'directTcp', 'udp', 'dns', 'udp443', 'interceptedHttp', 'interceptedOpaque', 'interceptedIpv6', 'heldRequestsClosed', 'heldCloseRequests', 'tcpConnections', 'udpDatagrams']
 CUMULATIVE = FLOW + ['uploadBytes', 'downloadBytes', 'invalidRequests']
 OWNED = ['activeSockets', 'pendingCallbacks', 'timers', 'listeners', 'heldConnections']
 SNAPSHOT = set(CUMULATIVE + OWNED + ['closed'])
@@ -120,8 +120,10 @@ def verify(runtime, host, xml_bytes, source, api):
         before, after = entry['receiversBefore'], entry['receiversAfter']
         snapshot(before, False); snapshot(after, False)
         require(all(before[key] == previous[key] for key in CUMULATIVE))
-        expected_delta = {} if definition == PERMISSION else [dict(interceptedHttp=1, interceptedOpaque=1, directHttp=1, directOpaque=1, tcpConnections=4), dict(directTcp=1, udp=1, dns=1, udp443=1, tcpConnections=1, udpDatagrams=3), dict(interceptedIpv6=1, tcpConnections=1), dict(heldRequestsClosed=1, interceptedHttp=1, tcpConnections=2), {}][CASES.index(definition)]
+        expected_delta = {} if definition == PERMISSION else [dict(interceptedHttp=1, interceptedOpaque=1, directHttp=1, directOpaque=1, tcpConnections=4), dict(directTcp=1, udp=1, dns=1, udp443=1, tcpConnections=1, udpDatagrams=3), dict(interceptedIpv6=1, tcpConnections=1), dict(heldRequestsClosed=1, heldCloseRequests=1, interceptedHttp=1, tcpConnections=2), {}][CASES.index(definition)]
         require(all(after[key] - before[key] == expected_delta.get(key, 0) for key in FLOW) and after['invalidRequests'] == before['invalidRequests'] and after['heldConnections'] == 0)
+        if definition[1] == 'stop':
+            require(all(after[key] == 0 for key in ['activeSockets', 'pendingCallbacks', 'timers']))
         previous = after
     cleanup = runtime['cleanup']
     exact(cleanup, ['forceStopExitCodes', 'uninstallExitCodes', 'packagesAbsent', 'ownedCommandsClosed', 'ownedCommandGroupsClosed', 'receivers'])

@@ -3,14 +3,14 @@ export const captureCases = Object.freeze([
   ['selectedTcpUsesTunAndNonselectedUidBypasses', 'uid', 2, { SelectedUidStable: 'true', SelectedHttp: '1', SelectedOpaque: '1', BypassHttp: '1', BypassOpaque: '1', MissingAuthRejected: 'true', WrongAuthRejected: 'true' }],
   ['directTcpUdpDnsAndUdp443Policy', 'direct', 1, { DirectTcp: '1', Udp: '1', Dns: '1', Udp443PositiveControl: 'true', Udp443NoDelivery: 'true', Udp443DropObserved: 'true' }],
   ['selectedIpv6UsesTun', 'ipv6', 1, { OriginalIpv6Validated: 'true', InterceptedIpv6: '1' }],
-  ['stopJoinsCaptureAndAllowsFreshStart', 'stop', 2, { HeldRequestObserved: 'true', HeldRequestInterrupted: 'true', FreshStartForwards: 'true' }],
+  ['stopJoinsCaptureAndAllowsFreshStart', 'stop', 2, { HeldRequestObserved: 'true', HeldRequestInterrupted: 'true', HeldFixtureCleanupJoined: 'true', FreshStartForwards: 'true' }],
   ['protectAndBindFailuresFailClosed', 'guards', 2, { ProtectRefused: 'true', BindRefused: 'true', NoFlowConnect: 'true', RefusedSocketsClosed: 'true', RouteRetainedUntilStop: 'true' }],
 ].map(([method, scenario, starts, facts]) => Object.freeze({ method, scenario, starts, facts: Object.freeze(facts) })));
 export const capturePermissionCase = Object.freeze({ method: 'localNetworkDenialPreventsTun', scenario: 'permission' });
 export const captureCasesForApi = api => api === 37 ? [capturePermissionCase, ...captureCases] : [...captureCases];
 const definitionFor = method => [capturePermissionCase, ...captureCases].find(value => value.method === method);
-const phases = new Set(['setup', 'platform-consent', 'tun-start', 'local-auth-refusal', 'selected-traffic', 'nonselected-traffic',
-  'udp443-positive-control', 'direct-protocols', 'blocked-udp443', 'selected-ipv6', 'held-intercepted-request', 'fresh-restart-traffic',
+const phases = new Set(['setup', 'platform-consent', 'tun-start', 'local-auth-baseline', 'local-auth-refusal', 'selected-traffic', 'nonselected-traffic',
+  'udp443-positive-control', 'direct-protocols', 'blocked-udp443', 'selected-ipv6', 'held-intercepted-request', 'held-fixture-cleanup', 'fresh-restart-traffic',
   'protect-refusal', 'bind-refusal', 'final-cleanup', 'actual-stop-join', 'local-network-denial']);
 const safeTypes = new Set(['AssertionError', 'IllegalArgumentException', 'IOException', 'IllegalStateException']);
 const problems = new Set(['instrumentation_incomplete', 'instrumentation_failed', 'instrumentation_structure', 'instrumentation_bound',
@@ -156,15 +156,16 @@ export function captureReceiverGate(index, before, after) {
   if (![before, after].every(value => value && value.closed === false && Object.keys(value).sort().join(',') === SNAPSHOT_KEYS &&
       Object.entries(value).every(([name, item]) => name === 'closed' || Number.isSafeInteger(item) && item >= 0 && item <= 10000000))) return false;
   if (delta('invalidRequests') !== 0 || index < -1 || index > 4) return false;
+  if (index === 3 && ['activeSockets', 'pendingCallbacks', 'timers'].some(name => after[name] !== 0)) return false;
   const expected = [{}, { interceptedHttp: 1, interceptedOpaque: 1, directHttp: 1, directOpaque: 1, tcpConnections: 4 },
-    { directTcp: 1, udp: 1, dns: 1, udp443: 1, tcpConnections: 1, udpDatagrams: 3 }, { interceptedIpv6: 1, tcpConnections: 1 }, { heldRequestsClosed: 1, interceptedHttp: 1, tcpConnections: 2 }, {}][index + 1];
-  return ['directHttp', 'directOpaque', 'directTcp', 'udp', 'dns', 'udp443', 'interceptedHttp', 'interceptedOpaque', 'interceptedIpv6', 'heldRequestsClosed', 'tcpConnections', 'udpDatagrams']
+    { directTcp: 1, udp: 1, dns: 1, udp443: 1, tcpConnections: 1, udpDatagrams: 3 }, { interceptedIpv6: 1, tcpConnections: 1 }, { heldRequestsClosed: 1, heldCloseRequests: 1, interceptedHttp: 1, tcpConnections: 2 }, {}][index + 1];
+  return ['directHttp', 'directOpaque', 'directTcp', 'udp', 'dns', 'udp443', 'interceptedHttp', 'interceptedOpaque', 'interceptedIpv6', 'heldRequestsClosed', 'heldCloseRequests', 'tcpConnections', 'udpDatagrams']
     .every(name => delta(name) === (expected[name] ?? 0)) && after.heldConnections === 0;
 }
 
 const SNAPSHOT_KEYS = ['directHttp', 'directOpaque', 'directTcp', 'udp', 'dns', 'udp443', 'interceptedHttp', 'interceptedOpaque', 'interceptedIpv6',
-  'uploadBytes', 'downloadBytes', 'invalidRequests', 'heldRequestsClosed', 'tcpConnections', 'udpDatagrams', 'activeSockets', 'pendingCallbacks', 'timers', 'listeners', 'heldConnections', 'closed'].sort().join(',');
-const CUMULATIVE = ['directHttp', 'directOpaque', 'directTcp', 'udp', 'dns', 'udp443', 'interceptedHttp', 'interceptedOpaque', 'interceptedIpv6', 'uploadBytes', 'downloadBytes', 'invalidRequests', 'heldRequestsClosed', 'tcpConnections', 'udpDatagrams'];
+  'uploadBytes', 'downloadBytes', 'invalidRequests', 'heldRequestsClosed', 'heldCloseRequests', 'tcpConnections', 'udpDatagrams', 'activeSockets', 'pendingCallbacks', 'timers', 'listeners', 'heldConnections', 'closed'].sort().join(',');
+const CUMULATIVE = ['directHttp', 'directOpaque', 'directTcp', 'udp', 'dns', 'udp443', 'interceptedHttp', 'interceptedOpaque', 'interceptedIpv6', 'uploadBytes', 'downloadBytes', 'invalidRequests', 'heldRequestsClosed', 'heldCloseRequests', 'tcpConnections', 'udpDatagrams'];
 export function captureReportAccepted(report) {
   if (!report || report.format !== 'http-freekit-capture-runtime' || report.revision !== 1 ||
       !/^[0-9a-f]{40}$/.test(report.source?.commit ?? '') || report.source.trackedDirty !== false || ![26, 37].includes(report.api) || report.problems?.length !== 0) return false;

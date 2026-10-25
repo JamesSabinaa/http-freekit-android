@@ -8,8 +8,8 @@ internal data class CaptureTrafficOutcome(val command: Int, val status: Int, val
 
 /** Failure-only inert observations; no exception text, identities, destinations or configuration. */
 internal object CaptureFailure {
-    val phases = setOf("setup", "platform-consent", "tun-start", "local-auth-refusal", "selected-traffic", "nonselected-traffic",
-        "udp443-positive-control", "direct-protocols", "blocked-udp443", "selected-ipv6", "held-intercepted-request", "fresh-restart-traffic",
+    val phases = setOf("setup", "platform-consent", "tun-start", "local-auth-baseline", "local-auth-refusal", "selected-traffic", "nonselected-traffic",
+        "udp443-positive-control", "direct-protocols", "blocked-udp443", "selected-ipv6", "held-intercepted-request", "held-fixture-cleanup", "fresh-restart-traffic",
         "protect-refusal", "bind-refusal", "final-cleanup", "actual-stop-join", "local-network-denial")
     private val checks = setOf("separate_uid", "auth_egress", "auth_guard_admission", "uid_changed", "udp_positive_control", "udp_bytes", "dns_bytes",
         "udp443_not_blocked", "policy_drop_not_observed", "ipv6_policy_admission", "stop_did_not_interrupt_before_request_deadline", "held_request_completed",

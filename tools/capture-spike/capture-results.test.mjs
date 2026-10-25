@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { captureCases, capturePermissionCase, captureClass, captureFactExpectations, parseCaptureInvocation, captureReportAccepted, captureXml } from './capture-results.mjs';
+import { captureCases, capturePermissionCase, captureClass, captureFactExpectations, parseCaptureInvocation, captureReceiverGate, captureReportAccepted, captureXml } from './capture-results.mjs';
 
 const command = { code: 0, signal: null, closeObserved: true, processGroupClosed: true, reason: null };
 const identity = method => `INSTRUMENTATION_STATUS: class=${captureClass}\nINSTRUMENTATION_STATUS: test=${method}\n`;
 const facts = (method, values = captureFactExpectations(method, 'true')) => Object.entries(values).map(([key, value]) => `INSTRUMENTATION_STATUS: ${key}=${value}\n`).join('') + 'INSTRUMENTATION_STATUS_CODE: 2\n';
 const output = method => identity(method) + 'INSTRUMENTATION_STATUS_CODE: 1\n' + facts(method) + identity(method) + 'INSTRUMENTATION_STATUS_CODE: 0\nINSTRUMENTATION_CODE: -1\n';
-const snap = () => Object.fromEntries(['directHttp', 'directOpaque', 'directTcp', 'udp', 'dns', 'udp443', 'interceptedHttp', 'interceptedOpaque', 'interceptedIpv6', 'uploadBytes', 'downloadBytes', 'invalidRequests', 'heldRequestsClosed', 'tcpConnections', 'udpDatagrams', 'activeSockets', 'pendingCallbacks', 'timers', 'listeners', 'heldConnections'].map(key => [key, 0]).concat([['closed', false]]));
+const snap = () => Object.fromEntries(['directHttp', 'directOpaque', 'directTcp', 'udp', 'dns', 'udp443', 'interceptedHttp', 'interceptedOpaque', 'interceptedIpv6', 'uploadBytes', 'downloadBytes', 'invalidRequests', 'heldRequestsClosed', 'heldCloseRequests', 'tcpConnections', 'udpDatagrams', 'activeSockets', 'pendingCallbacks', 'timers', 'listeners', 'heldConnections'].map(key => [key, 0]).concat([['closed', false]]));
 const report = () => {
   let previous = snap();
   const result = { format: 'http-freekit-capture-runtime', revision: 1, source: { commit: 'a'.repeat(40), trackedDirty: false }, api: 26,
@@ -14,7 +14,7 @@ const report = () => {
   clock: { deviceEpochSeconds: 1700000000, hostBeforeMillis: 1700000000000, hostAfterMillis: 1700000000010, lowerBoundMillis: -10, upperBoundMillis: 999, roundTripMillis: 10 },
   methods: captureCases.map((item, index) => {
     const before = { ...previous }, after = { ...before };
-    for (const key of [ ['interceptedHttp', 'interceptedOpaque', 'directHttp', 'directOpaque'], ['directTcp', 'udp', 'dns', 'udp443'], ['interceptedIpv6'], ['heldRequestsClosed', 'interceptedHttp'], [] ][index]) after[key]++;
+    for (const key of [ ['interceptedHttp', 'interceptedOpaque', 'directHttp', 'directOpaque'], ['directTcp', 'udp', 'dns', 'udp443'], ['interceptedIpv6'], ['heldRequestsClosed', 'heldCloseRequests', 'interceptedHttp'], [] ][index]) after[key]++;
     after.tcpConnections += [4, 1, 1, 2, 0][index]; after.udpDatagrams += index === 1 ? 3 : 0;
     previous = after;
     return { invocation: parseCaptureInvocation(output(item.method), item.method, command), receiversBefore: before, receiversAfter: after };
@@ -67,6 +67,24 @@ test('independent host path counters cannot be replaced by positive Android fact
     const value = report(); value.methods[index].receiversAfter[field]++;
     assert.equal(captureReportAccepted(value), false);
   }
+});
+
+test('owned held-fixture cleanup is counted once and cannot replace actual closure or local Stop joins', () => {
+  const value = report(), stop = value.methods[3];
+  assert.equal(captureReceiverGate(3, stop.receiversBefore, stop.receiversAfter), true);
+  for (const change of [{ heldCloseRequests: 0 }, { heldCloseRequests: 2 }, { heldRequestsClosed: 0 }, { heldConnections: 1 },
+    { activeSockets: 1 }, { pendingCallbacks: 1 }, { timers: 1 }]) {
+    assert.equal(captureReceiverGate(3, stop.receiversBefore, { ...stop.receiversAfter, ...change }), false);
+  }
+  for (const index of [0, 1, 2, 4]) {
+    const item = value.methods[index];
+    assert.equal(captureReceiverGate(index, item.receiversBefore, { ...item.receiversAfter, heldCloseRequests: item.receiversAfter.heldCloseRequests + 1 }), false);
+  }
+  const unjoined = report();
+  unjoined.methods[3].invocation.observation.captureHeldFixtureCleanupJoined = 'false';
+  assert.equal(captureReportAccepted(unjoined), false);
+  stop.invocation.observation.captureAllStopsJoined = 'false';
+  assert.equal(captureReportAccepted(value), false);
 });
 test('clock quantization, dirty source, absent consent and incomplete cleanup remain rejecting', () => {
   for (const change of [r => { r.clock.upperBoundMillis = 2001; }, r => { r.source.trackedDirty = true; },

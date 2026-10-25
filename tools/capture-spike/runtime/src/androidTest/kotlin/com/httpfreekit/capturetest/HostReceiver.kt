@@ -10,6 +10,7 @@ internal class HostReceiver(private val port: Int) {
     init { require(port in 1024..65535) { "receiver_port" } }
     fun snapshot(): Map<String, Int> = request("/snapshot")
     fun armHeld(): Map<String, Int> = request("/hold-next")
+    fun closeHeld(): Map<String, Int> = request("/close-held")
     private fun request(path: String): Map<String, Int> = Socket().use { socket ->
         socket.soTimeout = 5000
         socket.connect(InetSocketAddress(InetAddress.getByAddress(byteArrayOf(10, 0, 2, 2)), port), 5000)
@@ -39,6 +40,6 @@ internal class HostReceiver(private val port: Int) {
         }
     }
     companion object {
-        private val COUNTERS = setOf("directHttp", "directOpaque", "directTcp", "udp", "dns", "udp443", "interceptedHttp", "interceptedOpaque", "interceptedIpv6", "uploadBytes", "downloadBytes", "invalidRequests", "heldRequestsClosed", "tcpConnections", "udpDatagrams", "activeSockets", "pendingCallbacks", "timers", "listeners", "heldConnections")
+        private val COUNTERS = setOf("directHttp", "directOpaque", "directTcp", "udp", "dns", "udp443", "interceptedHttp", "interceptedOpaque", "interceptedIpv6", "uploadBytes", "downloadBytes", "invalidRequests", "heldRequestsClosed", "heldCloseRequests", "tcpConnections", "udpDatagrams", "activeSockets", "pendingCallbacks", "timers", "listeners", "heldConnections")
     }
 }
