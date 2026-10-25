@@ -58,6 +58,8 @@ abstract class CaptureVpnService : VpnService() {
     @Volatile private var lastCapture: CaptureSnapshot? = null
     @Volatile private var underlying: Network? = null
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
+    private var vpnNetworkOwner: CaptureVpnNetworkOwner? = null
+    private var vpnRemovalObserved = false
     private var startupRequest: CaptureStartRequest? = null
     private var startupEgress: ProtectedEgressFactory? = null
     private var startupTun: ParcelFileDescriptor? = null
@@ -138,8 +140,9 @@ abstract class CaptureVpnService : VpnService() {
                 }
                 null -> if (state == "active") {
                     val current = owner?.snapshot()
-                    if (current == null || current.failed || !current.nativeRunning || current.admissionClosed) {
-                        failureCode = "capture_runtime_failed"
+                    val ioUnavailable = current == null || current.failed || !current.nativeRunning || current.admissionClosed
+                    if (ioUnavailable || vpnNetworkOwner?.isReady() != true) {
+                        if (failureCode == null) failureCode = if (ioUnavailable) "capture_runtime_failed" else "vpn_framework_unavailable"
                         try { owner?.failClosed(); publish("disconnected") }
                         catch (_: Exception) { publish("failed") }
                         try { foreground("Capture disconnected; Stop restores networking") } catch (_: RuntimeException) { }
@@ -193,6 +196,11 @@ abstract class CaptureVpnService : VpnService() {
             check(directoryStat.st_uid == android.os.Process.myUid() && directoryStat.st_mode and 63 == 0) { "Capture configuration directory is not private" }
             val egress = ProtectedEgressFactory(guard).also { startupEgress = it }
             check(!stopQueued.get()) { "Capture start cancelled" }
+            val framework = CaptureVpnNetworkOwner(manager).also { vpnNetworkOwner = it }
+            vpnRemovalObserved = false
+            try { framework.prepare() }
+            catch (failure: Exception) { failureCode = "vpn_framework_unavailable"; throw failure }
+            check(!stopQueued.get()) { "Capture start cancelled" }
             val tun = checkNotNull(builder.establish()) { "VPN interface unavailable" }.also { startupTun = it }
             established = true
             val retained = CaptureEngineSession(tun, selected, request.intercepted, egress,
@@ -215,6 +223,23 @@ abstract class CaptureVpnService : VpnService() {
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN).build(), callback)
             // Registration does not retrospectively deliver a loss before it was registered.
             check(suitable(network)) { "Underlying network lost during start" }
+            try {
+                framework.awaitReady(FRAMEWORK_TIMEOUT_MILLIS) {
+                    if (stopQueued.get() || !networkPresent) true else retained.snapshot().let {
+                        val unavailable = it.failed || !it.nativeRunning || it.admissionClosed
+                        if (unavailable && failureCode == null) failureCode = "capture_runtime_failed"
+                        unavailable
+                    }
+                }
+            } catch (failure: Exception) {
+                if (failureCode == null && !stopQueued.get()) failureCode = "vpn_framework_unavailable"
+                throw failure
+            }
+            if (!framework.isReady()) {
+                if (failureCode == null) failureCode = "vpn_framework_unavailable"
+                error("VPN framework availability changed during start")
+            }
+            check(suitable(network)) { "Underlying network lost before capture became available" }
             if (!stopQueued.get()) { publish("active"); foreground("Capturing selected apps") }
         } catch (_: Exception) { failedStart() }
         catch (_: LinkageError) { failedStart() }
@@ -235,6 +260,7 @@ abstract class CaptureVpnService : VpnService() {
     private fun stopCapture(): Boolean {
         publish("stopping")
         var failed = false
+        var frameworkCleanupFailed = false
         try {
             networkCallback?.let { getSystemService(ConnectivityManager::class.java).unregisterNetworkCallback(it) }
             networkCallback = null
@@ -248,8 +274,20 @@ abstract class CaptureVpnService : VpnService() {
             owner = null
         } catch (_: Exception) { failed = true }
         try { closeStartup() } catch (_: Exception) { failed = true }
+        if (owner == null && startupTun == null) {
+            try {
+                // Framework disappearance is observable; it is not a claim that every netd task joined.
+                if (!vpnRemovalObserved) {
+                    vpnNetworkOwner?.awaitRemoved(FRAMEWORK_TIMEOUT_MILLIS)
+                    vpnRemovalObserved = true
+                }
+                vpnNetworkOwner?.close()
+                vpnNetworkOwner = null
+                vpnRemovalObserved = false
+            } catch (_: Exception) { failed = true; frameworkCleanupFailed = true }
+        }
         if (failed) {
-            failureCode = "capture_cleanup_failed"
+            failureCode = if (frameworkCleanupFailed) "vpn_framework_cleanup_failed" else "capture_cleanup_failed"
             publish("failed")
             try { foreground("Capture cleanup pending; use Stop") } catch (_: RuntimeException) { }
             return false
@@ -297,5 +335,6 @@ abstract class CaptureVpnService : VpnService() {
         const val ACTION_STOP = "com.httpfreekit.capture.STOP"
         private const val CHANNEL = "freekit-capture"
         private const val NOTIFICATION = 6201
+        private const val FRAMEWORK_TIMEOUT_MILLIS = 10_000L
     }
 }
