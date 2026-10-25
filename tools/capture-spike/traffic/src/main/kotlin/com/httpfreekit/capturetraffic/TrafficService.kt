@@ -15,6 +15,8 @@ import android.os.Message
 import android.os.Messenger
 import android.os.RemoteException
 import android.os.SystemClock
+import android.system.ErrnoException
+import android.system.OsConstants
 import java.io.Closeable
 import java.io.IOException
 import java.net.DatagramPacket
@@ -130,7 +132,16 @@ class TrafficService : Service() {
             socket.close()
             return response
         } catch (failure: Exception) {
-            throw TrafficCommandFailure("traffic_tcp_${stage}_${category(failure)}", if (failure is SocketTimeoutException) TIMEOUT else FAILED)
+            val category = TrafficTcpFailure.category(failure) { cause ->
+                if (cause !is ErrnoException) null else when (cause.errno) {
+                    OsConstants.ECONNRESET -> TrafficTcpFailure.Errno.RESET
+                    OsConstants.ECONNABORTED -> TrafficTcpFailure.Errno.ABORTED
+                    OsConstants.EBADF -> TrafficTcpFailure.Errno.BAD_FD
+                    OsConstants.ENOTCONN -> TrafficTcpFailure.Errno.NOT_CONNECTED
+                    else -> null
+                }
+            }
+            throw TrafficCommandFailure("traffic_tcp_${stage}_$category", if (failure is SocketTimeoutException) TIMEOUT else FAILED)
         }
     }
 

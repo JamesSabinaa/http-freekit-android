@@ -40,6 +40,6 @@ internal class HostReceiver(private val port: Int) {
         }
     }
     companion object {
-        private val COUNTERS = setOf("directHttp", "directOpaque", "directTcp", "udp", "dns", "udp443", "interceptedHttp", "interceptedOpaque", "interceptedIpv6", "uploadBytes", "downloadBytes", "invalidRequests", "heldRequestsClosed", "heldCloseRequests", "tcpConnections", "udpDatagrams", "activeSockets", "pendingCallbacks", "timers", "listeners", "heldConnections")
+        private val COUNTERS = setOf("directHttp", "directOpaque", "directTcp", "udp", "dns", "udp443", "interceptedHttp", "interceptedOpaque", "interceptedIpv6", "uploadBytes", "downloadBytes", "invalidRequests", "heldRequestsClosed", "heldCloseRequests", "deadlineCloseRequests", "tcpErrorEvents", "tcpResetErrors", "tcpConnections", "udpDatagrams", "activeSockets", "pendingCallbacks", "timers", "listeners", "heldConnections")
     }
 }

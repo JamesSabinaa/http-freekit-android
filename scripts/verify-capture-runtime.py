@@ -17,7 +17,7 @@ CASES = [
     ('protectAndBindFailuresFailClosed', 'guards', 2, dict(ProtectRefused='true', BindRefused='true', NoFlowConnect='true', RefusedSocketsClosed='true', RouteRetainedUntilStop='true')),
 ]
 PERMISSION = ('localNetworkDenialPreventsTun', 'permission', 0, {})
-FLOW = ['directHttp', 'directOpaque', 'directTcp', 'udp', 'dns', 'udp443', 'interceptedHttp', 'interceptedOpaque', 'interceptedIpv6', 'heldRequestsClosed', 'heldCloseRequests', 'tcpConnections', 'udpDatagrams']
+FLOW = ['directHttp', 'directOpaque', 'directTcp', 'udp', 'dns', 'udp443', 'interceptedHttp', 'interceptedOpaque', 'interceptedIpv6', 'heldRequestsClosed', 'heldCloseRequests', 'deadlineCloseRequests', 'tcpErrorEvents', 'tcpResetErrors', 'tcpConnections', 'udpDatagrams']
 CUMULATIVE = FLOW + ['uploadBytes', 'downloadBytes', 'invalidRequests']
 OWNED = ['activeSockets', 'pendingCallbacks', 'timers', 'listeners', 'heldConnections']
 SNAPSHOT = set(CUMULATIVE + OWNED + ['closed'])
@@ -76,6 +76,7 @@ def snapshot(value, closed):
     require(value['closed'] is closed)
     for key in SNAPSHOT - {'closed'}:
         integer(value[key])
+    require(value['tcpResetErrors'] <= value['tcpErrorEvents'])
 
 
 def verify(runtime, host, xml_bytes, source, api):
@@ -121,7 +122,9 @@ def verify(runtime, host, xml_bytes, source, api):
         snapshot(before, False); snapshot(after, False)
         require(all(before[key] == previous[key] for key in CUMULATIVE))
         expected_delta = {} if definition == PERMISSION else [dict(interceptedHttp=1, interceptedOpaque=1, directHttp=1, directOpaque=1, tcpConnections=4), dict(directTcp=1, udp=1, dns=1, udp443=1, tcpConnections=1, udpDatagrams=3), dict(interceptedIpv6=1, tcpConnections=1), dict(heldRequestsClosed=1, heldCloseRequests=1, interceptedHttp=1, tcpConnections=2), {}][CASES.index(definition)]
-        require(all(after[key] - before[key] == expected_delta.get(key, 0) for key in FLOW) and after['invalidRequests'] == before['invalidRequests'] and after['heldConnections'] == 0)
+        require(all(definition[1] == 'stop' and key in ['tcpErrorEvents', 'tcpResetErrors'] or after[key] - before[key] == expected_delta.get(key, 0) for key in FLOW)
+                and after['invalidRequests'] == before['invalidRequests'] and after['heldConnections'] == 0)
+        require(0 <= after['tcpResetErrors'] - before['tcpResetErrors'] <= after['tcpErrorEvents'] - before['tcpErrorEvents'])
         if definition[1] == 'stop':
             require(all(after[key] == 0 for key in ['activeSockets', 'pendingCallbacks', 'timers']))
         previous = after

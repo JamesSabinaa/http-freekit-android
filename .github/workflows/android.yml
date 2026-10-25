@@ -154,7 +154,7 @@ jobs:
           :transport-interop:testDebugUnitTest :transport-interop:assembleDebugAndroidTest :transport-interop:lintDebug
           :core-capture:testDebugUnitTest :core-capture:lintDebug
           :capture-runtime:testDebugUnitTest :capture-runtime:assembleDebug :capture-runtime:assembleDebugAndroidTest :capture-runtime:lintDebug
-          :capture-traffic:assembleDebug :capture-traffic:lintDebug
+          :capture-traffic:testDebugUnitTest :capture-traffic:assembleDebug :capture-traffic:lintDebug
           :installed-app-fixture:assembleDebug :installed-app-fixture:assembleRelease
           :installed-app-fixture:lintDebug :installed-app-fixture:lintRelease
       - name: Compare complete independent protocol outcomes
@@ -207,6 +207,8 @@ jobs:
             tools/capture-spike/runtime/build/reports/tests/
             tools/capture-spike/runtime/build/test-results/testDebugUnitTest/
             tools/capture-spike/traffic/build/reports/lint-results-debug.*
+            tools/capture-spike/traffic/build/reports/tests/
+            tools/capture-spike/traffic/build/test-results/testDebugUnitTest/
             build/reports/draft-protocol/*-conformance.json
             build/reports/draft-enrollment/*-conformance.json
             build/reports/enrollment-store/crash.json

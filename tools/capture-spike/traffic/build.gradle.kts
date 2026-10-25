@@ -18,3 +18,5 @@ android {
     lint { warningsAsErrors = true }
 }
 kotlin { jvmToolchain(17) }
+
+dependencies { testImplementation(libs.junit) }

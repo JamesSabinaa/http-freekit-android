@@ -6,7 +6,7 @@ const command = { code: 0, signal: null, closeObserved: true, processGroupClosed
 const identity = method => `INSTRUMENTATION_STATUS: class=${captureClass}\nINSTRUMENTATION_STATUS: test=${method}\n`;
 const facts = (method, values = captureFactExpectations(method, 'true')) => Object.entries(values).map(([key, value]) => `INSTRUMENTATION_STATUS: ${key}=${value}\n`).join('') + 'INSTRUMENTATION_STATUS_CODE: 2\n';
 const output = method => identity(method) + 'INSTRUMENTATION_STATUS_CODE: 1\n' + facts(method) + identity(method) + 'INSTRUMENTATION_STATUS_CODE: 0\nINSTRUMENTATION_CODE: -1\n';
-const snap = () => Object.fromEntries(['directHttp', 'directOpaque', 'directTcp', 'udp', 'dns', 'udp443', 'interceptedHttp', 'interceptedOpaque', 'interceptedIpv6', 'uploadBytes', 'downloadBytes', 'invalidRequests', 'heldRequestsClosed', 'heldCloseRequests', 'tcpConnections', 'udpDatagrams', 'activeSockets', 'pendingCallbacks', 'timers', 'listeners', 'heldConnections'].map(key => [key, 0]).concat([['closed', false]]));
+const snap = () => Object.fromEntries(['directHttp', 'directOpaque', 'directTcp', 'udp', 'dns', 'udp443', 'interceptedHttp', 'interceptedOpaque', 'interceptedIpv6', 'uploadBytes', 'downloadBytes', 'invalidRequests', 'heldRequestsClosed', 'heldCloseRequests', 'deadlineCloseRequests', 'tcpErrorEvents', 'tcpResetErrors', 'tcpConnections', 'udpDatagrams', 'activeSockets', 'pendingCallbacks', 'timers', 'listeners', 'heldConnections'].map(key => [key, 0]).concat([['closed', false]]));
 const report = () => {
   let previous = snap();
   const result = { format: 'http-freekit-capture-runtime', revision: 1, source: { commit: 'a'.repeat(40), trackedDirty: false }, api: 26,
@@ -86,6 +86,32 @@ test('owned held-fixture cleanup is counted once and cannot replace actual closu
   stop.invocation.observation.captureAllStopsJoined = 'false';
   assert.equal(captureReportAccepted(value), false);
 });
+test('receiver deadlines always reject and Stop aggregate errors cannot escape their exact scope', () => {
+  for (const field of ['deadlineCloseRequests', 'tcpErrorEvents', 'tcpResetErrors']) {
+    const value = report();
+    for (let index = 0; index < value.methods.length; index++) {
+      const item = value.methods[index];
+      if (index !== 3 || field !== 'tcpErrorEvents')
+        assert.equal(captureReceiverGate(index, item.receiversBefore, { ...item.receiversAfter, [field]: item.receiversAfter[field] + 1 }), false);
+    }
+    value.cleanup.receivers[field]++;
+    assert.equal(captureReportAccepted(value), false);
+  }
+  const interrupted = report();
+  for (const [index, item] of interrupted.methods.entries()) if (index >= 3) {
+    if (index > 3) { item.receiversBefore.tcpErrorEvents = 2; item.receiversBefore.tcpResetErrors = 1; }
+    item.receiversAfter.tcpErrorEvents = 2; item.receiversAfter.tcpResetErrors = 1;
+  }
+  interrupted.cleanup.receivers.tcpErrorEvents = 2; interrupted.cleanup.receivers.tcpResetErrors = 1;
+  assert.equal(captureReportAccepted(interrupted), true);
+  interrupted.methods[4].receiversAfter.tcpErrorEvents++;
+  assert.equal(captureReportAccepted(interrupted), false);
+  const invalid = report(); invalid.methods[3].receiversAfter.tcpResetErrors = 1;
+  assert.equal(captureReportAccepted(invalid), false);
+  const stop = report().methods[3];
+  assert.equal(captureReceiverGate(3, { ...stop.receiversBefore, tcpErrorEvents: 2 },
+    { ...stop.receiversAfter, tcpErrorEvents: 2, tcpResetErrors: 1 }), false);
+});
 test('clock quantization, dirty source, absent consent and incomplete cleanup remain rejecting', () => {
   for (const change of [r => { r.clock.upperBoundMillis = 2001; }, r => { r.source.trackedDirty = true; },
     r => { r.methods[0].invocation.observation.captureConsentDialogObserved = 'false'; }, r => { r.cleanup.ownedCommandGroupsClosed = false; },
@@ -154,12 +180,13 @@ test('digit-containing failure scenarios/phases retain only finite typed facts a
 
 test('route and TCP stages retain only finite failure codes while route success never replaces data proof', () => {
   const method = captureCases[0].method;
-  for (const code of ['traffic_route_vpn_timeout_p1_i1_v0', 'traffic_route_nonvpn_timeout_p1_i1_v1', 'traffic_tcp_eof_protocol']) {
+  for (const code of ['traffic_route_vpn_timeout_p1_i1_v0', 'traffic_route_nonvpn_timeout_p1_i1_v1', 'traffic_tcp_eof_protocol',
+    'traffic_tcp_eof_reset', 'traffic_tcp_eof_aborted', 'traffic_tcp_eof_bad_fd', 'traffic_tcp_eof_not_connected', 'traffic_tcp_eof_closed']) {
     const value = failureFacts('uid', 'route-readiness'); value.captureFailureCheck = code; value.captureFailureTrafficCommand = '17';
     const actual = parseCaptureInvocation(failedOutput(method, 'uid', 'route-readiness', value), method, command);
     assert.equal(actual.state, 'failed'); assert.equal(actual.failure.diagnostic.check, code);
   }
-  for (const code of ['traffic_route_vpn_timeout_p2_i1_v0', 'traffic_tcp_eof_protocol CANARY']) {
+  for (const code of ['traffic_route_vpn_timeout_p2_i1_v0', 'traffic_tcp_eof_protocol CANARY', 'traffic_tcp_read_bad_fd', 'traffic_tcp_eof_reset by peer']) {
     const value = failureFacts('uid', 'route-readiness'); value.captureFailureCheck = code;
     assert.equal(parseCaptureInvocation(failedOutput(method, 'uid', 'route-readiness', value), method, command).failure.diagnostic, null);
   }

@@ -5,7 +5,7 @@ internal data class CaptureTrafficReply(val status: Int, val bytes: Int, val sha
     companion object {
         val failureCodes: Set<String> = buildSet {
             for (stage in listOf("connect", "write", "shutdown", "reply", "eof", "close"))
-                for (category in listOf("timeout", "io", "protocol", "other")) add("traffic_tcp_${stage}_$category")
+                for (category in listOf("timeout", "io", "protocol", "other", "reset", "aborted", "closed", "bad_fd", "not_connected")) add("traffic_tcp_${stage}_$category")
             for (expected in listOf("vpn", "nonvpn")) for (present in 0..1) for (internet in 0..1) for (vpn in 0..1)
                 add("traffic_route_${expected}_timeout_p${present}_i${internet}_v$vpn")
             for (category in listOf("timeout", "io", "protocol", "other")) add("traffic_datagram_$category")

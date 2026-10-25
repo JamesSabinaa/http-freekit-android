@@ -24,7 +24,7 @@ const fixedFailure = (line, scenario) => {
 };
 const failureChecks = new Set(('other route_transition_count separate_uid auth_egress auth_guard_admission uid_changed udp_positive_control udp_bytes dns_bytes udp443_not_blocked policy_drop_not_observed ipv6_policy_admission stop_did_not_interrupt_before_request_deadline held_request_completed fixture_request_not_joined refused_flow_connected refused_socket_not_closed guard_order failure_route_not_retained local_network_permission start_stop_count previous_owner_live tun_not_active lifecycle_not_joined capture_snapshot_missing capture_resources_not_closed foreground_notification_missing platform_consent_missing consent_touch consent_bounds local_listener_missing missing_auth_accepted auth_negotiation wrong_auth_accepted tcp_bytes service_missing research_port receiver_path_count research_condition_timeout traffic_bind traffic_configure traffic_closed traffic_disconnected traffic_reply_timeout traffic_invalid_reply traffic_worker_not_joined traffic_reply_worker_not_joined receiver_port receiver_response_bound receiver_http receiver_length receiver_schema receiver_counter research_configuration research_original_tuple research_factory_closed research_factory_cleanup local_permission_not_denied denied_permission_created_capture denied_stop_not_joined').split(' ').concat(['invalid_request', 'capacity', 'closed', 'protect_failed', 'bind_failed', 'connect_failed', 'cleanup_failed', 'native_failed'].map(value => 'capture_' + value)));
 for (const stage of ['connect', 'write', 'shutdown', 'reply', 'eof', 'close'])
-  for (const category of ['timeout', 'io', 'protocol', 'other']) failureChecks.add(`traffic_tcp_${stage}_${category}`);
+  for (const category of ['timeout', 'io', 'protocol', 'other', 'reset', 'aborted', 'closed', 'bad_fd', 'not_connected']) failureChecks.add(`traffic_tcp_${stage}_${category}`);
 for (const expected of ['vpn', 'nonvpn']) for (const present of [0, 1]) for (const internet of [0, 1]) for (const vpn of [0, 1])
   failureChecks.add(`traffic_route_${expected}_timeout_p${present}_i${internet}_v${vpn}`);
 for (const category of ['timeout', 'io', 'protocol', 'other']) failureChecks.add(`traffic_datagram_${category}`);
@@ -161,17 +161,19 @@ export function captureReceiverGate(index, before, after) {
   const delta = name => after[name] - before[name];
   if (![before, after].every(value => value && value.closed === false && Object.keys(value).sort().join(',') === SNAPSHOT_KEYS &&
       Object.entries(value).every(([name, item]) => name === 'closed' || Number.isSafeInteger(item) && item >= 0 && item <= 10000000))) return false;
+  if ([before, after].some(value => value.tcpResetErrors > value.tcpErrorEvents) || delta('tcpErrorEvents') < 0 ||
+      delta('tcpResetErrors') < 0 || delta('tcpResetErrors') > delta('tcpErrorEvents')) return false;
   if (delta('invalidRequests') !== 0 || index < -1 || index > 4) return false;
   if (index === 3 && ['activeSockets', 'pendingCallbacks', 'timers'].some(name => after[name] !== 0)) return false;
   const expected = [{}, { interceptedHttp: 1, interceptedOpaque: 1, directHttp: 1, directOpaque: 1, tcpConnections: 4 },
     { directTcp: 1, udp: 1, dns: 1, udp443: 1, tcpConnections: 1, udpDatagrams: 3 }, { interceptedIpv6: 1, tcpConnections: 1 }, { heldRequestsClosed: 1, heldCloseRequests: 1, interceptedHttp: 1, tcpConnections: 2 }, {}][index + 1];
-  return ['directHttp', 'directOpaque', 'directTcp', 'udp', 'dns', 'udp443', 'interceptedHttp', 'interceptedOpaque', 'interceptedIpv6', 'heldRequestsClosed', 'heldCloseRequests', 'tcpConnections', 'udpDatagrams']
-    .every(name => delta(name) === (expected[name] ?? 0)) && after.heldConnections === 0;
+  return ['directHttp', 'directOpaque', 'directTcp', 'udp', 'dns', 'udp443', 'interceptedHttp', 'interceptedOpaque', 'interceptedIpv6', 'heldRequestsClosed', 'heldCloseRequests', 'deadlineCloseRequests', 'tcpErrorEvents', 'tcpResetErrors', 'tcpConnections', 'udpDatagrams']
+    .every(name => index === 3 && ['tcpErrorEvents', 'tcpResetErrors'].includes(name) || delta(name) === (expected[name] ?? 0)) && after.heldConnections === 0;
 }
 
 const SNAPSHOT_KEYS = ['directHttp', 'directOpaque', 'directTcp', 'udp', 'dns', 'udp443', 'interceptedHttp', 'interceptedOpaque', 'interceptedIpv6',
-  'uploadBytes', 'downloadBytes', 'invalidRequests', 'heldRequestsClosed', 'heldCloseRequests', 'tcpConnections', 'udpDatagrams', 'activeSockets', 'pendingCallbacks', 'timers', 'listeners', 'heldConnections', 'closed'].sort().join(',');
-const CUMULATIVE = ['directHttp', 'directOpaque', 'directTcp', 'udp', 'dns', 'udp443', 'interceptedHttp', 'interceptedOpaque', 'interceptedIpv6', 'uploadBytes', 'downloadBytes', 'invalidRequests', 'heldRequestsClosed', 'heldCloseRequests', 'tcpConnections', 'udpDatagrams'];
+  'uploadBytes', 'downloadBytes', 'invalidRequests', 'heldRequestsClosed', 'heldCloseRequests', 'deadlineCloseRequests', 'tcpErrorEvents', 'tcpResetErrors', 'tcpConnections', 'udpDatagrams', 'activeSockets', 'pendingCallbacks', 'timers', 'listeners', 'heldConnections', 'closed'].sort().join(',');
+const CUMULATIVE = ['directHttp', 'directOpaque', 'directTcp', 'udp', 'dns', 'udp443', 'interceptedHttp', 'interceptedOpaque', 'interceptedIpv6', 'uploadBytes', 'downloadBytes', 'invalidRequests', 'heldRequestsClosed', 'heldCloseRequests', 'deadlineCloseRequests', 'tcpErrorEvents', 'tcpResetErrors', 'tcpConnections', 'udpDatagrams'];
 export function captureReportAccepted(report) {
   if (!report || report.format !== 'http-freekit-capture-runtime' || report.revision !== 1 ||
       !/^[0-9a-f]{40}$/.test(report.source?.commit ?? '') || report.source.trackedDirty !== false || ![26, 37].includes(report.api) || report.problems?.length !== 0) return false;

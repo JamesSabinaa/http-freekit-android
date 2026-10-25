@@ -19,6 +19,8 @@ class CaptureTrafficReplyTest {
     @Test fun failedDataAndSuccessfulRepliesCannotExchangeFailureOrRouteEvidence() {
         assertNotNull(CaptureTrafficReply.decode(10, 0, keys, 32787, "a".repeat(64), null))
         assertNotNull(CaptureTrafficReply.decode(10, 3, keys, 0, null, "traffic_tcp_eof_protocol"))
+        for (category in listOf("reset", "aborted", "closed", "bad_fd", "not_connected"))
+            assertNotNull(CaptureTrafficReply.decode(10, 3, keys, 0, null, "traffic_tcp_eof_$category"))
         assertNotNull(CaptureTrafficReply.decode(15, 2, keys, 0, null, "traffic_datagram_timeout"))
         assertNull(CaptureTrafficReply.decode(10, 0, keys, 32787, "a".repeat(64), "traffic_tcp_write_io"))
         assertNull(CaptureTrafficReply.decode(10, 3, keys, 0, null, "traffic_route_unavailable"))
@@ -27,7 +29,7 @@ class CaptureTrafficReplyTest {
 
     @Test fun unknownMaterialAndWrongTypesAreRejectedWithoutStringifyingProviderObjects() {
         val foreign = object { override fun toString(): String = error("CANARY_PROVIDER") }
-        for (code in listOf("traffic_tcp_reply_io CANARY", "traffic_route_vpn_timeout_p2_i1_v0", foreign))
+        for (code in listOf("traffic_tcp_reply_io CANARY", "traffic_route_vpn_timeout_p2_i1_v0", "traffic_tcp_eof_Connection reset", foreign))
             assertNull(CaptureTrafficReply.decode(10, 3, keys, 0, null, code))
         assertNull(CaptureTrafficReply.decode(10, 0, keys, true, null, null))
         assertNull(CaptureTrafficReply.decode(10, 0, keys, 0, foreign, null))

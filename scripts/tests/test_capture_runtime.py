@@ -92,6 +92,22 @@ class CaptureRuntimeTests(unittest.TestCase):
         runtime, host = fixture(); runtime['methods'][3]['invocation']['observation']['captureHeldFixtureCleanupJoined'] = 'false'; self.rejects(runtime, host)
         runtime, host = fixture(); runtime['methods'][3]['invocation']['observation']['captureAllStopsJoined'] = 'false'; self.rejects(runtime, host)
 
+    def test_receiver_deadlines_and_tcp_errors_keep_exact_stop_scope(self):
+        for field in ['deadlineCloseRequests', 'tcpErrorEvents', 'tcpResetErrors']:
+            for index in [0, 1, 2, 4] if field == 'tcpErrorEvents' else range(5):
+                runtime, host = fixture(); runtime['methods'][index]['receiversAfter'][field] += 1; self.rejects(runtime, host)
+            runtime, host = fixture(); runtime['cleanup']['receivers'][field] += 1; self.rejects(runtime, host)
+        runtime, host = fixture()
+        for index, entry in enumerate(runtime['methods']):
+            if index >= 3:
+                if index > 3:
+                    entry['receiversBefore'].update(tcpErrorEvents=2, tcpResetErrors=1)
+                entry['receiversAfter'].update(tcpErrorEvents=2, tcpResetErrors=1)
+        runtime['cleanup']['receivers'].update(tcpErrorEvents=2, tcpResetErrors=1)
+        self.assertEqual(V.verify(runtime, host, render(runtime), SOURCE, 26), 5)
+        runtime['methods'][4]['receiversAfter']['tcpErrorEvents'] += 1
+        self.rejects(runtime, host)
+
     def test_denial_case_is_required_and_cannot_create_factory_or_tun(self):
         for key, value in [('captureFactoryCalls', '1'), ('captureTunEstablished', 'true'), ('captureCaptureOwnerAbsent', 'false')]:
             runtime, host = fixture(37); runtime['methods'][0]['invocation']['observation'][key] = value; self.rejects(runtime, host)
