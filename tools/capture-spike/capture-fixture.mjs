@@ -17,7 +17,7 @@ export async function createCaptureFixture({ ports: requested = { http: 80, opaq
   if (Object.keys(requested).sort().join(',') !== 'http,opaque,quic,udp' ||
       Object.values(requested).some(port => !Number.isInteger(port) || port < 0 || port > 65535)) throw Error('invalid_capture_ports');
   const counters = Object.fromEntries(['directHttp', 'directOpaque', 'directTcp', 'udp', 'dns', 'udp443',
-    'interceptedHttp', 'interceptedOpaque', 'interceptedIpv6', 'uploadBytes', 'downloadBytes', 'invalidRequests', 'heldRequestsClosed'].map(key => [key, 0]));
+    'interceptedHttp', 'interceptedOpaque', 'interceptedIpv6', 'uploadBytes', 'downloadBytes', 'invalidRequests', 'heldRequestsClosed', 'tcpConnections', 'udpDatagrams'].map(key => [key, 0]));
   const sockets = new Map(), timers = new Set(), socketTimers = new Map(), listeners = [];
   let pendingCallbacks = 0, closed = false, closing, holdNext = false;
   const held = new Set();
@@ -34,6 +34,7 @@ export async function createCaptureFixture({ ports: requested = { http: 80, opaq
     return joined;
   };
   const receive = (socket, kind) => {
+    counters.tcpConnections++;
     own(socket);
     let received = Buffer.alloc(0), valid = false, writeCompleted = false, intentionallyHeld = false, expected;
     socket.on('data', chunk => {
@@ -79,6 +80,7 @@ export async function createCaptureFixture({ ports: requested = { http: 80, opaq
   const datagram = async (kind, port) => {
     const server = dgram.createSocket('udp4');
     server.on('message', (message, remote) => {
+      counters.udpDatagrams++;
       let response, selected = kind;
       if (kind === 'udp') {
         if (message.equals(dns)) { response = dnsReply; selected = 'dns'; }

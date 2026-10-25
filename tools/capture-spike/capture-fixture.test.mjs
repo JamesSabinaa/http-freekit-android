@@ -107,3 +107,16 @@ test('finite held-response gate observes real request EOF and Stop closes the ac
     const closed = once(socket, 'close'); socket.destroy(); await closed;
   } finally { socket?.destroy(); assert.equal((await fixture.close()).heldConnections, 0); }
 });
+
+test('a real TCP reset before payload cannot disappear into zero completed-message counters', { timeout: 10000 }, async () => {
+  const fixture = await createCaptureFixture({ ports });
+  try {
+    const socket = net.connect(fixture.ports.direct, '127.0.0.1'); await once(socket, 'connect');
+    const closed = once(socket, 'close'); socket.resetAndDestroy(); await closed;
+    const deadline = performance.now() + 2000;
+    while (fixture.snapshot().activeSockets && performance.now() < deadline) await new Promise(resolve => setTimeout(resolve, 10));
+    assert.equal(fixture.snapshot().tcpConnections, 1);
+    assert.equal(fixture.snapshot().directTcp, 0);
+    assert.equal(fixture.snapshot().activeSockets, 0);
+  } finally { await fixture.close(); }
+});
