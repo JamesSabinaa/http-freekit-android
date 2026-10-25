@@ -76,3 +76,48 @@ origin egress, and durable registry revocation with attachment/model joins. They
 use software test keys, with no Android/Keystore/protect/TUN inference. The
 [Android proof contract](../../docs/android-capture-factory-runtime.md) specifies
 the separate actual device gate.
+
+## Private public-CSR fixture
+
+The explicit local gateway-origin-fixture.mjs starts the real enrollment gateway,
+that pinned desktop attachment and the fixed127.0.0.2:80 origin. Arguments are
+exactly --desktop-root ABSOLUTE_PATH --desktop-commit COMMIT_SHA (as separate values).
+OPENSSL_BIN selects the checked local OpenSSL3 executable. Its90-second lifetime
+and fixed origin admission refuse collisions; it does not replace a listener.
+
+The JVM retains its software P256 private key and sends only its real CSR through
+private stdin. Lines are compact ASCII JSON followed by LF, at most8192 bytes;
+total input is at most32768 bytes and eight commands. Unknown, duplicate,
+noncanonical or extra fields fail with a static record. Operations are:
+
+| Input | Explicit stdout result |
+| --- | --- |
+| Startup | event ready, public nine-field metadata and exact desktopCommit |
+| {"op":"enroll","csrDer":"canonical-base64url"} once | event enrolled, actual approved DTO and public metadata |
+| {"op":"release"} once | event released after the actual END_WRITE/tail boundary |
+| {"op":"snapshot"} | event snapshot with bounded primitive counts/flags/hashes |
+| {"op":"stop"} | event closed with actual final joins and private-directory removal |
+
+Every envelope contains format http-freekit-origin-gateway-fixture and revision1.
+Enrollment is the actual explicit local approval/issuer/registry path; its
+capability intersection is new-only. Public DER/approved material is an explicit
+private IPC result, never a default log or artifact. Stdout and stderr must remain
+private in its caller. No private signing key leaves the JVM or enters arguments.
+
+The origin accepts only the exact Android contract request/body. It writes a4096
+response-body prefix, then holds the remaining tail. Release has a five-second
+observational bound and requires the actual gateway client END_WRITE, empty
+pending ingress/write, and actual desktop-facing drained read EOF. Its poll task
+and timer are owned and joined. No phase or write callback is remote consumption
+proof. Response body bytes/hash and strict application EOF remain independently
+checked. Ordinary snapshot inspection contains no identity, endpoint, path, key,
+header, certificate or traffic body.
+
+The one gatewayStreamComplete boolean additionally requires the original actual
+stream phase complete, resourcesReleased true and streamLease false; it is an
+inert projection after actual normal-close and resource joins, not a close request.
+
+The explicit gateway-origin-fixture.local.test.mjs verifies that held boundary,
+full response/END_WRITE, actual public-CSR child IPC and negative command cleanup.
+Run it separately from the other port80 group; neither belongs to the default
+host globs before the desktop publication gate.

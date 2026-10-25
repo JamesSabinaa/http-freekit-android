@@ -45,13 +45,14 @@ export async function createDesktopOriginBackend({ desktopRoot, desktopCommit, a
     ({ ProxyServer } = await import(pathToFileURL(filename).href));
     if (typeof ProxyServer !== 'function' || typeof ProxyServer.prototype.attachTrustedHttpOriginConnectStream !== 'function') throw 0;
   } catch { throw safeError('desktop_origin_configuration'); }
-  let closing = false, closeTask, admitted = 0, settled = 0, captures = 0;
+  let closing = false, closeTask, admitted = 0, settled = 0, captures = 0, clientEndWrites = 0;
   const proxy = new ProxyServer(null, { onRequest: value => { captures++; onCapture(value); } });
   const owners = new Set();
   const factory = context => {
     if (closing || context.proxyMode !== HTTP_ORIGIN_PROXY_MODE || !context.negotiatedCapabilities.includes(HTTP_ORIGIN_CAPABILITY) || context.admissionAllowed() !== true) throw safeError('desktop_origin_rejected');
     const [transport, peer] = duplexPair({ allowHalfOpen: true, readableHighWaterMark: 4096, writableHighWaterMark: 4096 });
     transport.on('error', () => {}); peer.on('error', () => {});
+    peer.once('end', () => { clientEndWrites++; }); // Actual drained desktop-facing read EOF.
     const transportCallbacks = ownCallbacks(transport), peerCallbacks = ownCallbacks(peer);
     const transportClosed = observeClose(transport), peerClosed = observeClose(peer), abort = new AbortController();
     let attached = null, started = false, sealed = false, ownerClose, resolveStarted;
@@ -92,7 +93,7 @@ export async function createDesktopOriginBackend({ desktopRoot, desktopCommit, a
     admitted++; owners.add(owner); closed.catch(() => {});
     return owner;
   };
-  const snapshot = () => Object.freeze({ closing, activeOwners: owners.size, admitted, settled, captures });
+  const snapshot = () => Object.freeze({ closing, activeOwners: owners.size, admitted, settled, captures, clientEndWrites });
   return Object.freeze({ factory, snapshot,
     close() {
       if (closeTask) return closeTask;

@@ -13,6 +13,7 @@ class EnrollmentOriginFixture {
   constructor(enrollment) { this.#enrollment = enrollment; this.#stream = enrollment.authenticatedService(); Object.freeze(this); }
   metadata() { return enrollmentPublicSnapshot({ ...this.#enrollment.metadata().material(), webSocketPort: this.#stream.port }); }
   createInvitation() { return this.#enrollment.createInvitation(); }
+  waitForRegistered(id, options) { return this.#enrollment.waitForRegistered(id, options); }
   approve(id) { return this.#enrollment.approve(id); }
   revoke(id) { return this.#enrollment.revoke(id); }
   readResult(id) { return this.#enrollment.readResult(id); }
