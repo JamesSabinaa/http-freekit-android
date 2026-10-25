@@ -3,8 +3,8 @@
 Updated 25 October 2026. Implementation has resumed from the [checkpoint](resume-checkpoint.md).
 The full scope remains the [implementation plan](implementation-plan.md). The
 recorded Windows F worktree and ignored backup are absent in this Linux checkout;
-the eight uncommitted A23b files have not been recovered here. Their assigned
-owner is reconstructing the package from checked source in an isolated worktree.
+the eight uncommitted A23b files were reconstructed from checked source in an
+isolated worktree, not recovered from the original Windows worktree.
 
 ## Current position
 
@@ -19,23 +19,30 @@ and isolated research tests; those tests do not establish a finished capture app
 | Identity and enrollment | Keystore identity, scoped TLS, approval, saved credentials, restart/recovery, revocation and expiry research | Production credential/approval binding and remaining v1 decisions |
 | Capture and proxy transport | Native packet checks and local policy/HTTP/HTTPS H1/Upgrade composition | Actual enrolled selected-UID TUN execution, production integration and physical USB |
 | Public interception CA | Compiled getter and real Node TLS endpoint; 35 integrated JVM methods and 46 receipts in the actual TLS proof pass; APK assembly and strict lint pass | Execute the new Android saved-credential method on API 26/37 |
-| Android CA runtime driver | The paused Windows worktree recorded 244 passing selected Node checks, but its eight uncommitted files and backup are unavailable in this checkout | Reconstruct and independently review/commit the driver, check clean-source CLI refusal, wire workflow and execute real emulator run |
+| Android CA runtime driver | Reconstructed three-invocation driver and independent verifier, hosted `a23` selection, exact-package API 37 permission setup; 73 selected combined Node checks pass on Node 22 and a clean-source unavailable-device CLI exits 1 with three zero-start rows | Pinned Node 24/JDK 17/SDK host checks, APK/strict lint, ordinary CI and actual API 26/37 emulator run; no Android CA execution yet |
 | Desktop dependency | Reviewed local ten-commit branch through `2ee70e86`; local integration checks pass | Separate publication approval; production desktop UI/gateway wiring |
 
-The latest completed code checkpoint is `94a47c7` (CA proof input/source binding).
-The accompanying documentation checkpoint brings this work onto `main`.
-The last independently audited hosted baseline is `1065657` in
+The original completed code checkpoint is `94a47c7` (CA proof input/source
+binding); the accompanying documentation checkpoint brought it onto `main`.
+The reconstructed A23b and workflow commits are checked only on the isolated
+`worktree-coord-a23-resume` branch. This session's worktree isolation refused a
+fast-forward of the separate checked-out `main`, so these commits are not yet
+on `main` or published. Seven broader enrollment tests fail on the available
+Node 22 host; the pinned Node 24/JDK/SDK checks and actual emulator run remain
+unrun. The last independently audited hosted baseline is `1065657` in
 [run 40177081047](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40177081047).
 New checkpoint CI must be inspected before claiming hosted validation of later code.
 
 ## Next milestones, in order
 
-1. **Finish Android CA retrieval acceptance.** Review and commit the preserved
-   A23b driver, check its clean-source refusal path, wire the `a23` workflow
-   selection, and run all three required invocations on each API 26/37 emulator.
-   Require real Keystore enrollment, worker restart, CA/hash continuity, final
-   Forget and joined cleanup. This uses the reference gateway and needs no desktop
-   publication. See the [Android CA profile](android-interception-ca-research.md).
+1. **Finish Android CA retrieval acceptance.** The reconstructed A23b driver,
+   clean-source refusal check and `a23` hosted selection are committed in the
+   isolated coordinator branch. Run pinned host proof, APK/strict lint, finite
+   checks and ordinary CI, then execute all three required invocations on each
+   API 26/37 emulator. Require real Keystore enrollment, worker restart,
+   CA/hash continuity, final Forget and joined cleanup. This uses the reference
+   gateway and needs no desktop publication. See the
+   [Android CA profile](android-interception-ca-research.md).
 2. **Prove enrolled selected-app capture.** Resolve the separate desktop
    publication decision, then run the prepared factory and selected-UID TUN
    checks against the exact reviewed commits. Preserve original destinations,
