@@ -2,11 +2,13 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import https from 'node:https';
 import net from 'node:net';
+import { Duplex } from 'node:stream';
 import { performance } from 'node:perf_hooks';
 import { inspect } from 'node:util';
 import { startPeer, logicalName as defaultLogicalName } from './android-peer.mjs';
 import { CompanionBudgetPool, CompanionControl } from './companion-protocol-lifecycle.mjs';
-import { decodeControl, decodeStream, encodeControl, encodeStream } from './companion-protocol-codec.mjs';
+import { decodeControl, decodeStream, encodeControl, encodeStream, validateCapabilities, TRAFFIC_CAPABILITIES } from './companion-protocol-codec.mjs';
+import { enrollmentPublicSnapshot } from './companion-enrollment-crypto.mjs';
 import { ResearchWebSocket } from './research-websocket.mjs';
 import { Changed, observeClose, closedObserved, pull, headers, write, writerState, endWrite, bounded, fail, safeError } from './companion-stream-peer-io.mjs';
 import { SCENARIOS, LIMITS, DESKTOP_ID, SCENARIO_HEADER, SESSION_HEADER, RESPONSE_HEADER,
@@ -53,8 +55,18 @@ function response(response, status, value) {
 }
 
 export async function createCompanionStreamServer({ tls, authorize, credentialAuthority,
-  desktopId = DESKTOP_ID, logicalName = defaultLogicalName, sessionLifetimeMillis = 120000, port = 0 }) {
+  desktopId = DESKTOP_ID, logicalName = defaultLogicalName, sessionLifetimeMillis = 120000, port = 0,
+  trustedProxyFactory, supportedCapabilities }) {
   const enrolled = credentialAuthority !== undefined;
+  const trusted = trustedProxyFactory !== undefined;
+  let trafficCapabilities = supported;
+  try {
+    if (trusted !== (supportedCapabilities !== undefined) || (trusted && (typeof trustedProxyFactory !== 'function' || !enrolled))) throw 0;
+    if (trusted) {
+      trafficCapabilities = Object.freeze(validateCapabilities(supportedCapabilities));
+      if (trafficCapabilities.some(value => !TRAFFIC_CAPABILITIES.includes(value))) throw 0;
+    }
+  } catch { fail('stream_fixture_configuration'); }
   const gatewayExpires = enrolled ? Date.parse(credentialAuthority?.gatewayExpiresAt) : 0;
   if (typeof authorize !== 'function' || !Number.isInteger(port) || port < 0 || port > 65535 ||
       !Number.isInteger(sessionLifetimeMillis) || sessionLifetimeMillis < 1000 || sessionLifetimeMillis > 1800000 ||
@@ -71,8 +83,9 @@ export async function createCompanionStreamServer({ tls, authorize, credentialAu
   const ingressTasks = new Set(); // Includes upgrades awaiting a previous owner's real join.
   const accepted = new Map(), awaiting = new Map();
   let closing = false, closeTask, unavailable = false;
-  let proxyListenerClosed = false, httpsListenerClosed = false;
-  const proxy = net.createServer({ allowHalfOpen: true, pauseOnConnect: true });
+  let proxyListenerClosed = trusted, httpsListenerClosed = false;
+  const proxy = trusted ? null : net.createServer({ allowHalfOpen: true, pauseOnConnect: true });
+  if (proxy) {
   proxy.once('close', () => { proxyListenerClosed = true; });
   proxy.maxConnections = 8;
   proxy.on('error', () => {});
@@ -98,6 +111,7 @@ export async function createCompanionStreamServer({ tls, authorize, credentialAu
     await bounded(new Promise(done => proxy.close(done)), 5000);
     fail('stream_fixture_startup_failed');
   }
+  }
 
   let server;
   try {
@@ -110,7 +124,7 @@ export async function createCompanionStreamServer({ tls, authorize, credentialAu
     closing = true;
     for (const entry of accepted.values()) clearTimeout(entry.timer);
     const closes = [...proxySockets].map(socket => { const closed = observeClose(socket); socket.destroy(); return closed; });
-    await bounded(Promise.allSettled([...closes, new Promise(done => proxy.close(done))]), 5000);
+    await bounded(Promise.allSettled([...closes, ...(proxy ? [new Promise(done => proxy.close(done))] : [])]), 5000);
     fail('stream_fixture_startup_failed');
   }
   server.maxConnections = 16;
@@ -241,12 +255,23 @@ export async function createCompanionStreamServer({ tls, authorize, credentialAu
     if (!normal) retained(record);
     record.stopping = true;
     record.changed.notify();
+    // Seal/interrupt before returning; startup and every actual closure remain owned.
+    if (record.trustedOwner && !record.trustedClose) {
+      try {
+        const closing = record.trustedOwner.close();
+        record.trustedClose = closing instanceof Promise ? closing : Promise.reject(safeError('cleanup_incomplete'));
+      } catch { record.trustedClose = Promise.reject(safeError('cleanup_incomplete')); }
+      record.trustedClose.catch(() => {});
+    }
     if (!normal) record.socket.destroy();
     record.proxy?.destroy(); record.fixtureSocket?.destroy();
     record.cleanupTask = bounded((async () => {
       if (record.ws) { if (normal) await record.ws.finish(); else await record.ws.cancel(); }
       else { record.socket.destroy(); await record.socketClosed; }
       await Promise.allSettled([...record.workers]);
+      if (record.trustedStart) await Promise.allSettled([record.trustedStart]);
+      if (record.trustedClose) await record.trustedClose;
+      if (record.trustedClosed) await record.trustedClosed;
       // Pairing can complete while a worker is being cancelled. Recheck the admitted
       // resources after workers settle, before confirming any model release.
       record.proxy?.destroy(); record.fixtureSocket?.destroy();
@@ -305,6 +330,7 @@ export async function createCompanionStreamServer({ tls, authorize, credentialAu
     return owner;
   }
   async function httpRequest(request, reply) {
+    if (trusted) return response(reply, 404, { error: 'rejected' });
     if (closing || unavailable || !requestPolicy(request, logicalName, enrolled) || !authorize(request.socket)) return response(reply, 400, { error: 'rejected' });
     if (request.url === '/research/probe' && request.method === 'GET') {
       if (request.headers['content-length'] !== undefined && request.headers['content-length'] !== '0') return response(reply, 400, { error: 'rejected' });
@@ -341,8 +367,8 @@ export async function createCompanionStreamServer({ tls, authorize, credentialAu
     const grant = grantFor(socket);
     if (!grant) return rejectUpgrade(socket, 403);
     if (request.url === '/companion/v1/control') {
-      const scenario = request.headers[SCENARIO_HEADER], id = grant.deviceId;
-      if (!SCENARIOS.includes(scenario) || request.headers[SESSION_HEADER] !== undefined) return rejectUpgrade(socket, 400);
+      const scenario = trusted ? null : request.headers[SCENARIO_HEADER], id = grant.deviceId;
+      if ((trusted ? request.headers[SCENARIO_HEADER] !== undefined : !SCENARIOS.includes(scenario)) || request.headers[SESSION_HEADER] !== undefined) return rejectUpgrade(socket, 400);
       let previous = owners.get(id);
       if (enrolled && previous && !previous.closed && controlInactive(previous.model) && previous.cleanupTask) {
         // No new model lease exists during this wait. Join the existing bounded
@@ -357,13 +383,13 @@ export async function createCompanionStreamServer({ tls, authorize, credentialAu
       const history = enrolled ? enrollmentRecords.get(grant.enrollmentId) : null;
       if (enrolled && ((!history && enrollmentRecords.size >= 8) || (history && history.controlsAdmitted >= Number.MAX_SAFE_INTEGER))) return rejectUpgrade(socket, 429);
       const grantedAt = clock();
-      const owner = { model: new CompanionControl({ pool, deviceId: id, desktopId, clock: grantedAt }),
+      const owner = { model: new CompanionControl({ pool, deviceId: id, desktopId, clock: grantedAt, supportedCapabilities: trafficCapabilities }),
         grant: enrolled ? grant : null, grantValid: enrolled, grantedAt, revalidations: 0, invalidationCause: null,
         credentialExpires: enrolled ? Date.parse(grant.credentialExpiresAt) : 0,
         credentialLifetime: enrolled ? Date.parse(grant.credentialExpiresAt) - grantedAt.utcMillis : 0,
         terminalNotification: { attempted: false, completed: false, aborted: false }, notificationTimer: false,
         applicationWriteAdmissions: 0, writesAfterInvalidation: 0,
-        id, scenario, socket, socketClosed: observeClose(socket), ws: null, token: null,
+        id, scenario, capabilities: Object.freeze([]), socket, socketClosed: observeClose(socket), ws: null, token: null,
         workers: new Set(), timers: new Set(), changed: new Changed(), records: new Set(), latest: null,
         ordinal: 0, stopping: false, closed: false, cleanupTask: null, cleanupFailed: false, activated: null,
         upgradeWriter: writerState(), timing: { readyUtcMillis: 0, expiresUtcMillis: 0, terminalUtcMillis: null, terminalElapsedMillis: null } };
@@ -431,7 +457,7 @@ export async function createCompanionStreamServer({ tls, authorize, credentialAu
           check(owner.model.text('client', bytes, clock())); markTerminal(owner);
           const message = decodeControl(bytes).toWire();
           if (message.type === 'hello') {
-            const capabilities = supported.filter(value => message.capabilities.includes(value));
+            const capabilities = trafficCapabilities.filter(value => message.capabilities.includes(value));
             if (capabilities.length === 0) fail('unsupported_capability');
             owner.token = randomBytes(32);
             const readyClock = clock();
@@ -440,6 +466,7 @@ export async function createCompanionStreamServer({ tls, authorize, credentialAu
             const ready = encodeControl({ protocolVersion: 1, type: 'session_ready', capabilities, desktopId,
               expiresAt: new Date(expiresUtcMillis).toISOString().replace('.000Z', 'Z'), sessionId: owner.token.toString('base64url'), limits: LIMITS });
             check(owner.model.text('gateway', ready, readyClock));
+            owner.capabilities = Object.freeze([...capabilities]);
             owner.timing.readyUtcMillis = readyClock.utcMillis; owner.timing.expiresUtcMillis = expiresUtcMillis; owner.activated = readyClock.monotonicMillis;
             if (!validateOwner(owner)) return;
             await owner.ws.send('text', ready);
@@ -458,10 +485,11 @@ export async function createCompanionStreamServer({ tls, authorize, credentialAu
   function newRecord(owner, model, socket) {
     const record = { owner, model, socket, socketClosed: observeClose(socket), observedCloseCode: 1006,
       ws: null, proxy: null, fixtureSocket: null, proxyClosedPromise: null, fixtureClosedPromise: null,
+      trustedOwner: null, trustedStart: null, trustedClose: null, trustedClosed: null, proxyMode: undefined,
       workers: new Set(), changed: new Changed(), upgradeWriter: writerState(), proxyWriter: writerState(), fixtureWriter: writerState(),
       stopping: false, closed: false, cleanupFailed: false, cleanupTask: null, retained: false, id: null,
       pendingIngressBytes: 0, clientEof: null, gatewayEof: null,
-      fixture: { proxyReadPaused: pausedScenario(owner.scenario), uploadBytesRead: 0, uploadPrefixSeen: false,
+      fixture: { proxyReadPaused: trusted ? false : pausedScenario(owner.scenario), uploadBytesRead: 0, uploadPrefixSeen: false,
         uploadEof: false, uploadVerified: false, uploadSha256: null, responseBytesWritten: 0,
         responsePrefixWritten: false, responseTailReleased: owner.scenario !== 'gated', responseEof: false, responseSha256: null },
       io: { wsWriteEntries: 0, wsWriteCompletions: 0, backpressureCount: 0, resumedPendingCount: 0,
@@ -471,6 +499,35 @@ export async function createCompanionStreamServer({ tls, authorize, credentialAu
   }
   async function connectProxy(record) {
     live(record);
+    if (trusted) {
+      const grant = enrollmentPublicSnapshot(Object.fromEntries(grantFields.map(name => [name, record.owner.grant[name]])));
+      const context = Object.freeze({ proxyMode: record.proxyMode, negotiatedCapabilities: Object.freeze([...record.owner.capabilities]), grant,
+        admissionAllowed: () => { try { live(record); return true; } catch { return false; } } });
+      const owner = trustedProxyFactory(context);
+      if (owner instanceof Promise) { owner.catch(() => {}); fail('trusted_proxy_invalid'); }
+      record.trustedOwner = owner;
+      const descriptor = name => Object.getOwnPropertyDescriptor(owner ?? {}, name);
+      const transport = descriptor('transport')?.value;
+      if (transport instanceof Duplex) {
+        record.proxy = transport; record.proxyClosedPromise = observeClose(transport);
+        transport.on('error', () => {}); guardApplicationSocket(record, transport);
+      }
+      if (!owner || Object.keys(owner).length !== 4 || !['transport', 'start', 'close', 'closed'].every(name => Object.hasOwn(descriptor(name) ?? {}, 'value')) ||
+          !record.proxy || typeof owner.start !== 'function' || typeof owner.close !== 'function' || !(owner.closed instanceof Promise)) fail('trusted_proxy_invalid');
+      const start = owner.start.bind(owner);
+      record.trustedOwner = Object.freeze({ close: owner.close.bind(owner) });
+      record.trustedClosed = owner.closed; record.trustedClosed.catch(() => {});
+      record.trustedStart = Promise.resolve().then(() => {
+        live(record);
+        const starting = start();
+        if (!(starting instanceof Promise)) fail('trusted_proxy_invalid');
+        return starting;
+      });
+      record.trustedStart.catch(() => {});
+      await bounded(record.trustedStart, 5000, 'proxy_unavailable');
+      live(record);
+      return;
+    }
     const socket = new net.Socket({ allowHalfOpen: true, readableHighWaterMark: 4096, writableHighWaterMark: 4096 });
     socket.on('error', () => {});
     record.proxy = socket; record.proxyClosedPromise = observeClose(socket);
@@ -604,7 +661,8 @@ export async function createCompanionStreamServer({ tls, authorize, credentialAu
           const result = check(record.model.text('client', bytes, clock()));
           if (streamInactive(record.model)) { stopStream(record); return; }
           if (!opened) {
-            record.id = decodeStream(bytes).toWire().streamId;
+            const message = decodeStream(bytes).toWire();
+            record.id = message.streamId; record.proxyMode = message.proxyMode;
             await connectProxy(record);
             const ready = encodeStream({ protocolVersion: 1, type: 'ready', streamId: record.id });
             check(record.model.text('gateway', ready, clock()));
@@ -677,7 +735,7 @@ export async function createCompanionStreamServer({ tls, authorize, credentialAu
       stream: stream ? { phase: stream.phase, cause: stream.cause, streamLease: stream.streamLease, webSocketClosed: stream.webSocketClosed,
         resourcesReleased: stream.resourcesReleased, chargedFrames: stream.chargedFrames, client: { ...stream.client }, gateway: { ...stream.gateway } } : null,
       pool: pool.snapshot(),
-      fixture: r ? { ...r.fixture } : { proxyReadPaused: pausedScenario(owner.scenario), uploadBytesRead: 0, uploadPrefixSeen: false,
+      fixture: r ? { ...r.fixture } : { proxyReadPaused: trusted ? false : pausedScenario(owner.scenario), uploadBytesRead: 0, uploadPrefixSeen: false,
         uploadEof: false, uploadVerified: false, uploadSha256: null, responseBytesWritten: 0, responsePrefixWritten: false,
         responseTailReleased: owner.scenario !== 'gated', responseEof: false, responseSha256: null },
       io: { proxyWriteEntries: r?.proxyWriter.entries ?? 0, proxyWriteCompletions: r?.proxyWriter.completions ?? 0,
@@ -695,7 +753,7 @@ export async function createCompanionStreamServer({ tls, authorize, credentialAu
     for (const entry of accepted.values()) clearTimeout(entry.timer);
     accepted.clear(); awaiting.clear();
     const closes = [...sockets, ...proxySockets].map(socket => { const closed = observeClose(socket); socket.destroy(); return closed; });
-    await Promise.allSettled([...closes, new Promise(done => proxy.close(done)),
+    await Promise.allSettled([...closes, ...(proxy ? [new Promise(done => proxy.close(done))] : []),
       new Promise(done => server.close(done))]);
     fail('stream_fixture_startup_failed');
   }
@@ -737,7 +795,7 @@ export async function createCompanionStreamServer({ tls, authorize, credentialAu
         const socketCloses = [...sockets, ...proxySockets].map(socket => { const closed = observeClose(socket); socket.destroy(); return closed; });
         // Start every independent teardown group even if an owner's join rejects. A failed
         // join remains a failure; it never skips listener/socket cleanup or releases models.
-        const listenerCloses = [server, proxy].map(listener => new Promise((done, reject) => {
+        const listenerCloses = [server, proxy].filter(Boolean).map(listener => new Promise((done, reject) => {
           listener.close(failure => failure ? reject(safeError('listener_cleanup_failed')) : done());
         }));
         const results = await Promise.allSettled([...ownerStops, ...socketCloses, ...listenerCloses, ...ingressTasks]);

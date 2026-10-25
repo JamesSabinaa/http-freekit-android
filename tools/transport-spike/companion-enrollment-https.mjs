@@ -7,6 +7,7 @@ import { startEnrollmentIssuer, EnrollmentIssuerError } from './companion-enroll
 import { createEnrollmentStore, openEnrollmentStore } from './companion-enrollment-store.mjs';
 import { createEnrollmentAuthority } from './companion-enrollment-authority.mjs';
 import { decodeEnrollment, encodeEnrollment, enrollmentMessage } from './companion-enrollment-codec.mjs';
+import { validateCapabilities } from './companion-protocol-codec.mjs';
 
 const retainedFailures = new Set(); // A failed owner cannot be GC'd into silently releasing its DB lease.
 const status = { invalid_message: 400, unsupported_version: 400, unsupported_capability: 400, message_too_large: 413,
@@ -294,15 +295,17 @@ class EnrollmentHttpsFixture {
   [inspect.custom]() { return this.toString(); }
 }
 export async function startEnrollmentHttpsFixture({ directory, mode, openssl = process.env.OPENSSL_BIN ?? 'openssl', setupPort = 0, credentialPort = 0,
-  authenticatedServiceFactory, credentialLifetimeSeconds = 3600 } = {}) {
+  authenticatedServiceFactory, credentialLifetimeSeconds = 3600, supportedCapabilities = ['tcp-http', 'tcp-https-connect'] } = {}) {
   if (retainedFailures.size) fail(false);
   let issuer, store, fixture;
   try {
+    // Canonical defensive snapshot before any child/listener/DB admission.
+    const capabilities = Object.freeze(validateCapabilities(supportedCapabilities));
     const assets = await enrollmentFixtureAssets({ directory, mode, openssl, setupPort, credentialPort }), metadata = assets.metadata().material();
     issuer = await startEnrollmentIssuer({ directory, openssl, enrollmentAuthorityDer: metadata.enrollmentAuthorityDer });
     store = (mode === 'create' ? createEnrollmentStore : openEnrollmentStore)({ directory, metadata: { desktopId: metadata.desktopId,
       gatewaySpkiSha256: metadata.gatewaySpkiSha256, enrollmentAuthorityDer: metadata.enrollmentAuthorityDer,
-      interceptionCaCertificateSha256: metadata.interceptionCaCertificateSha256, supportedCapabilities: ['tcp-http', 'tcp-https-connect'], credentialLifetimeSeconds } });
+      interceptionCaCertificateSha256: metadata.interceptionCaCertificateSha256, supportedCapabilities: capabilities, credentialLifetimeSeconds } });
     fixture = new EnrollmentHttpsFixture(assets, issuer, store); await fixture.start(setupPort, credentialPort);
     await fixture.startAuthenticatedService(authenticatedServiceFactory); return fixture;
   } catch (failure) {
