@@ -1,6 +1,6 @@
 # Cold TCP comparison
 
-Status: isolated diagnostic assigned from checked c43f0e8, not implemented or verified by this profile. The [capture policy](capture-policy-runtime.md) remains open: API26 validates the complete nonselected HTTP reply, then fails strict EOF as `traffic_tcp_eof_reset`, with zero receiver deadline/error/reset events. This comparison changes no production or companion wire contract.
+Status: isolated diagnostic implemented and locally checked, assigned from checked c43f0e8; actual API26 comparison unrun. The [capture policy](capture-policy-runtime.md) remains open: API26 validates the complete nonselected HTTP reply, then fails strict EOF as `traffic_tcp_eof_reset`, with zero receiver deadline/error/reset events. This comparison changes no production or companion wire contract.
 
 ## Experiment and ownership
 
@@ -57,3 +57,7 @@ D exports immutable `captureColdClass`, `captureColdMethod`, `captureColdSnapsho
 ## Interpretation
 
 A matching cold failure shows that prior VPN activity is not necessary for this failure. A cold pass alone does not prove VPN causality or clear C1. Even a matching full host reply cannot turn failed EOF into success. Compare actual reports before changing capture behavior. No core change, longer wait, payload change, library switch or new production claim follows from this profile alone.
+
+## Checked implementation
+
+UI's 5f59ec1 is integrated as 721a560 (one new Android test); D's d50822d as 1739874 (new parser/tests); F's 422d45d as 93f6b0d (separate runner, workflow, independent verifier and host checks). Root's integrated check passes six existing runtime JVM cases, host/instrumentation APK assembly and strict lint in 18 seconds. Actual APK IDs, signatures, common debug signer and 16 KiB ZIP alignment are verified again; the comparison installs only its three specified APKs. The combined new Node checks pass 27 cases, including actual CLI/unavailable-child and owned Bash cleanup cases; Python guards pass 12, documentation tests pass nine, and 199 local links resolve. Node-generated XML matches the independent Python verifier in the compatibility fixture. Focused actionlint schema/expressions and all 36 changed-workflow ShellCheck/Bash blocks pass without suppressions; full Linux host and actual Android outcomes remain separate checks. Existing C1, TrafficClient, TrafficService, fixture and core sources are unchanged from c43f0e8. No comparison result or C1 acceptance is established by these local checks.
