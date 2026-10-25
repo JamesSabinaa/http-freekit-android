@@ -7,9 +7,10 @@ The original goal is active and incomplete.
 
 ## Current Linux resume position
 
-- Android public `main` is `77129a04b6cf171dbaabc66d29a5e8ffb9fb4f38` before
-  this B5 admission checkpoint. Its host run 40222553649 independently verifies
-  320 JVM methods, 46 CA receipts and nine clean lint XMLs (B5 is not in that run).
+- Android public `main` is `5e8d8dae990cb25092e27421723f790eadbf9965` before
+  this checked-B5 evidence checkpoint. Its host run 40223757997 independently
+  verifies all 25 B5 cases/345 total JVM methods, 46 CA receipts and nine clean
+  lint XMLs. B5 is an inert admission API, not a capture service.
   **A23 runtime research acceptance passes** at `fa2d845`
   on both API26 and API37 in fresh matrix 40222004218; see the evidence below.
   The next milestone is C5 enrolled selected-app capture, blocked on the absent
@@ -111,9 +112,12 @@ The original goal is active and incomplete.
   (owner `32c92f7`): four new app-only plan/admission/test files, 25 authored JVM
   cases. It is inert and has no service/network/wire integration. Static checks
   pass; compilation/JVM/assembly/lint are unrun locally (no Java/SDK).
-  Independent review found no concrete defect; pinned hosted validation is
-  pending. Exact desktop/C5, production freeze, target trust and physical USB
-  gates remain unchanged.
+  Independent review found no concrete defect. [Host run 40223757997](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40223757997)
+  at clean source `5e8d8da` passes all jobs. Original artifacts independently
+  verify all 25 B5 methods/345 JVM total, 46/46 CA receipts and nine clean lints;
+  app assembly/instrumentation compilation also pass. No new device/UI/service
+  behavior is established. Exact desktop/C5, production freeze, target trust
+  and physical USB gates remain unchanged.
 - User explicitly authorized continued publication of validated Android main
   checkpoints and existing hosted validation workflows for this goal without
   asking for every checkpoint. This does not authorize paid infrastructure,

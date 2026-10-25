@@ -82,7 +82,14 @@ Compilation, JVM execution, app/instrumentation assembly and lint are **unrun
 locally** because Java/JDK and Android SDK are absent; no toolchain was installed.
 Independent read-only correctness/privacy review found no concrete defect and
 confirmed service syntax/count and fixed policy parity. Compilation/runtime
-validation remains pending: fresh pinned host CI is required before acceptance.
+validation was pending at implementation handoff. Exact clean source
+`5e8d8dae990cb25092e27421723f790eadbf9965` passes
+[host run 40223757997](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40223757997).
+Independent original artifacts verify 345 unique JVM methods in 43 XMLs,
+including all 25 B5 methods, zero failures/errors/skips, 46/46 source-bound CA
+receipts and nine zero-issue lint XMLs. The host job also passes app assembly
+and instrumentation compilation. B5's compiled inert admission API is checked;
+no emulator/device result or new UI/service behavior follows from those checks.
 Later capture start still requires platform package revalidation, consent,
 trusted transport and target trust; C5, protocol freeze and physical USB are
 not established by this local boundary.

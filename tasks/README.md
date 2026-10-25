@@ -27,9 +27,11 @@ Owner commit `32c92f7` is integrated as `66eb9da`, exactly four new files and
 25 authored JVM methods. Static scope/whitespace/service-regex checks pass;
 compilation/JVM/assembly/instrumentation/lint remain unrun locally (no Java/SDK).
 Fresh isolated reviewer a3211be739795ffd8 owns read-only review; root retains
-all documentation/integration. Independent review found no concrete defect;
-status: pinned hosted compilation/JVM/assembly/lint validation pending, not
-capture or a checked runtime feature.
+all documentation/integration. Independent review found no concrete defect.
+Status: checked inert API at `5e8d8da` in pinned host 40223757997; original artifacts
+independently verify all 25 B5 methods/345 total JVM methods in 43 XMLs, 46/46 CA
+receipts and nine clean lint XMLs. App assembly/instrumentation compilation pass.
+No new emulator/device/UI/service behavior or capture acceptance is claimed.
 
 A21 enrollment is assigned from 4ca2fea against [draft 0.4](../docs/protocol-enrollment.md) and [decision 0013](../docs/decisions/0013-enrollment-transactions.md). The coordinator owns the normative contract, new Node modules/tests prefixed companion-enrollment-codec and companion-enrollment-authority, and integration in plan/a-foundation. UI owns only new DraftEnrollment-prefixed Kotlin implementation/test files in core-protocol on feat/a21-kotlin-enrollment in its isolated runtime worktree. D owns only new Node crypto/store modules/tests/helpers prefixed companion-enrollment-crypto or companion-enrollment-store on feat/a21-enrollment-store in its isolated carrier worktree. F owns protocol/fixtures/a21-draft-0.4/, new enrollment corpus/comparison scripts/tests, host workflow wiring and current validation documentation on test/f-a21-enrollment in its isolated worktree. The root grammar commit precedes implementation; F's fixture/adapter contract commit precedes corpus adapter coding. Preserve the verified A19/A20 sources, existing invitation parser, core security, app and production desktop files. No new listener or app pairing flow is assigned yet. A21 must deliver actual codec/proof/state/store implementations and real owned-process crash evidence; A22 then integrates live HTTPS/Keystore/approval/save/recovery before production and v1 freeze.
 

@@ -90,9 +90,11 @@ New checkpoint CI must be inspected before claiming hosted validation of later c
 2. **Prove enrolled selected-app capture — next, externally blocked.** Android-only
    B5 selection admission is implemented as owner `32c92f7`, integrated `66eb9da`:
    a callable inert, immutable plan from a successful installed catalog, with
-   fail-closed validation and 25 authored JVM cases. Independent review found no
-   concrete defect; pinned hosted compilation/JVM/assembly/lint are pending
-   (no local Java/SDK).
+   fail-closed validation and 25 passing JVM cases. Independent review and
+   [host run 40223757997](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40223757997)
+   at `5e8d8da` pass; original artifacts independently verify 345 JVM methods,
+   46/46 CA receipts and nine clean lints. App assembly and instrumentation
+   compilation pass on the host, not locally (no Java/SDK).
    There is no VPN/network/service wiring; this does not establish capture or unblock
    C5. Obtain and verify the exact already-authorized reviewed desktop source
    (currently absent), then publish that branch and run the prepared factory and
