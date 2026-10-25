@@ -24,20 +24,19 @@ and isolated research tests; those tests do not establish a finished capture app
 
 The original completed code checkpoint is `94a47c7` (CA proof input/source
 binding); the accompanying documentation checkpoint brought it onto `main`.
-The reconstructed A23b and workflow commits are checked only on the isolated
-`worktree-coord-a23-resume` branch. This session's worktree isolation refused a
-fast-forward of the separate checked-out `main`, so these commits are not yet
-on `main` or published. Seven broader enrollment tests fail on the available
-Node 22 host; the pinned Node 24/JDK/SDK checks and actual emulator run remain
-unrun. The last independently audited hosted baseline is `1065657` in
+The reconstructed A23b and workflow commits are checked on local `main` at
+`33d7a65` after a fast-forward from the isolated coordinator branch. Seven
+broader enrollment tests fail on the available Node 22 host; the pinned Node
+24/JDK/SDK checks and actual emulator run remain unrun. The last independently
+audited hosted baseline is `1065657` in
 [run 40177081047](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40177081047).
 New checkpoint CI must be inspected before claiming hosted validation of later code.
 
 ## Next milestones, in order
 
 1. **Finish Android CA retrieval acceptance.** The reconstructed A23b driver,
-   clean-source refusal check and `a23` hosted selection are committed in the
-   isolated coordinator branch. Run pinned host proof, APK/strict lint, finite
+   clean-source refusal check and `a23` hosted selection are committed on local
+   `main`. Run pinned host proof, APK/strict lint, finite
    checks and ordinary CI, then execute all three required invocations on each
    API 26/37 emulator. Require real Keystore enrollment, worker restart,
    CA/hash continuity, final Forget and joined cleanup. This uses the reference
