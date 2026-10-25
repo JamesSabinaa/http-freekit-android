@@ -87,10 +87,13 @@ New checkpoint CI must be inspected before claiming hosted validation of later c
    replay. Real Keystore enrollment, worker restart, CA/hash continuity, final
    Forget and joined cleanup pass on both APIs in the same matrix. See the
    [Android CA profile](android-interception-ca-research.md).
-2. **Prove enrolled selected-app capture — next, externally blocked.** Obtain and
-   verify the exact already-authorized reviewed desktop source (currently absent),
-   then publish that branch and run the prepared factory and selected-UID TUN
-   checks against the exact reviewed commits. Preserve original destinations,
+2. **Prove enrolled selected-app capture — next, externally blocked.** Android-only
+   B5 selection admission is being implemented independently: a callable inert,
+   immutable plan from a successful installed catalog, with fail-closed validation
+   and no VPN/network/service wiring. This does not establish capture or unblock
+   C5. Obtain and verify the exact already-authorized reviewed desktop source
+   (currently absent), then publish that branch and run the prepared factory and
+   selected-UID TUN checks against the exact reviewed commits. Preserve original destinations,
    complete bytes, EOF, notification Stop and all actual ownership joins.
    See [C5](android-enrolled-tun-research.md). Its Android runtime remains unrun.
 3. **Close the foundation contract gates.** Resolve production approval/CA
