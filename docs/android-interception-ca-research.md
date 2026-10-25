@@ -1,11 +1,14 @@
 # Android saved-credential public CA research
 
-Status: reconstructed A23b driver and hosted selection; API26 passes all four
-fresh matrices. API37 has only setup/readback failures, no method executions.
-The zero-flags LF/CRLF correction passes host CI at `02fbca2`, but the fourth
-matrix still has grant0/readback0 and rejected evidence. Finite structural
-counts/booleans will diagnose the next checked-source run without publishing
-dump text or weakening admission. See the [retained runtime evidence](validation.md#authenticated-public-interception-ca-research).
+Status: reconstructed A23b driver and hosted selection; API26 independently
+passes all five fresh matrices. API37 has only setup/readback failures, no
+method executions. Diagnostic source `bf73686` passes host CI; its fifth matrix
+finds one owned package but two User0 headers in the parser's current scope.
+Public source and red/green regressions demonstrate that outer dump sections
+are wrongly included after the package block. A narrow indentation-boundary
+correction retains duplicate-user rejection inside the block; host CI and a
+fresh matrix must establish actual-image success. No raw dump is published.
+See the [retained runtime evidence](validation.md#authenticated-public-interception-ca-research).
 The checked software-key host proof remains a prerequisite for each dispatch. This
 suite uses the existing reference enrollment gateway and needs no desktop
 checkout, Linux alias or production app wiring.

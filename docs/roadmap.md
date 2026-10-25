@@ -19,7 +19,7 @@ and isolated research tests; those tests do not establish a finished capture app
 | Identity and enrollment | Keystore identity, scoped TLS, approval, saved credentials, restart/recovery, revocation and expiry research | Production credential/approval binding and remaining v1 decisions |
 | Capture and proxy transport | Native packet checks and local policy/HTTP/HTTPS H1/Upgrade composition | Actual enrolled selected-UID TUN execution, production integration and physical USB |
 | Public interception CA | Compiled getter and actual Node TLS endpoint; source-bound 46/46 receipts, 318 JVM host methods and nine clean lint reports at `8526b0a`; saved-credential Android retrieval passes API 26 | Run complete fresh API 26/37 acceptance after correcting API 37 permission readback; CA installation and target-app trust remain open |
-| Android CA runtime driver | `02fbca2` passes pinned host CI and API26 all three methods in fourth matrix 40213602618; API37 clock setup and permission commands succeed | API37 parser still rejects readback before methods; collect finite structural diagnostics without weakening admission, then correct only a demonstrated mismatch before acceptance |
+| Android CA runtime driver | `bf73686` passes pinned host CI and API26 all three methods in fifth matrix 40216075210 | API37 finite diagnostics locate duplicate User0 rejection; validate owned-package block boundary correction before fresh two-API acceptance |
 | Desktop dependency | User authorized publication of the reviewed ten-commit branch ending `2ee70e86` | Exact desktop checkout/review patch is absent from this Linux workspace and that commit is not on GitHub; obtain and verify it before publishing or running C5 |
 
 The original completed code checkpoint is `94a47c7` (CA proof input/source
@@ -50,17 +50,28 @@ still fails API37 readback with both commands exit0 and zero method starts;
 API26 passes again and all cleanup joins. The formatting defect was not the
 established image failure. The next diagnostic logs only fixed structural
 counts/booleans, never dump text, and retains the strict grant gate.
+Diagnostic source `bf73686` passes [host run 40214948784](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40214948784)
+with 318 JVM methods, 46/46 CA receipts and nine clean lint reports.
+[Fifth matrix 40216075210](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40216075210)
+independently passes API26 but API37 stops before methods with one owned package,
+two User0 headers and one target line in the current scope. All cleanup joins.
+Public source and red/green regressions show the parser incorrectly includes
+outer dump sections after the owned package block; they do not prove which
+section the actual image printed. The narrow block-boundary correction keeps
+exact ownership and duplicate-user rejection inside that block. It needs pinned
+host validation followed by a new full matrix.
 The older audited baseline is `1065657` in
 [run 40177081047](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40177081047).
 New checkpoint CI must be inspected before claiming hosted validation of later code.
 
 ## Next milestones, in order
 
-1. **Finish Android CA retrieval acceptance.** Validate finite readback diagnostics
-   on pinned host CI, then run a fresh three-invocation API 26/37 matrix. Use actual
-   structural evidence before changing admission again. Require real Keystore
-   enrollment, worker restart, CA/hash continuity, final Forget and joined cleanup
-   on both APIs in that new run.
+1. **Finish Android CA retrieval acceptance.** Validate the owned-package block
+   boundary correction on pinned host CI, then run a fresh three-invocation
+   API 26/37 matrix. Preserve duplicate-user rejection within the block and
+   require actual-image success before accepting the correction as its cause.
+   Require real Keystore enrollment, worker restart, CA/hash continuity, final
+   Forget and joined cleanup on both APIs in that new run.
    Earlier API26 passes and API37 setup/readback failures stay separate. This uses the
    reference gateway and needs no desktop publication. See the
    [Android CA profile](android-interception-ca-research.md).

@@ -30,13 +30,14 @@ function requirePass(value, code) { if (!passed(value)) throw Error(code); retur
 // Parse only the installed self-instrumenting APK's bounded package section.
 function ownedCaPackageSection(output) {
   if (typeof output !== 'string' || Buffer.byteLength(output) > 262144) return null;
-  const owned = /^\s*Package \[com\.httpfreekit\.interop\.test\] \([^\r\n]*\):?\s*$/gm;
+  const owned = /^([ \t]*)Package \[com\.httpfreekit\.interop\.test\] \([^\r\n]*\):?[ \t]*\r?$/gm;
   const match = owned.exec(output);
   if (!match || owned.exec(output)) return null;
-  const nextPackage = /^\s*Package \[/gm;
-  nextPackage.lastIndex = match.index + match[0].length;
-  const next = nextPackage.exec(output);
-  return output.slice(match.index + match[0].length, next?.index ?? output.length);
+  const start = match.index + match[0].length;
+  const remainder = output.slice(start);
+  const boundary = [...remainder.matchAll(/^([ \t]*)\S[^\r\n]*(?:\r?\n|$)/gm)]
+    .find(line => line[1].length <= match[1].length);
+  return remainder.slice(0, boundary?.index ?? remainder.length);
 }
 export function ownedCaPermissionDeclared(output) {
   const packageSection = ownedCaPackageSection(output);
@@ -50,7 +51,7 @@ export function ownedCaPermissionReadback(output) {
     runtimeGrantedTrue: false, targetHasFlags: false, targetHasTerminator: false, granted: false };
   const finish = () => Object.freeze(facts);
   if (typeof output !== 'string' || Buffer.byteLength(output) > 262144) return finish();
-  facts.ownedPackageCount = [...output.matchAll(/^\s*Package \[com\.httpfreekit\.interop\.test\] \([^\r\n]*\):?\s*$/gm)].length;
+  facts.ownedPackageCount = [...output.matchAll(/^[ \t]*Package \[com\.httpfreekit\.interop\.test\] \([^\r\n]*\):?[ \t]*\r?$/gm)].length;
   const packageSection = ownedCaPackageSection(output);
   if (packageSection === null) return finish();
   const targetLines = text => [...text.matchAll(/^[ \t]+android\.permission\.ACCESS_LOCAL_NETWORK:[^\r\n]*(?:\r?\n|$)/gm)];

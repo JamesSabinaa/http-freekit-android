@@ -7,8 +7,8 @@ The original goal is active and incomplete.
 
 ## Current Linux resume position
 
-- Android public `main` is `02fbca2839198f8cc0d56b07703f0147bdbac160` before
-  this finite-diagnostics checkpoint.
+- Android public `main` is `bf736867413ce1d296bca603af438373b45092eb` before
+  this package-scope investigation checkpoint.
   The original Windows F worktree and ignored archive below are absent here;
   no original unfinished files were overwritten. The eight-file A23 package
   was reconstructed in an isolated branch and merged through `91c2a85`.
@@ -58,6 +58,22 @@ The original goal is active and incomplete.
   `.claude/worktrees/coord-a23-resume`; independent review found no privacy,
   schema or admission defect. Only fixed counts/booleans are logged, never dump
   text. Pinned host CI must precede the next fresh full diagnostic matrix.
+- Diagnostic source `bf73686` passes [host run 40214948784](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40214948784):
+  independent artifact audit confirms 318 JVM methods, 46/46 CA receipts and nine
+  clean lint reports. [Fifth matrix 40216075210](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40216075210)
+  independently passes API26's three methods and cleanup. API37 grant0/readback0
+  still stops before methods: ownedPackageCount=1, user0Count=2,
+  packageTargetCount=1. Later diagnostic fields remain default because the
+  unique-user guard exits first. All cleanup joins. Root owns package-scope
+  investigation/tests/evidence in the coordinator worktree; preserve duplicate
+  rejection inside the owned block and do not infer raw image layout or grant
+  state from these counts. Public AOSP package/dump source and red/green
+  regressions demonstrate that the old helper extends the package scope into
+  outer Package Changes/Shared users sections. The narrow correction ends at
+  the first equal/less-indented nonblank line; global owned-header uniqueness
+  and duplicate child-user rejection remain. Independent scope/privacy review
+  and six focused cases pass. Host CI and a new full matrix must establish
+  actual-image compatibility; no raw layout or acceptance is inferred.
 - User explicitly authorized continued publication of validated Android main
   checkpoints and existing hosted validation workflows for this goal without
   asking for every checkpoint. This does not authorize paid infrastructure,

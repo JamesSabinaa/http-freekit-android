@@ -175,7 +175,32 @@ after locked `npm ci --ignore-scripts`, three worker cases fail with
 `pairing_unavailable` on Node22.22.2 (one passes). These are retained failures,
 not acceptance or proven baseline failures. Installing the pinned Node runtime
 was denied; the existing authorized pinned hosted workflow must resolve the
-full gate before any emulator dispatch. A23 acceptance remains open.
+full gate before any emulator dispatch. Pinned [host run 40214948784](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40214948784)
+at `bf73686` passes all jobs; independent original-artifact audit confirms 318
+JVM methods in 41 XMLs, 46/46 clean-source CA receipts and nine clean lint XMLs.
+The [fifth matrix 40216075210](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40216075210)
+again independently verifies API26's three methods and joined cleanup. API37
+has declaration=true, grant0/readback0 and three zero-start rows. Finite facts
+are ownedPackageCount=1, user0Count=2 and packageTargetCount=1; later facts remain
+zero/false because the unique-user guard exits first. This establishes the
+rejection point, not the cause of the second header or the actual grant state.
+All package/command/emulator cleanup joins. Package-block scoping is under
+review; duplicate users inside the owned block must remain rejected. Public
+AOSP [DumpHelper](https://android.googlesource.com/platform/frameworks/base/+/refs/heads/main/services/core/java/com/android/server/pm/DumpHelper.java)
+prints outer `Package Changes:`/`User 0:` sections after package details, while
+Settings prints package children deeper than their Package header. A new
+regression appending Package Changes/Shared users sections reproduces the old
+parser's rejection. The correction stops the owned block at the first nonblank
+line with equal-or-less indentation, uses only horizontal header whitespace,
+and retains global owned-header uniqueness plus all child User0/grant checks.
+LF/CRLF, denied grants, duplicate child users/owned headers and foreign outer
+permission material are tested. Independent review and six focused cases pass;
+this demonstrates the scoping defect, not the actual image's outer section.
+Combined local parser/report/verifier/workflow/documentation regressions pass
+69/69, with 270 checked local links and clean diff whitespace. The prior local
+Node22 worker failures remain recorded above; this package does not claim to
+resolve them. A new pinned host gate and full runtime matrix remain required.
+A23 acceptance remains open.
 CA installation, target-app trust and physical USB remain open.
 
 ## Enrolled HTTP-origin factory research

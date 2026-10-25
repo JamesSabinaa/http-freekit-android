@@ -42,6 +42,23 @@ test('API 37 reads an actual User 0 runtime grant from only the owned installed 
   assert.equal(ownedCaPermissionGranted(`${owned}  User 0: installed=true\n    runtime permissions:\n      ${permission}: granted=false\n  User 10: installed=true\n    runtime permissions:\n      ${permission}: granted=true\n`), false);
   assert.equal(ownedCaPermissionGranted(`${owned}  User 0: installed=true\n    runtime permissions:\n      android.permission.INTERNET: granted=true\nPackage [com.example.other] (def456):\n  User 0: installed=true\n    runtime permissions:\n      ${permission}: granted=true\n`), false);
 });
+test('owned package readback ends before outer dump sections without ignoring duplicate child users', () => {
+  const owned = `Packages:\n  Package [com.httpfreekit.interop.test] (abc123):\n    requested permissions:\n      ${permission}\n    User 0: installed=true\n      runtime permissions:\n        ${permission}: granted=true\n`;
+  const changes = '\nPackage Changes:\n  Sequence number=1\n User 0:\n  seq=0, package=com.example.other\n';
+  const shared = '\nShared users:\n  SharedUser [example] (def456):\n    User 0: installed=true\n      runtime permissions:\n        android.permission.INTERNET: granted=true\n';
+  for (const outer of [changes, shared, changes + shared]) {
+    assert.equal(ownedCaPermissionGranted(owned + outer), true);
+    assert.equal(ownedCaPermissionGranted((owned + outer).replaceAll('\n', '\r\n')), true);
+    assert.equal(ownedCaPermissionDeclared(owned + outer), true);
+    assert.equal(ownedCaPermissionReadback(owned + outer).user0Count, 1);
+    assert.equal(ownedCaPermissionGranted(owned.replace(`${permission}: granted=true`, `${permission}: granted=false`) + outer), false);
+    assert.equal(ownedCaPermissionGranted(owned + '    User 0: installed=true\n' + outer), false);
+    assert.equal(ownedCaPermissionGranted(owned + outer + owned), false);
+  }
+  const outside = `Packages:\n  Package [com.httpfreekit.interop.test] (abc123):\n    requested permissions:\n      android.permission.INTERNET\nPackage Changes:\n User 0: installed=true\n  requested permissions:\n    ${permission}\n  runtime permissions:\n    ${permission}: granted=true\n`;
+  assert.equal(ownedCaPermissionDeclared(outside), false);
+  assert.equal(ownedCaPermissionGranted(outside), false);
+});
 test('permission diagnostics expose only fixed counts and booleans without admitting ambiguous output', () => {
   const owned = `Package [com.httpfreekit.interop.test] (private-id):\n  User 0: installed=true dataDir=/private/data\n    runtime permissions:\n      ${permission}: granted=true\n`;
   const expected = { ownedPackageCount: 1, user0Count: 1, installedFieldCount: 1, installedTrue: true,
