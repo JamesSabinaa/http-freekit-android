@@ -17,19 +17,26 @@ export async function createCaptureFixture({ ports: requested = { http: 80, opaq
   if (Object.keys(requested).sort().join(',') !== 'http,opaque,quic,udp' ||
       Object.values(requested).some(port => !Number.isInteger(port) || port < 0 || port > 65535)) throw Error('invalid_capture_ports');
   const counters = Object.fromEntries(['directHttp', 'directOpaque', 'directTcp', 'udp', 'dns', 'udp443',
-    'interceptedHttp', 'interceptedOpaque', 'interceptedIpv6', 'uploadBytes', 'downloadBytes', 'invalidRequests', 'heldRequestsClosed', 'heldCloseRequests', 'tcpConnections', 'udpDatagrams'].map(key => [key, 0]));
+    'interceptedHttp', 'interceptedOpaque', 'interceptedIpv6', 'uploadBytes', 'downloadBytes', 'invalidRequests', 'heldRequestsClosed', 'heldCloseRequests', 'tcpConnections', 'udpDatagrams',
+    'deadlineCloseRequests', 'tcpErrorEvents', 'tcpResetErrors'].map(key => [key, 0]));
   const sockets = new Map(), timers = new Set(), socketTimers = new Map(), listeners = [];
   let pendingCallbacks = 0, closed = false, closing, holdNext = false;
   const held = new Set();
   let heldRecord = null, heldCloseRequested = false;
   const snapshot = () => Object.freeze({ ...counters, activeSockets: sockets.size, pendingCallbacks,
     timers: timers.size, listeners: closed ? 0 : listeners.length, heldConnections: held.size, closed });
+  const expire = socket => {
+    if (!socket.destroyed) { counters.deadlineCloseRequests++; socket.destroy(); }
+  };
   const own = socket => {
     let resolveClosed;
     const joined = new Promise(resolve => { resolveClosed = resolve; });
-    const timer = setTimeout(() => socket.destroy(), 5000); timers.add(timer); socketTimers.set(socket, timer);
+    const timer = setTimeout(() => expire(socket), 5000); timers.add(timer); socketTimers.set(socket, timer);
     sockets.set(socket, joined);
-    socket.on('error', () => {});
+    socket.on('error', error => {
+      counters.tcpErrorEvents++;
+      if (error?.code === 'ECONNRESET') counters.tcpResetErrors++;
+    });
     socket.once('close', () => { const current = socketTimers.get(socket); clearTimeout(current); timers.delete(current); socketTimers.delete(socket); sockets.delete(socket); if (held.delete(socket)) counters.heldRequestsClosed++; resolveClosed(); });
     if (closing) socket.destroy();
     return joined;
@@ -55,7 +62,7 @@ export async function createCaptureFixture({ ports: requested = { http: 80, opaq
         holdNext = false; held.add(socket); intentionallyHeld = true;
         heldRecord = { socket, closed: sockets.get(socket) };
         const old = socketTimers.get(socket); clearTimeout(old); timers.delete(old);
-        const timer = setTimeout(() => socket.destroy(), 60000); socketTimers.set(socket, timer); timers.add(timer);
+        const timer = setTimeout(() => expire(socket), 60000); socketTimers.set(socket, timer); timers.add(timer);
         return;
       }
       pendingCallbacks++;
