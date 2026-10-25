@@ -30,14 +30,19 @@ The original goal is active and incomplete.
   before driver admission. Only its host-cleanup record exists: driver exit null,
   stop0, observed termination/join and emulator exit0. No API37 permission or
   method result exists for this run. **A23 two-API acceptance remains open.**
-- Workflow owner has the exclusive two-file root-transition correction in their
-  isolated worktree: `.github/workflows/enrollment-runtime.yml` and
-  `scripts/tests/enrollment-emulator-clock.test.mjs`. Reuse capture-runtime's
-  bounded exact-UID observation, without repeating root/unroot or weakening the
-  clock gate. Root owns this checkpoint, evidence documents and integration.
-  Test/commit/review and ordinary host CI must precede another fresh full matrix.
-- User explicitly authorized Android main publication and hosted validation,
-  and separately authorized publication of the reviewed desktop ten-commit tip
+- Workflow owner committed the two-file root-transition correction as `a170054`,
+  integrated as `a3ac2ad`: `.github/workflows/enrollment-runtime.yml` and
+  `scripts/tests/enrollment-emulator-clock.test.mjs`. Root/unroot are each invoked
+  once; reconnect/read share each original 30-second deadline and exact UID0/
+  UID2000 admission remains required. Owner tests pass 78/78 plus nine extracted
+  ShellCheck blocks; coordinator replay passes 56 clock/suite/cleanup cases.
+  Root owns this checkpoint, evidence documents and integration. Ordinary host
+  CI must precede another fresh full matrix.
+- User explicitly authorized continued publication of validated Android main
+  checkpoints and existing hosted validation workflows for this goal without
+  asking for every checkpoint. This does not authorize paid infrastructure,
+  signing uploads, deployments or physical-device access. The user separately
+  authorized publication of the reviewed desktop ten-commit tip
   `2ee70e86` as `codex/android-companion-trusted-https`. This supersedes only the
   pending publication decision below. The exact desktop checkout/review patch is
   absent here and that tip is absent from GitHub. The user said they can provide
