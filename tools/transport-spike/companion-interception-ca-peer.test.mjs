@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import https from 'node:https';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { createHash, X509Certificate } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { startInterceptionCaPeer, interceptionCaCases } from './companion-interception-ca-peer.mjs';
@@ -76,4 +79,22 @@ test('actual private peer CLI refuses unknown configuration without echoing mate
   assert.equal(result.code, 1); assert(result.closeObserved && result.processGroupClosed);
   const value = JSON.parse(result.output.trim()); assert.deepEqual(value, { format: 'http-freekit-interception-ca-fixture', revision: 1, event: 'failed', snapshot: null });
   assert(!String(result.output + result.stderr).includes('PRIVATE_CA_CANARY'));
+});
+
+test('an unjoined pre-open wrong-gateway initialization retains its owned directory and cannot attest cleanup', async () => {
+  let directory, calls = 0;
+  try {
+    await assert.rejects(startInterceptionCaPeer({ scenario: 'wrong-gateway' }, { async wrongGatewayAssets(options) {
+      calls++; directory = path.dirname(options.directory);
+      throw Object.assign(Error('PRIVATE_JOIN_CANARY'), { joined: false });
+    } }), error => error.code === 'interception_ca_fixture_failed' && !String(error).includes('PRIVATE_JOIN_CANARY'));
+    assert.equal(calls, 1); assert(directory && fs.existsSync(directory));
+    assert.deepEqual(fs.readdirSync(directory).sort(), ['enrollment','wrong']);
+  } finally {
+    // This injected loader started no child. Its test owner removes the retained fake directory only after checking the refusal.
+    if (directory) {
+      assert.equal(path.dirname(directory), fs.realpathSync(os.tmpdir())); assert(path.basename(directory).startsWith('freekit-interception-ca-'));
+      assert.equal(fs.realpathSync(directory), directory); fs.rmSync(directory, { recursive: true, force: true });
+    }
+  }
 });

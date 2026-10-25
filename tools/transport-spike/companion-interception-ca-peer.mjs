@@ -81,14 +81,14 @@ function wire(kind, body, expected) {
 /** Same existing trusted service seam; no new fixture authorization or issuer API. */
 function hostileService({ tls: options, metadata, authorizeCertificate }, kind, certificate, body) {
   const sockets = new Map(), tasks = new Set(), timers = new Set(), writers = new Set();
-  let server, closing = false, listenerClosed = false, closeTask, accepted = 0, secureConnections = 0, authorized = 0, requests = 0, responses = 0;
+  let server, closing = false, listenerClosed = false, closeTask, accepted = 0, secureConnections = 0, authorized = 0, requests = 0, responses = 0, publishedBytes = 0;
   const timer = (action, millis) => { const value = setTimeout(() => { timers.delete(value); action(); }, millis); timers.add(value); return value; };
   const ownSocket = socket => {
     socket.on('error', () => {}); if (sockets.has(socket)) return;
     const closed = observeClose(socket); sockets.set(socket, closed);
     closed.then(() => sockets.delete(socket)); if (closing) socket.destroy();
   };
-  const snapshot = () => Object.freeze({ admissionClosed: closing, listenerClosed, accepted, secureConnections, authorized, requests, completedResponses: responses,
+  const snapshot = () => Object.freeze({ admissionClosed: closing, listenerClosed, accepted, secureConnections, authorized, requests, completedResponses: responses, publishedBytes,
     listeners: server?.listening ? 1 : 0, authenticatedSockets: sockets.size, proxySockets: 0,
     pendingCallbacks: [...writers].reduce((sum, state) => sum + state.pending, 0), timers: timers.size, workers: tasks.size, childrenJoined: true });
   const run = (socket, action) => {
@@ -102,14 +102,21 @@ function hostileService({ tls: options, metadata, authorizeCertificate }, kind, 
         const bytes = Buffer.from('HTTP/1.1 200 OK\r\n', 'ascii');
         for (const byte of bytes) {
           await new Promise(done => { const handle = timer(done, 1000); observeClose(socket).then(() => { clearTimeout(handle); timers.delete(handle); done(); }); });
-          if (closing || socket.destroyed) return; await write(socket, Buffer.of(byte), state);
+          if (closing || socket.destroyed) return; await write(socket, Buffer.of(byte), state); publishedBytes++;
         }
         return;
       }
-      await write(socket, wire(kind, body, kind === 'changed-ca' ? metadata.interceptionCaCertificateSha256 : hash(body)), state);
+      const encoded = wire(kind, body, kind === 'changed-ca' ? metadata.interceptionCaCertificateSha256 : hash(body));
+      // Publish exactly the header budget without its terminator, then hold open.
+      // A correct client rejects the bound rather than waiting for EOF or a read timeout.
+      const payload = kind === 'header-limit' ? encoded.subarray(0, 8192) : encoded;
+      await write(socket, payload, state); publishedBytes += payload.length;
       responses++;
-      if (kind !== 'hold-eof') await endWrite(socket, state);
-    } finally { writers.delete(state); }
+      if (!['hold-eof','header-limit'].includes(kind)) await endWrite(socket, state);
+    } finally {
+      // A rejected write promise can precede its real callback. Retain that callback owner until it settles.
+      await state.idle; if (state.pending !== 0) fail(); writers.delete(state);
+    }
   };
   return Object.freeze({
     get port() { return server?.address()?.port ?? 0; }, snapshot,
@@ -161,12 +168,12 @@ function hostileService({ tls: options, metadata, authorizeCertificate }, kind, 
   });
 }
 
-export async function startInterceptionCaPeer({ scenario, openssl = process.env.OPENSSL_BIN ?? 'openssl' } = {}) {
+export async function startInterceptionCaPeer({ scenario, openssl = process.env.OPENSSL_BIN ?? 'openssl' } = {}, { wrongGatewayAssets = enrollmentFixtureAssets } = {}) {
   if (!interceptionCaCases.includes(scenario)) fail();
   const temporary = fs.realpathSync(os.tmpdir()), directory = fs.mkdtempSync(path.join(temporary, 'freekit-interception-ca-'));
   fs.chmodSync(directory, 0o700);
   const data = path.join(directory, 'enrollment'); fs.mkdirSync(data, { mode: 0o700 });
-  let fixture, metadata, certificate, body, hostile, wrong, enrollmentId, closing = false, closeTask, startTask, privateDirectoryRemoved = false, enrollStarted = false;
+  let fixture, metadata, certificate, body, hostile, wrong, enrollmentId, closing = false, closeTask, startTask, privateDirectoryRemoved = false, enrollStarted = false, startupUnjoined = false;
   const suppliedCa = scenario === 'rsa-reference' ? replacementCa('rsa-reference') : undefined;
   const jobs = new Set();
   const available = () => { if (closing || !fixture) fail(); };
@@ -196,6 +203,7 @@ export async function startInterceptionCaPeer({ scenario, openssl = process.env.
       await Promise.allSettled([...jobs]);
       const state = fixture?.snapshot();
       if (state && (!state.closed || !state.storeClosed || !state.issuerChildrenJoined || state.activeSockets || state.pendingCallbacks || state.pendingTimers || state.workers)) fail();
+      if (startupUnjoined) fail();
       if (path.dirname(directory) !== temporary || !path.basename(directory).startsWith('freekit-interception-ca-') || fs.realpathSync(directory) !== directory) fail();
       fs.rmSync(directory, { recursive: true, force: true }); privateDirectoryRemoved = !fs.existsSync(directory);
       if (!privateDirectoryRemoved) fail(); return snapshot();
@@ -203,11 +211,11 @@ export async function startInterceptionCaPeer({ scenario, openssl = process.env.
   };
   try {
     if (scenario === 'wrong-gateway') { const other = path.join(directory, 'wrong'); fs.mkdirSync(other, { mode: 0o700 });
-      wrong = await enrollmentFixtureAssets({ directory: other, mode: 'create', openssl, setupPort: 0, credentialPort: 0 }); }
+      wrong = await wrongGatewayAssets({ directory: other, mode: 'create', openssl, setupPort: 0, credentialPort: 0 }); }
     await open('create');
-  } catch { await close(); fail(); }
+  } catch (error) { startupUnjoined ||= error?.joined === false; await close(); fail(); }
   return Object.freeze({
-    ready: () => ({ metadata: structuredClone(metadata), peerPort: hostile?.port ?? metadata.credentialPort,
+    ready: () => ({ metadata: structuredClone(metadata), nodeVersion: process.version, nodeOpenSsl: process.versions.openssl, peerPort: hostile?.port ?? metadata.credentialPort,
       referenceCaDer: certificate.toString('base64url'), responseHash: hash(body) }),
     enroll(csr) { available(); if (enrollStarted) fail(); enrollStarted = true;
       return track(async () => {
