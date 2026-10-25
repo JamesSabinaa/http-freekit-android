@@ -185,6 +185,11 @@ class DraftEnrolledTunInteropTest {
                 !capture.configurationPresent && capture.activeFlows == 0 && capture.ownedSockets == 0 && capture.pendingOpens == 0 && capture.liveWorkers == 0) {
                 "Enrolled TUN resources remain"
             }
+            check(capture.interceptedTcpFlows == observed.interceptedTcpFlows && capture.directTcpFlows == 0 && capture.udpTargets == 0 &&
+                capture.udp443Drops == 0 && capture.protectFailures == 0 && capture.bindFailures == 0) { "Enrolled TUN routing changed during completion" }
+            val finalGuards = service.guardSnapshot()
+            check(finalGuards.protectAttempts == guards.protectAttempts && finalGuards.protectSuccesses == guards.protectSuccesses &&
+                finalGuards.bindAttempts == guards.bindAttempts && finalGuards.bindSuccesses == guards.bindSuccesses) { "Enrolled TUN protection changed during completion" }
             check(final.closed && final.admissionClosed && final.failureCode == null && final.pendingOpens == 0 && final.pendingCalls == 0 &&
                 final.retainedTransports == 0 && final.liveWorkers == 0 && !final.sessionLease && final.streamLeases == 0 && final.chargedBytes == 0L &&
                 final.pendingIngressBytes == 0L && final.backendOutputBytes == 0L && final.backendIncomingBytes == 0L) { "Enrolled TUN factory remains" }
@@ -209,11 +214,11 @@ class DraftEnrolledTunInteropTest {
                 put("TunAndNativeObserved", true); put("ForegroundNotificationObserved", true); put("HttpAttempts", httpAttempts)
                 put("HttpOutputHalfClosed", response.status == 0); put("StrictResponseEof", response.status == 0)
                 put("LocalStreamsDrained", true); put("HostCompleteAcknowledged", true)
-                put("ProtectAttempts", guards.protectAttempts); put("ProtectSuccesses", guards.protectSuccesses)
-                put("BindAttempts", guards.bindAttempts); put("BindSuccesses", guards.bindSuccesses)
-                put("SelectedPackageCount", stopped.selectedPackageCount); put("InterceptedTcpFlows", observed.interceptedTcpFlows)
-                put("DirectTcpFlows", observed.directTcpFlows); put("UdpTargets", observed.udpTargets); put("Udp443Drops", observed.udp443Drops)
-                put("ProtectFailures", observed.protectFailures); put("BindFailures", observed.bindFailures)
+                put("ProtectAttempts", finalGuards.protectAttempts); put("ProtectSuccesses", finalGuards.protectSuccesses)
+                put("BindAttempts", finalGuards.bindAttempts); put("BindSuccesses", finalGuards.bindSuccesses)
+                put("SelectedPackageCount", stopped.selectedPackageCount); put("InterceptedTcpFlows", capture.interceptedTcpFlows)
+                put("DirectTcpFlows", capture.directTcpFlows); put("UdpTargets", capture.udpTargets); put("Udp443Drops", capture.udp443Drops)
+                put("ProtectFailures", capture.protectFailures); put("BindFailures", capture.bindFailures)
                 put("ResponseBodyBytes", response.bytes); put("ResponseBodySha256", checkNotNull(response.sha256))
                 put("CaptureStopped", stopped.state == "stopped"); put("TunClosed", capture.tunClosed); put("NativeStopJoined", capture.nativeStopJoined)
                 put("ConfigurationAbsent", !capture.configurationPresent); put("LifecycleJoined", !stopped.lifecycleThreadAlive)
