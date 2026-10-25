@@ -46,8 +46,9 @@ export function createEnrolledTunAliasOwner(command, { platform = process.platfo
       let created;
       try { created = await run('create', ['sudo', '-n', 'ip', '-4', 'address', 'add', cidr, 'dev', 'lo']); }
       catch { fail('alias_create_failed'); }
+      // The successful exit already proves mutation even if the stronger close/group receipt is missing.
+      if (created.code === 0) { state.created = true; owned = true; }
       if (!enrollmentPassed(created)) fail('alias_create_failed');
-      state.created = true; owned = true;
       let observed;
       try { observed = addresses(await inspect('verify')); } catch { fail('alias_verify_failed'); }
       if (observed.length !== 1 || observed[0].prefix !== enrolledTunPayload.prefix) fail('alias_verify_failed');

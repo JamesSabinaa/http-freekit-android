@@ -6,6 +6,7 @@ import path from 'node:path';
 import { runDraftCommand } from './draft-stream-command.mjs';
 import { createEnrolledTunAliasOwner, enrolledTunGateScript, publishEnrolledTunAcknowledgment } from './enrolled-tun-host.mjs';
 import { enrolledTunAcknowledgment } from './enrolled-tun-descriptor.mjs';
+import { report, verify } from './enrolled-tun-test-fixtures.mjs';
 
 const bash = process.platform === 'win32' ? 'C:/Program Files/Git/bin/bash.exe' : '/bin/bash';
 const fakeIp = `#!/usr/bin/env bash
@@ -150,6 +151,25 @@ test('failed add never invents ownership, while failed verification retains owne
     assert(!JSON.stringify(owner.snapshot()).includes('CANARY'));
     const result = await owner.remove({ fixtureJoined: true }); assert(result.removed && result.absenceConfirmed);
     assert.equal(fs.existsSync(path.join(directory, 'created')), false); assert.equal(result.refusal, 'alias_verify_failed');
+  });
+});
+
+test('a successful add exit retains cleanup ownership when its close or group receipt is unverified, and the report remains failed', async () => {
+  for (const missing of ['closeObserved', 'processGroupClosed']) await fixture({}, async ({ command, directory }) => {
+    const owner = createEnrolledTunAliasOwner(async (...args) => {
+      const result = await command(...args);
+      // The substitute actually joins; inject only the missing receipt after its real successful add.
+      return args[1].includes('add') ? { ...result, [missing]: false } : result;
+    }, { platform: 'linux' });
+    await assert.rejects(owner.prepare(), /enrollment_fixture_failed/);
+    assert.equal(fs.existsSync(path.join(directory, 'created')), true);
+    assert.equal(owner.snapshot().created, true); assert.equal(owner.snapshot().verified, false);
+    assert.equal(owner.snapshot().commands.create.exitCode, 0); assert.equal(owner.snapshot().commands.create[missing], false);
+    const after = await owner.remove({ fixtureJoined: true }); assert(after.removed && after.absenceConfirmed);
+    assert.equal(fs.existsSync(path.join(directory, 'created')), false);
+    assert.equal(fs.readFileSync(path.join(directory, 'calls'), 'utf8').split('\n').filter(line => line.startsWith('-4 address del ')).length, 1);
+    const value = report(); value.alias = after; assert.throws(() => verify(value));
+    assert.equal(after.refusal, 'alias_create_failed'); assert.equal(after.commands.create[missing], false);
   });
 });
 
