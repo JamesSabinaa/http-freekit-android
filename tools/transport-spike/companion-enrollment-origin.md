@@ -44,3 +44,35 @@ attachment, capture, original numeric destination and origin HTTP requires a
 separate explicit desktop binding. No desktop source is copied here, and no
 Android enrollment, Keystore or socket-protection claim follows from these host
 software-key checks.
+
+## Explicit real desktop binding
+
+`createDesktopOriginBackend` in gateway-origin-desktop.mjs requires an absolute
+local `desktopRoot`, exact40-hex `desktopCommit`, synchronous destination policy
+and optional private capture callback. It validates the exact clean tracked Git
+tip using joined bounded commands before importing that checkout's actual
+ProxyServer. It starts no desktop listener. Each factory admission owns a bounded
+in-process byte-duplex pair and the real trusted HTTP-origin attachment; strict
+current registry/session admission is combined with exact destination policy.
+
+The adapter retains public write/end callback owners until their callback or an
+actual socket close cancels them with a fixed error. A close never becomes a
+successful write receipt. Either pair endpoint's actual close seals/interrupts
+the whole attachment. Owner and independent ProxyServer teardown start together,
+and every actual join must settle successfully.
+
+The explicit local suite requires FREEKIT_DESKTOP_ROOT and defaults its reviewed
+tip to fd63f6940226c8e3401a165082dfa9325abaca69 (override only with an explicitly
+reviewed FREEKIT_DESKTOP_COMMIT). Invoke Node with --test and
+tools/transport-spike/gateway-origin-desktop.local.test.mjs. It is outside the
+ordinary hosted globs while the desktop dependency is unpublished; missing or
+dirty/wrong source fails rather than skips. Port127.0.0.2:80 must be free; collision
+refuses setup without displacing another service. Coordinate this port with other
+local factory tests.
+
+The real local checks establish numeric80 routing with an unchanged logical Host,
+actual HTTP capture and full response/END_WRITE, exact destination denial without
+origin egress, and durable registry revocation with attachment/model joins. They
+use software test keys, with no Android/Keystore/protect/TUN inference. The
+[Android proof contract](../../docs/android-capture-factory-runtime.md) specifies
+the separate actual device gate.
