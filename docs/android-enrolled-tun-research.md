@@ -127,3 +127,80 @@ publication approval is still pending. Prepare, compile and validate the real
 components without claiming device success. Do not publish desktop code, upload
 keys or create paid infrastructure. Execution requires the actual device/runner
 and exact clean desktop inputs; physical USB acceptance remains independent.
+
+## Preparation evidence
+
+The implementation is prepared at `eea64c32352c7df3fd0bf8f28a9e1e7a0ee52cb0`.
+The integrated host check passes all 179 cases with zero failures, cancellations,
+skips or todo cases in 41.219 seconds, using Node 24.22.1 and explicit external
+OpenSSL 3.6.1. It includes parser/report/CLI and fake-command ownership checks,
+actual owned-child shell checks and existing issuer regressions. It does not
+execute the C5 Android method or create a real Linux alias.
+
+The three research APKs assemble and strict interop/runtime/traffic lint reports
+contain zero issues. The 31 preserved JVM cases remain green (15 interop, 7 runtime,
+9 traffic); their source bindings and original timestamps are retained rather
+than relabelled as one fresh run. Independent inspection verifies the actual APK
+packages, min26/target37, protected VPN service, exact traffic-control permission
+and matching verified public debug signers. The original APK audit preserves its
+`0e75bd4` plus dirty-manifest/test-before-commit provenance; the same manifest is
+now committed as `7b52233`, and all three APK hashes remain unchanged.
+
+A real ordinary-HTTP regression requests response release before control
+admission. The old fixture fails with release already failed instead of pending;
+the identical frozen test passes with the correction. The seven C3 cases plus
+two mocked alias-preflight cases pass, as do all nine C2 regressions on their old
+desktop pin. The frozen test SHA256 is
+`576015e2dc08fa6ac67c455ab1aaed501d0ab00e972f868c4fea0abfd5d96826`.
+
+Workflow checks cover 12 actual extracted cleanup/status combinations and four
+selection/dependency checks. All 11 extracted LF shell blocks pass standalone
+ShellCheck 0.11.0 and both embedded JavaScript blocks pass syntax checks. Local
+actionlint 1.7.12 checks grammar/expressions with integrated ShellCheck/Pyflakes
+disabled; full unsuppressed Linux actionlint remains a hosted check. The shared
+Kotlin roots use the documented [variant source API](https://developer.android.com/build/migrate-to-built-in-kotlin).
+
+The independent preparation audit SHA256 is
+`96cd1f0151defa39e652c68e26798730d936fde7c80e320f5f62c5a4a62c04c0`;
+the actual TAP SHA256 is
+`c7cdfccd9810850a808d23f01b9bc5a06185e9af1b6d19e66223323544fa2bb1`.
+Stable ignored exports live directly in `dist/`, including
+`capture-enrolled-tun-preparation-validation.json` and
+`capture-enrolled-tun-apk-validation.json` with checksums.
+
+Actual C5 Android runtime remains UNRUN. The real CLI preflight retains zero
+started/completed Android invocations, unsupported-Windows refusal and no alias
+commands. A separate ADB inventory finds no attached devices. A GitHub read of
+the exact desktop `2ee70e86` commit returns HTTP 422/commit not found. Hosted execution needs
+its separately authorized publication; the earlier eight-commit fd63 question
+does not cover this ten-commit input. No emulator, alias or desktop publication
+was performed by this preparation package. Physical USB, Android HTTPS/H2,
+production integration and v1 freeze remain open.
+
+## Running the prepared method
+
+Use a dedicated Linux research host, a selected API 26 or 37 device, the pinned
+[developer toolchain](development.md), OpenSSL 3 and the exact clean local desktop
+checkout. The driver requires the fixed alias absent and noninteractive
+permission to add/remove only that alias. The three research packages must be
+absent before setup. It installs and cleans up only its own research packages.
+
+```bash
+set -euo pipefail
+export OPENSSL_BIN=/usr/bin/openssl # Must report OpenSSL 3.
+serial='<selected ADB serial>'
+desktop='<absolute path to the reviewed desktop checkout>'
+api="$(adb -s "$serial" shell getprop ro.build.version.sdk | tr -d '\r')"
+started="$(date +%s)"
+node tools/transport-spike/run-enrollment-runtime.mjs --suite c5 --serial "$serial" \
+  --desktop-root "$desktop" --desktop-commit 2ee70e86b17e2feb2fd2bf4842a85c66671eb4c6
+node scripts/verify-enrollment-runtime.mjs --suite c5 --source "$(git rev-parse HEAD)" \
+  --api "$api" --started "$started" --desktop-source 2ee70e86b17e2feb2fd2bf4842a85c66671eb4c6
+```
+
+The manual [hosted workflow](../.github/workflows/enrollment-runtime.yml) offers
+the same `c5` suite for API 26/37. It installs the pinned NDK required by the native
+APK, consumes the exact authorized desktop commit and retains only the four
+sanitized report files. It creates no alias outside the finite driver. A local
+Linux run can consume an already reviewed local checkout without publishing it;
+the hosted checkout additionally requires separate desktop publication approval.

@@ -64,6 +64,12 @@ Assembling the app and security module's Android instrumentation APKs checks com
 
 ## Enrolled HTTP-origin factory research
 
+The [enrolled selected-UID TUN suite](android-enrolled-tun-research.md) is prepared
+with real service/factory wiring, a separate finite traffic command and bounded
+host/cleanup ownership. Its 179 integrated host checks, APK compilation/signature
+audit and strict lint are preparation evidence. Actual API 26/37 selected-UID
+enrolled TUN execution remains unrun; ordinary host CI compiles the method only.
+
 The separate [policy composition check](capture-policy-transport-research.md)
 uses the production authenticated SOCKS frontdoor with the actual enrolled
 factory. Its explicit `:capture-transport-research:testDesktopPolicyIntegration`
