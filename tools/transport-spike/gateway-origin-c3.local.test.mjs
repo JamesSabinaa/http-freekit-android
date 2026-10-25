@@ -14,7 +14,7 @@ import { nextApplication, until } from './companion-stream-peer-client.mjs';
 import { encodeStream } from './companion-protocol-codec.mjs';
 import { encodeHttpOriginPreface, HttpOriginAcknowledgement } from './companion-http-origin.mjs';
 import { captureFactoryPayload as payload } from './capture-factory-descriptor.mjs';
-import { bounded, headers, observeClose, write, endWrite, writerState, safeError } from './companion-stream-peer-io.mjs';
+import { bounded, exact, headers, observeClose, write, endWrite, writerState, safeError } from './companion-stream-peer-io.mjs';
 import { ResearchWebSocket } from './research-websocket.mjs';
 import { runDraftCommand } from './draft-stream-command.mjs';
 
@@ -136,6 +136,40 @@ async function bytesThroughEof(socket) {
   }
 }
 
+test('actual enrolled HTTP80 keeps both capabilities and gates the full response tail on applied client END_WRITE', { timeout: 45000 }, async t => {
+  const f = await fixture(t, 'http-h1', 'ipv4'), client = await f.application(80), socket = client.transport;
+  const body = Buffer.from(Array.from({ length: payload.requestBodyBytes }, (_, i) => i % 251));
+  const request = Buffer.concat([Buffer.from(`POST ${payload.path} HTTP/1.1\r\nHost: ${C3_LOGICAL_HOST}\r\nContent-Length: ${body.length}\r\nConnection: close\r\n\r\n`), body]);
+  const state = writerState();
+  for (let offset = 0; offset < request.length; offset += 4096) await write(socket, request.subarray(offset, offset + 4096), state);
+  const header = (await bounded(headers(socket), 5000)).toString('ascii');
+  assert.match(header, /^HTTP\/1\.1 200 OK\r\n/);
+  assert.equal([...header.matchAll(/^content-length:[ \t]*([0-9]+)\r$/gmi)].length, 1);
+  assert.match(header, new RegExp(`^content-length: ${payload.responseBodyBytes}\\r$`, 'mi'));
+  assert.doesNotMatch(header, /^transfer-encoding:/mi);
+  const prefix = await bounded(exact(socket, 4096), 5000);
+  const held = await until(() => f.owner.snapshot(), value => value.origin.responsePrefixWritten);
+  assert.equal(held.origin.responseBodyBytesWritten, 4096); assert.equal(held.origin.tailReleased, false);
+  assert.equal(f.owner.inspect().probe.stream.client.eofEmitted, false); assert.equal(held.backend.clientEndWrites, 0);
+  const releasing = f.owner.releaseTail();
+  await new Promise(done => setTimeout(done, 275));
+  assert.equal(f.owner.snapshot().origin.responseBodyBytesWritten, 4096); assert.equal(f.owner.snapshot().origin.tailReleased, false);
+  await endWrite(socket, state);
+  const tail = await bytesThroughEof(socket), response = Buffer.concat([prefix, tail]);
+  assert.equal(response.length, payload.responseBodyBytes); assert.equal(digest(response), payload.responseBodySha256);
+  await releasing; await client.finish();
+  const done = await until(() => f.owner.snapshot(), value => value.gatewayStreamComplete);
+  assert.equal(done.profile, 'http-h1'); assert.equal(done.family, 'ipv4');
+  assert(done.origin.requestVerified && done.origin.captureMatched && done.origin.originalDestinationMatched && done.origin.responseEof && !done.origin.failed);
+  assert(done.origin.tailReleaseRequested && done.origin.tailReleased && done.origin.clientEndWriteApplied);
+  assert.equal(done.origin.requestBodyBytes, payload.requestBodyBytes); assert.equal(done.origin.requestBodySha256, payload.requestBodySha256);
+  assert.equal(done.origin.responseBodyBytesWritten, payload.responseBodyBytes); assert.equal(done.origin.responseBodySha256, payload.responseBodySha256);
+  assert.equal(done.origin.connections, 1); assert.equal(done.origin.requests, 1); assert.equal(done.origin.tlsConnections, 0); assert.equal(done.origin.upgradeRequests, 0);
+  assert.equal(done.backend.captures, 1); assert.equal(done.backend.clientEndWrites, 1); assert.equal(done.backend.proxyMode, 'http-origin-connect');
+  assert.deepEqual(done.backend.negotiatedCapabilities, C3_CAPABILITIES);
+  assert.equal(done.enrollment.stream.streamLeases + done.enrollment.stream.chargedBytes, 0);
+});
+
 for (const family of ['ipv4', 'ipv6']) test(`actual enrolled ${family} HTTPS443 verifies distinct trust, full bodies, capture and normal cleanup`, { timeout: 45000 }, async t => {
   const f = await fixture(t, 'https-h1', family), client = await f.application(443), socket = await innerTls(client, f.ca);
   t.after(() => socket.destroy());
@@ -206,7 +240,8 @@ test('C3 private CSR CLI binds actual public CA, exact capabilities and all clos
 
 test('C3 profiles and source pins are finite and failures never echo supplied configuration', async () => {
   for (const extra of [{ profile: 'CANARY_private', family: 'ipv4' }, { profile: 'https-h1', family: 'CANARY_private' },
-    { profile: 'https-h1', family: 'ipv4', desktopCommit: 'fd63f6940226c8e3401a165082dfa9325abaca69' }, { family: 'ipv4' }]) {
+    { profile: 'https-h1', family: 'ipv4', desktopCommit: 'fd63f6940226c8e3401a165082dfa9325abaca69' },
+    { profile: 'http-h1', family: 'ipv6' }, { family: 'ipv4' }]) {
     await assert.rejects(startOriginGatewayFixture({ desktopRoot, desktopCommit, ...extra }), error => error.code === 'origin_fixture_failed' && !String(error).includes('CANARY_private'));
   }
 });

@@ -20,7 +20,7 @@ const requestBody = () => Buffer.from(Array.from({ length: payload.requestBodyBy
 const responseBody = () => Buffer.from(Array.from({ length: payload.responseBodyBytes }, (_, i) => (i * 7) % 253));
 const retainedFailures = new Set();
 const failure = () => safeError('origin_fixture_failed');
-export const c3Profiles = Object.freeze(['https-h1', 'http-upgrade', 'wss-h1']);
+export const c3Profiles = Object.freeze(['https-h1', 'http-upgrade', 'wss-h1', 'http-h1']);
 export const c3Upgrade = Object.freeze({ path: '/factory-upgrade', initialText: 'origin-ready', clientText: 'capture-upgrade-€', binaryBytes: 4097 });
 const upgradeBinary = () => Buffer.from(Array.from({ length: c3Upgrade.binaryBytes }, (_, i) => (i * 29 + 3) & 255));
 const unexpectedTransportHeader = request => Object.keys(request.headers).some(name => name.startsWith('x-freekit-') ||
@@ -28,10 +28,13 @@ const unexpectedTransportHeader = request => Object.keys(request.headers).some(n
 
 export async function startOriginGatewayFixture({ desktopRoot, desktopCommit, openssl = process.env.OPENSSL_BIN ?? 'openssl', profile, family } = {}) {
   const c3 = profile !== undefined;
-  if (retainedFailures.size || c3 && (!c3Profiles.includes(profile) || !['ipv4', 'ipv6'].includes(family) || desktopCommit !== C3_DESKTOP_COMMIT) ||
+  if (retainedFailures.size || c3 && (!c3Profiles.includes(profile) || !['ipv4', 'ipv6'].includes(family) || desktopCommit !== C3_DESKTOP_COMMIT ||
+      profile === 'http-h1' && family !== 'ipv4') ||
       !c3 && family !== undefined) throw failure();
+  const gatedHttp = !c3 || profile === 'http-h1';
+  const ordinaryHttp = profile === 'https-h1' || profile === 'http-h1';
   const originalAddress = c3 && family === 'ipv6' ? '::1' : '127.0.0.2';
-  const originalPort = c3 && profile !== 'http-upgrade' ? 443 : 80;
+  const originalPort = c3 && ['https-h1', 'wss-h1'].includes(profile) ? 443 : 80;
   const logicalHost = c3 ? C3_LOGICAL_HOST : payload.logicalHost;
   const temporaryRoot = fs.realpathSync(os.tmpdir()), directory = fs.mkdtempSync(path.join(temporaryRoot, 'freekit-origin-gateway-'));
   fs.chmodSync(directory, 0o700);
@@ -71,7 +74,7 @@ export async function startOriginGatewayFixture({ desktopRoot, desktopCommit, op
   }
   async function request(request, response) {
     origin.requests++;
-    if (c3 && (profile !== 'https-h1' || unexpectedTransportHeader(request)) || origin.requests !== 1 || request.httpVersion !== '1.1' || request.method !== payload.method || request.url !== payload.path ||
+    if (c3 && (!ordinaryHttp || unexpectedTransportHeader(request)) || origin.requests !== 1 || request.httpVersion !== '1.1' || request.method !== payload.method || request.url !== payload.path ||
         ![logicalHost, ...(c3 ? [`${logicalHost}:${originalPort}`] : [])].includes(request.headers.host) || request.headers['content-length'] !== String(payload.requestBodyBytes) ||
         request.headers['transfer-encoding'] !== undefined || request.headers.connection?.toLowerCase() !== 'close') throw failure();
     const chunks = []; let count = 0;
@@ -83,7 +86,7 @@ export async function startOriginGatewayFixture({ desktopRoot, desktopCommit, op
     response.sendDate = false;
     response.writeHead(200, { 'content-length': payload.responseBodyBytes, connection: 'close', 'content-type': 'application/octet-stream' });
     await responseIo(responseBody().subarray(0, 4096)); origin.responsePrefixWritten = true;
-    if (c3) {
+    if (!gatedHttp) {
       const body = responseBody();
       for (let offset = 4096; offset < body.length; offset += 4096) await responseIo(body.subarray(offset, offset + 4096));
       await responseIo(null, true); origin.responseEof = true;
@@ -93,7 +96,7 @@ export async function startOriginGatewayFixture({ desktopRoot, desktopCommit, op
   async function upgrade(request, socket, head) {
     const key = request.headers['sec-websocket-key'];
     origin.upgradeRequests++;
-    if (profile === 'https-h1' || unexpectedTransportHeader(request) || origin.upgradeRequests !== 1 || request.httpVersion !== '1.1' || request.method !== 'GET' || request.url !== c3Upgrade.path ||
+    if (ordinaryHttp || unexpectedTransportHeader(request) || origin.upgradeRequests !== 1 || request.httpVersion !== '1.1' || request.method !== 'GET' || request.url !== c3Upgrade.path ||
         ![logicalHost, `${logicalHost}:${originalPort}`].includes(request.headers.host) || request.headers.upgrade?.toLowerCase() !== 'websocket' ||
         !request.headers.connection?.toLowerCase().split(',').map(value => value.trim()).includes('upgrade') ||
         request.headers['sec-websocket-version'] !== '13' || request.headers.origin !== undefined || request.headers['content-length'] !== undefined ||
@@ -188,9 +191,9 @@ export async function startOriginGatewayFixture({ desktopRoot, desktopCommit, op
         if (capture.protocol === 'ws-frame') return; // Frame rows reference the captured Upgrade parent, not another HTTP request.
         if (!c3) { if (capture.url === `http://${payload.logicalHost}${payload.path}`) origin.captureMatched = true; }
         else {
-          const url = new URL(capture.url), protocols = profile === 'https-h1' ? ['https:'] : profile === 'wss-h1' ? ['https:', 'wss:'] : ['http:', 'ws:'];
+          const url = new URL(capture.url), protocols = profile === 'http-h1' ? ['http:'] : profile === 'https-h1' ? ['https:'] : profile === 'wss-h1' ? ['https:', 'wss:'] : ['http:', 'ws:'];
           if (protocols.includes(url.protocol) && url.hostname === logicalHost && (Number(url.port) || (originalPort === 443 ? 443 : 80)) === originalPort &&
-              url.pathname === (profile === 'https-h1' ? payload.path : c3Upgrade.path)) origin.captureMatched = true;
+              url.pathname === (ordinaryHttp ? payload.path : c3Upgrade.path)) origin.captureMatched = true;
         }
       } });
     const receive = (req, res) => { if (closing) req.socket.destroy(); else own(() => request(req, res), req.socket); };
@@ -234,7 +237,7 @@ export async function startOriginGatewayFixture({ desktopRoot, desktopCommit, op
       const approved = await enrollOriginCsr(enrollment, csr, c3 ? C3_CAPABILITIES : undefined); enrollmentId = approved.material().enrollmentId; return approved;
     },
     releaseTail() {
-      if (c3 || releaseRequested || closing || enrollmentId === null) return Promise.reject(failure());
+      if (!gatedHttp || releaseRequested || closing || enrollmentId === null) return Promise.reject(failure());
       releaseRequested = true; releasePending = true;
       releaseTask = (async () => {
         const deadline = performance.now() + 5000;
