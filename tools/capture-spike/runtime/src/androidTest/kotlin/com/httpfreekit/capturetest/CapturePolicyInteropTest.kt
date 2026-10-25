@@ -156,13 +156,13 @@ class CapturePolicyInteropTest {
             val result = AtomicReference<TrafficClient.Result?>()
             val failure = AtomicReference<Throwable?>()
             val request = Thread({ try { result.set(traffic.command(10)) } catch (caught: Throwable) { failure.set(caught) } }, "capture-held-fixture-command")
+            val requestStarted = SystemClock.elapsedRealtime()
             request.start()
             try {
                 await { receiver.snapshot().getValue("heldConnections") == 1 && snapshot().capture!!.activeFlows > 0 }
-                val stopStarted = SystemClock.elapsedRealtime()
                 stop(notification = true)
                 request.join(2500)
-                check(!request.isAlive && SystemClock.elapsedRealtime() - stopStarted < 4000) { "stop_did_not_interrupt_before_request_deadline" }
+                check(!request.isAlive && SystemClock.elapsedRealtime() - requestStarted < 4000) { "stop_did_not_interrupt_before_request_deadline" }
                 failure.get()?.let { throw it }
                 check(result.get()?.status in setOf(2, 3)) { "held_request_completed" }
                 await { receiver.snapshot().getValue("heldConnections") == 0 }
@@ -258,7 +258,7 @@ class CapturePolicyInteropTest {
         check(service.awaitStopped(30000)) { "lifecycle_not_joined" }
         val state = service.captureSnapshot()
         val owner = checkNotNull(state.capture) { "capture_snapshot_missing" }
-        check(!state.tunEstablished && !state.lifecycleThreadAlive && owner.admissionClosed && !owner.nativeRunning && owner.nativeStopJoined && owner.tunClosed && !owner.configurationPresent && owner.activeFlows == 0 && owner.ownedSockets == 0 && owner.liveWorkers == 0 && owner.pendingOpens == 0 && service.interceptedFactoryClosed()) { "capture_resources_not_closed" }
+        check(!state.tunEstablished && !state.lifecycleThreadAlive && state.failureCode == null && !owner.failed && owner.admissionClosed && !owner.nativeRunning && owner.nativeStopJoined && owner.tunClosed && !owner.configurationPresent && owner.activeFlows == 0 && owner.ownedSockets == 0 && owner.liveWorkers == 0 && owner.pendingOpens == 0 && service.interceptedFactoryClosed()) { "capture_resources_not_closed" }
         stops++
     }
 
