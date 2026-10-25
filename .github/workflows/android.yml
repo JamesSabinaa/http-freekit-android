@@ -32,6 +32,8 @@ jobs:
           node scripts/check-doc-links.mjs
       - name: Test exact Keystore report verification
         run: python3 -m unittest discover -s scripts/tests -p 'test_keystore_results.py'
+      - name: Test bounded preview emulator cleanup
+        run: node --test scripts/tests/preview-emulator-cleanup.test.mjs
       - name: Validate draft protocol corpus and guard regressions
         run: |
           python3 -m unittest discover -s scripts/tests -p 'test_protocol_corpus.py'
