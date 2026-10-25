@@ -143,13 +143,17 @@ class DraftCaptureFactoryInteropTest {
             check(same.record.clientCertificateChain.single().encoded.contentEquals(originalLeaf)) { "Factory credential changed" }
             val currentAlias = checkNotNull(same.clientKeyManager.chooseClientAlias(arrayOf("EC"), null, null))
             check(checkNotNull(same.clientKeyManager.getPrivateKey(currentAlias)).encoded == null) { "Factory key exportable" }
-            application.close()
+            application.closeGracefully()
+            check(transport.snapshot().failureCode == null) { "Factory failed during graceful closure" }
+            prepared.requireConnected()
             transport.close()
             val final = transport.snapshot()
-            check(final.closed && final.pendingOpens == 0 && final.pendingCalls == 0 && final.retainedTransports == 0 && final.liveWorkers == 0 &&
+            check((final.failureCode == null || final.failureCode == "closed") && final.closed &&
+                final.pendingOpens == 0 && final.pendingCalls == 0 && final.retainedTransports == 0 && final.liveWorkers == 0 &&
                 !final.sessionLease && final.streamLeases == 0 && final.chargedBytes == 0L && final.pendingIngressBytes == 0L &&
                 final.backendOutputBytes == 0L && final.backendIncomingBytes == 0L) { "Factory resources remained" }
             prepared.close()
+            prepared.requireConnected()
             instrumentation.runOnMainSync { activity?.finish() }
             check(DraftCaptureFactoryConsentActivity.awaitDestroyed(5000)) { "Factory Activity remained" }
             val guard = service.snapshot()
@@ -293,6 +297,8 @@ class DraftCaptureFactoryInteropTest {
             return checkNotNull(service.get()) { "Factory service unavailable" }
         }
         fun onDisconnect(action: () -> Unit) { interrupt.set(action); if (disconnected.get()) action() }
+        // Normal unbind has no disconnect callback; retain the whole binding's loss history.
+        fun requireConnected() { check(service.get() != null && !disconnected.get() && !interruptFailed.get()) { "Factory service disconnected" } }
         override fun close() {
             var failed = interruptFailed.get()
             val owned = service.get()
@@ -355,6 +361,16 @@ class DraftCaptureFactoryInteropTest {
             check(workers.none { it.isAlive }) { "Factory relay not joined" }; didJoin = true
         }
         fun joined() = didJoin && workers.none { it.isAlive }
+        fun closeGracefully() {
+            check(joined() && !failed.get() && !stopping.get()) { "Factory relay incomplete" }
+            // Gateway EOF can precede the actual normal WebSocket close/model completion.
+            transport.close()
+            stopping.set(true); var failed = false
+            fun attempt(action: () -> Unit) { try { action() } catch (_: Exception) { failed = true } }
+            attempt { application?.close() }; attempt { bridge?.close() }; attempt { listener?.close() }
+            attempt { joinWorkers() }
+            check(!failed) { "Factory relay cleanup failed" }
+        }
         override fun close() {
             stopping.set(true); var failed = false
             fun attempt(action: () -> Unit) { try { action() } catch (_: Exception) { failed = true } }
