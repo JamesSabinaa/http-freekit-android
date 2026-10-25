@@ -110,6 +110,43 @@ class EnrolledCaptureDesktopTest {
         }
     }
 
+    @Test fun deniedOriginalNumericDestinationFailsBeforeAcknowledgementOrOriginEgress() {
+        CaptureOriginNodePeer().use { peer ->
+            val guard = Guard(); val factory = factory(peer, guard)
+            var cause: String? = null
+            try {
+                try {
+                    factory.open(InetAddress.getByAddress(byteArrayOf(127, 0, 0, 3)), 80)
+                    fail("A denied original destination must not return an acknowledged connection")
+                } catch (failure: CaptureException) { assertEquals("connect_failed", failure.code) }
+                val snapshot = peer.snapshot(); val origin = snapshot.getValue("origin").jsonObject
+                assertEquals(0L, origin.number("connections")); assertEquals(0L, origin.number("requests"))
+                assertEquals(0L, snapshot.getValue("backend").jsonObject.number("captures"))
+                assertEquals(2, guard.protects.get()); assertEquals(2, guard.binds.get())
+                cause = factory.snapshot().failureCode; assertTrue(cause != null)
+            } finally { factory.close() }
+            joined(factory, cause)
+        }
+    }
+
+    @Test fun defaultBothCapabilitiesRefusesANewOnlyGatewayWithoutDowngradeOrProxyAllocation() {
+        CaptureOriginNodePeer().use { peer ->
+            val guard = Guard()
+            val factory = EnrolledCaptureTcpFactory(peer.configuration, peer.endpoint, guard)
+            var cause: String? = null
+            try {
+                try { factory.open(original(), 80); fail("The default required set must not downgrade") }
+                catch (failure: CaptureException) { assertEquals("connect_failed", failure.code) }
+                val snapshot = peer.snapshot()
+                assertEquals(0L, snapshot.getValue("origin").jsonObject.number("connections"))
+                assertEquals(0L, snapshot.getValue("backend").jsonObject.number("admitted"))
+                assertEquals(1, guard.protects.get()); assertEquals(1, guard.binds.get())
+                cause = factory.snapshot().failureCode; assertTrue(cause != null)
+            } finally { factory.close() }
+            joined(factory, cause)
+        }
+    }
+
     @Test fun realClippedCredentialDeadlineInterruptsAnIdleOpenStreamAndJoins() {
         CaptureOriginNodePeer().use { peer ->
             val factory = factory(peer, Guard()); val executor = Executors.newSingleThreadExecutor()
