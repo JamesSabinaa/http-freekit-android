@@ -18,7 +18,8 @@ The fixed destination is `198.18.0.2`, logical host `reference-target.invalid`,
 ports 80/443 and path `/reference/proof`. Requests are single `POST` transactions
 with explicit bounded Content-Length, no transfer encoding, trailers, upgrades,
 pipelining or arbitrary forwarding. Headers and bodies are each at most 4096
-bytes; at most two backend owners are admitted. Use maintained Node HTTP/TLS
+bytes; at most two backend owners are active concurrently (not a lifetime
+counter cap). Use maintained Node HTTP/TLS
 parsers and bounded backpressure. Do not implement a second general HTTP parser.
 No DNS lookup, public listener, management route or arbitrary destination exists.
 
@@ -88,9 +89,10 @@ Owner scope: new `reference-interception-backend.mjs` and its `.test.mjs` only.
   `upstreamDials`, `interceptedHttpRequests`, `interceptedHttpsRequests`,
   `upstreamHttpRequests`, `upstreamHttpsRequests`, `interceptionTlsHandshakes`,
   `upstreamTlsHandshakes`, `rejectedPrefaces`, `closed`.
-- `evidence()` returns defensive bounded private test measurements, at most two
+- `evidence()` returns defensive bounded private test measurements, the last two
   successful rows `{mode: 'http'|'https', requestBytes, responseBytes,
-  requestSha256, responseSha256}` recorded at the actual origin. Never log or
+  requestSha256, responseSha256}` recorded at the actual origin. Lifetime
+  snapshot counters retain actual totals; evidence length is not a flow counter. Never log or
   publish these traffic digests; public reports use counts/comparison booleans.
 - `close()` seals admission, closes all owned users/listeners and resolves only
   after actual socket/callback/request/owner joins. It does not close assets.
@@ -124,6 +126,11 @@ the documented pinned Node24.22.1 environment; local Node22 failures must be
 retained and not called passing or pre-existing without baseline evidence.
 Root integrates reviewed commits, adds exact new tests to existing host CI and
 requires fresh source-bound host success before claiming this checkpoint.
+All six enrolled-composition cases must actually execute; import/syntax checks
+are not composition evidence. Backend hostile TLS checks must cover actual
+wrong incoming trust/hostname and wrong outgoing trust/hostname, with a trusted
+matching-host control for any alternate test-only origin identity. No skipped
+hostile case or suppressed lifecycle failure clears this checkpoint.
 No Java/SDK is available locally; no Android execution is inferred.
 
 Retain all old A23, origin, capture and C5 guard tests. Documentation requires

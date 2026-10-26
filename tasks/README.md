@@ -17,9 +17,11 @@ Unique parallel packages, each in a fresh branch/worktree:
 
 | Package | Exclusive files | Status / dependencies |
 | --- | --- | --- |
-| A, owned TLS assets | new `reference-interception-assets.mjs` + `.test.mjs` | assigned after frozen local interface commit; real OpenSSL/CA/leaf/child-join tests |
-| B, bounded proxy backend | new `reference-interception-backend.mjs` + `.test.mjs` | assigned after interface commit; depends on A API; actual HTTP + interception TLS + separate verified origin TLS |
-| C, enrolled composition | new `reference-interception-enrollment.test.mjs` | assigned after interface commit; depends on A/B APIs; actual existing authenticated gateway streams and cleanup |
+| A, owned TLS assets (`a435a12350fa09dbf`, branch `worktree-agent-a435a12350fa09dbf`) | new `reference-interception-assets.mjs` + `.test.mjs` | owner `9a1b725`, integrated `5902b3d`; review corrections `f30fbae`, integrated `3392510`, reproduce/fix unsafe ancestry and duplicate CA/server SPKIs; independent corrective review passes; root assets/contract/command 33/33 and A+B combined 48/48 pass as root; foreign-UID regression requires root |
+| B, bounded proxy backend (`afac179bd5fd5f2be`, branch `worktree-agent-afac179bd5fd5f2be`) | new `reference-interception-backend.mjs` + `.test.mjs` | owner `3fcf765`, integrated `5010594`; final combined 29/29 local tests pass (15 backend), no skips; root corrected-A/backend/contract/command 48/48 pass; initial failures retained; independent review pending |
+| B review (`adbd10ca193f61c1d`, branch `worktree-agent-adbd10ca193f61c1d`) | read-only exact `3fcf765` two B files and trusted-owner seam as needed | independent correctness/security/lifecycle review running; no edits or duplicated A review/C execution |
+| C, enrolled composition (`ae85d7593109b5bee`, branch `worktree-agent-ae85d7593109b5bee`) | new `reference-interception-enrollment.test.mjs` | committed `4671261`, integrated `b9b9b61`; exact A correction/B imported in owner worktree; one actual six-case local run fails 0 pass/6 fail/0 cancelled/0 skipped at gateway startup `pairing_unavailable`, before authenticated traffic; Node22 lacks both required SQLite defenses; no bypass; pinned Node24 host execution required |
+| Enrollment gate diagnosis (`a223f8221406c3ee8`, branch `worktree-agent-a223f8221406c3ee8`) | read-only existing enrollment HTTPS/issuer/command helpers | complete: bounded in-memory probe shows local Node22 lacks both required SQLite `enableDefensive`/`setAuthorizer` APIs; deterministic Store blocker, not proven first prior exception; staged probe refused before execution, no retry or bypass |
 
 No agent edits another package, old C5/A23 code, shared wire grammar, app, Android
 runtime or production desktop. No extra listeners outside owned loopback, global

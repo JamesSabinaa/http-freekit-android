@@ -94,6 +94,54 @@ Later capture start still requires platform package revalidation, consent,
 trusted transport and target trust; C5, protocol freeze and physical USB are
 not established by this local boundary.
 
+## Reference interception host research
+
+The [separate reference profile](reference-interception-research.md) is a new,
+fixed-destination host proof toward Android selected-UID execution, not C5 or
+production desktop capture. Local interface `78e953d` freezes only private
+research APIs; no wire grammar, capability or C5 pin changes. Root's mandatory
+host step requires contract, assets, backend and enrolled-composition suites
+without skipped failures or a desktop fallback.
+
+TLS-assets owner `9a1b725` is integrated as `5902b3d`. Its combined local assets,
+contract and owned-command suite passes 21/21 on Node22.22.2/OpenSSL3.0.13,
+including independent P-256 CA/leaf chains, real correct/wrong trust/hostname
+TLS, key/constraint/DER checks, private permissions, mutation/closed-access
+checks and actual child/group cleanup on failure. Eight successful generation
+commands have eight actual child and group closes. Independent review then
+identified unsafe ancestor permissions and insufficient cryptographic CA/leaf
+key separation, requiring corrections and regressions. That initial passing run
+is not acceptance of the corrections. Correction `f30fbae`,
+integrated as `3392510`, requires trusted root/effective-UID ancestry, sticky
+protection for writable ancestors, and pairwise canonical SPKI uniqueness across
+all four CA/server identities. Both findings have actual red/green regressions.
+The owner passes 32/32 combined local tests as root; the foreign-UID sticky-parent
+case requires root and explicitly skips on non-root hosts. No skip occurred in
+that local run. Independent corrective review confirms both findings fixed.
+The coordinator passes integrated assets/contract/command 33/33, then corrected
+assets/backend/contract/command 48/48, zero failures/cancellations/skips on
+Node22.22.2/OpenSSL3.0.13 as root. The latter includes all 15 backend cases,
+real HTTP/HTTPS origin I/O, maximal body and coalesced ClientHello, incoming and
+outgoing wrong CA/hostname refusal, the trusted matching-SAN control, admission,
+parser bounds, lifetime owner/evidence bounds and actual abort/deadline joins.
+Backend's initial real run failed (3 passed, 3 failed, 4 cancelled, 1 skipped).
+A second run had eight passes and three hostile-TLS timeouts. Owner `3fcf765`,
+integrated as `5010594`, fixes those failures; independent backend review is
+pending. Composition `4671261`, integrated as `b9b9b61`, initially had dependency
+import failures before any case executed. After exact dependencies arrived,
+one actual local run has 0 passed/6 failed/0 cancelled/0 skipped: every case
+fails gateway startup with `pairing_unavailable`, before enrollment/traffic.
+The existing real enrollment control also fails locally. A bounded in-memory
+probe independently proves Node22 lacks both Store-required SQLite defenses
+`enableDefensive` and `setAuthorizer`; it does not prove which startup operation
+failed first in the earlier runs. No security control is bypassed. All six
+failure-cleanup paths run, but no gateway cleanup or authenticated composition
+acceptance follows. Original enrollment verifier regressions pass 131/131;
+documentation/contract guards pass 13/13 and 274 local links pass. Fresh pinned
+Node24 host validation must prove all six actual composition paths before this
+checkpoint is accepted. No Android, desktop compatibility or USB acceptance is
+established.
+
 ## Authenticated public interception CA research
 
 The [A23 contract](protocol-interception-ca.md) is checked by the compiled shared

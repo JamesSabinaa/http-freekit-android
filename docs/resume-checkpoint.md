@@ -1,16 +1,18 @@
 # Resume checkpoint
 
-Updated 25 October 2026 after resuming in Linux. Read [AGENTS.md](../AGENTS.md),
+Updated 26 October 2026 after resuming in Linux. Read [AGENTS.md](../AGENTS.md),
 [README](../README.md), the [roadmap](roadmap.md), required architecture/security/
 protocol documents and the [work board](../tasks/README.md) before editing.
 The original goal is active and incomplete.
 
 ## Current Linux resume position
 
-- Android public `main` is `5e8d8dae990cb25092e27421723f790eadbf9965` before
-  this checked-B5 evidence checkpoint. Its host run 40223757997 independently
-  verifies all 25 B5 cases/345 total JVM methods, 46 CA receipts and nine clean
-  lint XMLs. B5 is an inert admission API, not a capture service.
+- Android public `main` is `380200facd8ce4f69861782e49768b461b6eed28`.
+  B5 source `5e8d8dae990cb25092e27421723f790eadbf9965` has independently
+  audited host run 40223757997: all 25 B5 cases/345 total JVM methods, 46 CA
+  receipts and nine clean lint XMLs. Run 40224852000 at the evidence-only public
+  tip also succeeded; its artifacts have not been independently re-audited.
+  B5 is an inert admission API, not a capture service.
   **A23 runtime research acceptance passes** at `fa2d845`
   on both API26 and API37 in fresh matrix 40222004218; see the evidence below.
   The next milestone is C5 enrolled selected-app capture, blocked on the absent
@@ -118,6 +120,34 @@ The original goal is active and incomplete.
   app assembly/instrumentation compilation also pass. No new device/UI/service
   behavior is established. Exact desktop/C5, production freeze, target trust
   and physical USB gates remain unchanged.
+- The coordinator retains unfinished, unpublished reference-only host work in
+  `.claude/worktrees/coord-a23-resume`, branch `worktree-coord-a23-resume`, at
+  `5010594` plus root workflow/test/evidence-document edits. Profile/contract
+  `78e953d`, TLS assets `5902b3d`/correction `3392510`, composition tests
+  `b9b9b61` and backend `5010594` are not on public main. This distinct
+  [reference interception proof](reference-interception-research.md) is not C5,
+  desktop compatibility, Android execution or USB acceptance. No dependency
+  watcher remains; the previous unbounded wait was stopped after user feedback.
+  Assets correction `f30fbae`, integrated `3392510`, reproduces/fixes independent
+  findings on unsafe ancestor permissions and CA/server SPKI separation;
+  independent corrective review passes. Backend owner `3fcf765`, integrated
+  `5010594`, fixes real HTTP/TLS lifecycle and hostile abort failures. Preserve
+  its initial 3 pass/3 fail/4 cancelled/1 skipped run and later eight-pass,
+  three-hostile-timeout run as failures. The root corrected-assets/backend/
+  contract/command replay now passes 48/48 with no skips, including actual wrong
+  upstream hostname rejection with a trusted matching-SAN control. The separate
+  foreign-UID asset regression actually passes locally as root; it requires root
+  and explicitly skips on non-root hosts. Backend independent review is pending.
+  Composition `4671261` (integrated `b9b9b61`) initially could not import absent
+  dependencies. After exact A/B commits arrived, one actual six-case local run
+  fails 0 pass/6 fail/0 cancelled/0 skipped at `pairing_unavailable` startup,
+  before enrollment/traffic. The existing enrollment control also fails.
+  A bounded in-memory probe proves Node22 lacks both required SQLite defensive
+  APIs, not the first prior exception. No bypass or toolchain install occurred.
+  Original enrollment verifier regressions pass 131/131. All new files are now
+  integrated; finish backend review and run fresh pinned Node24 host CI on this
+  branch before advancing checked progress to main. Composition, Android and
+  USB acceptance remain unproven.
 - User explicitly authorized continued publication of validated Android main
   checkpoints and existing hosted validation workflows for this goal without
   asking for every checkpoint. This does not authorize paid infrastructure,

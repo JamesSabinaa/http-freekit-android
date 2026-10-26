@@ -1,6 +1,6 @@
 # Delivery roadmap and progress
 
-Updated 25 October 2026. Implementation has resumed from the [checkpoint](resume-checkpoint.md).
+Updated 26 October 2026. Implementation has resumed from the [checkpoint](resume-checkpoint.md).
 The full scope remains the [implementation plan](implementation-plan.md). The
 recorded Windows F worktree and ignored backup are absent in this Linux checkout;
 the eight uncommitted A23b files were reconstructed from checked source in an
@@ -96,7 +96,16 @@ New checkpoint CI must be inspected before claiming hosted validation of later c
    46/46 CA receipts and nine clean lints. App assembly and instrumentation
    compilation pass on the host, not locally (no Java/SDK).
    There is no VPN/network/service wiring; this does not establish capture or unblock
-   C5. Obtain and verify the exact already-authorized reviewed desktop source
+   C5. A distinct [reference HTTP/H1 HTTPS host proof](reference-interception-research.md)
+   is implemented in parallel: owned ephemeral trust domains, bounded actual
+   interception/forwarding and enrolled reference-stream tests. Corrected TLS
+   assets and the actual backend pass 48 combined local tests, including both
+   verified TLS legs and hostile trust/hostname refusal. Authenticated composition
+   does not yet pass: all six local cases stop at gateway startup on Node22,
+   which lacks required SQLite defenses. Independent backend review and fresh
+   pinned Node24 host validation remain pending; no control is weakened.
+   It is not the missing desktop backend, C5 or USB acceptance.
+   Obtain and verify the exact already-authorized reviewed desktop source
    (currently absent), then publish that branch and run the prepared factory and
    selected-UID TUN checks against the exact reviewed commits. Preserve original destinations,
    complete bytes, EOF, notification Stop and all actual ownership joins.

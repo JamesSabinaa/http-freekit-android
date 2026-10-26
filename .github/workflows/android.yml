@@ -132,6 +132,12 @@ jobs:
         run: node --test tools/transport-spike/gateway-websocket-peer.test.mjs tools/transport-spike/companion-http-origin.test.mjs tools/transport-spike/capture-factory-results.test.mjs
       - name: Test the private authenticated interception CA TLS peer
         run: node --test tools/transport-spike/companion-interception-ca-peer.test.mjs
+      - name: Test fixed reference HTTP and HTTPS interception composition
+        run: >-
+          node --test tools/transport-spike/reference-interception-contract.test.mjs
+          tools/transport-spike/reference-interception-assets.test.mjs
+          tools/transport-spike/reference-interception-backend.test.mjs
+          tools/transport-spike/reference-interception-enrollment.test.mjs
       - name: Test the authenticated draft-stream peer and owned cleanup
         run: node --test tools/transport-spike/companion-stream-peer*.test.mjs
       - name: Test finite capture receivers, execution gates and owned cleanup

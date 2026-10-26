@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { inspect } from 'node:util';
 import { createHash } from 'node:crypto';
+import fs from 'node:fs';
 import { referenceInterceptionProfile as profile, referenceInterceptionResponse, ReferenceInterceptionError } from './reference-interception-contract.mjs';
 
 test('reference interception profile is fixed and does not add a wire mode', () => {
@@ -21,6 +22,17 @@ test('actual origin response binds bounded bytes and returns independent buffers
   assert.notDeepEqual(referenceInterceptionResponse(Buffer.from('different')), expected);
   assert.equal(referenceInterceptionResponse(Buffer.alloc(4096)).length, 81);
   for (const bad of [null, 'body', {}, Buffer.alloc(4097)]) assert.throws(() => referenceInterceptionResponse(bad), ReferenceInterceptionError);
+});
+
+test('host workflow requires all four reference suites without a desktop fallback or suppressed failure', () => {
+  const workflow = fs.readFileSync(new URL('../../.github/workflows/android.yml', import.meta.url), 'utf8');
+  const block = /      - name: Test fixed reference HTTP and HTTPS interception composition\n([\s\S]*?)(?=      - name:)/.exec(workflow)?.[1];
+  assert.ok(block);
+  const command = block.replace(/\s+/g, ' ').trim();
+  assert.equal(command, 'run: >- node --test tools/transport-spike/reference-interception-contract.test.mjs ' +
+    'tools/transport-spike/reference-interception-assets.test.mjs tools/transport-spike/reference-interception-backend.test.mjs ' +
+    'tools/transport-spike/reference-interception-enrollment.test.mjs');
+  assert.doesNotMatch(block, /continue-on-error|desktop|\|\||--test-skip|--test-name-pattern/);
 });
 
 test('finite errors never serialize supplied provider or path details or invent a join', () => {
