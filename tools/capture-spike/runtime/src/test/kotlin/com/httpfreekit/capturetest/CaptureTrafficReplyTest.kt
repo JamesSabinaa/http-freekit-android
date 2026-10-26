@@ -16,6 +16,35 @@ class CaptureTrafficReplyTest {
         assertNull(CaptureTrafficReply.decode(20, 0, keys, 0, null, null))
     }
 
+    @Test fun referenceTrustConfigurationCarriesNoTrafficOrLegacyFailure() {
+        assertNotNull(CaptureTrafficReply.decode(3, 0, keys, 0, null, null))
+        assertNotNull(CaptureTrafficReply.decode(3, 1, keys, 0, null, "traffic_reference_configuration"))
+        assertNotNull(CaptureTrafficReply.decode(3, 1, keys, 0, null, null))
+        assertNull(CaptureTrafficReply.decode(3, 0, keys, 1, null, null))
+        assertNull(CaptureTrafficReply.decode(3, 0, keys, 0, "a".repeat(64), null))
+        assertNull(CaptureTrafficReply.decode(3, 3, keys, 0, null, "traffic_tcp_eof_reset"))
+        assertNull(CaptureTrafficReply.decode(3, 2, keys, 0, null, "traffic_reference_configuration"))
+    }
+
+    @Test fun referenceDataRequiresCompleteExactBodyAndFiniteFailure() {
+        for (command in 20..21) {
+            assertNotNull(CaptureTrafficReply.decode(command, 0, keys, 81, "a".repeat(64), null))
+            assertNull(CaptureTrafficReply.decode(command, 0, keys, 0, null, null))
+            assertNull(CaptureTrafficReply.decode(command, 0, keys, 80, "a".repeat(64), null))
+            assertNull(CaptureTrafficReply.decode(command, 0, keys, 81, null, null))
+            for (stage in listOf("configuration", "connect", "tls", "write", "shutdown", "reply", "eof", "close")) {
+                assertNotNull(CaptureTrafficReply.decode(command, 3, keys, 0, null, "traffic_reference_$stage"))
+                assertNull(CaptureTrafficReply.decode(command, 3, keys, 81, "a".repeat(64), "traffic_reference_$stage"))
+            }
+            assertNull(CaptureTrafficReply.decode(command, 3, keys, 0, null, null))
+            assertNull(CaptureTrafficReply.decode(command, 3, keys, 0, null, "traffic_tcp_eof_reset"))
+            assertNull(CaptureTrafficReply.decode(command, 3, keys, 0, null, "traffic_reference_tls CANARY"))
+        }
+        for (command in listOf(1, 2, 10, 11, 19))
+            assertNull(CaptureTrafficReply.decode(command, 3, keys, 0, null, "traffic_reference_tls"))
+        assertNull(CaptureTrafficReply.decode(22, 0, keys, 81, "a".repeat(64), null))
+    }
+
     @Test fun routeOutcomesRequireZeroDataAndTheRequestedRouteCategory() {
         assertNotNull(CaptureTrafficReply.decode(17, 0, keys, 0, null, null))
         assertNotNull(CaptureTrafficReply.decode(18, 2, keys, 0, null, "traffic_route_nonvpn_timeout_p1_i1_v1"))

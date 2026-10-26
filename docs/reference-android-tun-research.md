@@ -50,7 +50,11 @@ SSLSocket with the fixed logical verification hostname and valid SNI, platform
 chain/name verification and TLS1.2/1.3. No permissive verifier, reflection/hidden
 API or direct-network fallback. On API29+ offer only H1 via public ALPN APIs;
 API26 may use absent ALPN with strict H1-only application parsing and must not
-claim ALPN negotiation or H2. Check the actual platform socket closure behavior:
+claim ALPN negotiation or H2. The agreed implementation sequence is validated
+response and platform TLS EOF, then layered TLS close with autoClose=false,
+then actual raw SHUT_WR and independent raw EOF/raw close. Do not assume stock
+Android SSLSocket.shutdownOutput support. Check the actual platform socket
+closure behavior:
 TLS close and raw SHUT_WR/EOF are separate ownership facts. Do not transplant
 JSSE's system property, fake EOF, accept a reset as clean EOF, or infer Android
 close_notify verification from JVM evidence. If a platform cannot prove a fact,
@@ -173,9 +177,13 @@ Each positive requires actual saved/reloaded nonexportable key/CA binding,
 separate selected UID, VPN consent, real ongoing foreground notification/Stop,
 selected-UID route observation, full fixed response and actual natural local
 stream/queue drain. Independently observe host gateway COMPLETE, both EOFs,
-real1000 Close acknowledgement, released lease/zero charges and joined backend
-owner before sending one-shot acknowledgment and before Android notification
-Stop. Do not generate COMPLETE from traffic/client/local counters. Require one
+real1000 Close acknowledgement, released STREAM lease/zero charges and joined
+backend owner before sending one-shot acknowledgment and before Android
+notification Stop. The live CONTROL session lease remains true while the
+factory/service is active; do not require its release before Stop. Preserve
+that actual pre-ACK value in host evidence. The descriptor's final SessionLease
+false and gateway sessionLeases0 apply only after Stop/final cleanup.
+Do not generate COMPLETE from traffic/client/local counters. Require one
 intercepted TCP flow and zero direct/UDP traffic. Protected and bound gateway
 sockets must be observed. After Stop require native/TUN/factory/worker joins,
 non-VPN route, traffic FINISH, destroyed consent UI, cleared configuration and

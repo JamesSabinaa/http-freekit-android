@@ -232,6 +232,39 @@ not Android/TUN/C5/physical USB or production acceptance. Scoped ExperimentalWar
 suppression applies only to the private Node child, not TLS errors, SQLite API
 failures or any validation check.
 
+## Android reference selected-UID preparation
+
+The [distinct Android profile](reference-android-tun-research.md) follows the
+accepted Kotlin host proof; it does not extend C5. New two-method instrumentation,
+scoped HTTP/TLS traffic, reference fixture/worker and finite driver/report packages
+are integrated only in the coordinator branch. Shared IPC/test-manifest hooks,
+mandatory host checks and a separate manual workflow are under root integration.
+The independent Python verifier is integrated as `9112e5c`; root source review
+found no concrete defect. Its eleven tests and synthetic API26/API37 replay through
+the actual producer renderers pass; these are not device evidence. Traffic review
+found missing per-handshake CA validity checking, corrected by `d57d749`; worker
+review found lost negative child cleanup evidence, corrected by `ec420bc`.
+Fresh independent correction reviews found no concrete defect. The actual pure startup
+aggregation regression passes1/1, not a filesystem/process fault reproduction.
+The revision1 artifact omits the raw final gateway session counter; verification
+checks its serialized closed projection/aggregate and final Android session lease,
+not a directly observed absent counter.
+No new Android compilation, lint or runtime acceptance is claimed.
+
+Actual root Node22 fixture/worker execution reaches17 cases:10 pass,7 fail,
+zero cancelled/skipped. Six fail at `tun_unavailable` startup on Node22, which
+lacks required SQLite defenses; the seventh exposes direct test-child SQLite
+ExperimentalWarning on stderr. Narrow child-only correction `62ca098`, integrated
+`00ac25c`, preserves the empty-stderr assertion. Subsequent actual worker/parser/
+driver/workflow replay passes29/29, excluding the known startup-positive failures;
+no full-positive retry or defense bypass. Updated combined doc/contract/finite
+checks pass36/36; latest focused reference replay passes27/27, all script Python
+checks78/78 and documentation regressions9/9 pass,287 local links pass, and all eight actual new workflow shell
+blocks pass Bash/ShellCheck. Its clock block is byte-identical to the accepted
+existing runtime workflow. Local Java/SDK are absent; pinned full host compilation,
+positive Node24 fixture execution, JVM tests and strict lint must pass before any
+new API26/37 dispatch. Unrun provider TLS/EOF behavior remains an explicit gate.
+
 ## Authenticated public interception CA research
 
 The [A23 contract](protocol-interception-ca.md) is checked by the compiled shared

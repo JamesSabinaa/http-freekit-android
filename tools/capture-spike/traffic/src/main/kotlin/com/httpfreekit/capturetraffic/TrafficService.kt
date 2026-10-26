@@ -36,6 +36,7 @@ class TrafficService : Service() {
     private val executor = Executors.newSingleThreadExecutor { runnable -> Thread(runnable, "capture-fixture-request") }
     @Volatile private var owned: Closeable? = null
     @Volatile private var directPort = 0
+    private val reference = ReferenceTunTraffic()
     private val messenger = Messenger(Handler(Looper.getMainLooper()) { request ->
         val reply = request.replyTo
         val id = request.arg1
@@ -54,12 +55,29 @@ class TrafficService : Service() {
                 respond(reply, id, OK, 0, null)
             }
             true
+        } else if (request.what == CONFIGURE_REFERENCE) {
+            if (busy.get() || executor.isShutdown) respond(reply, id, INVALID, 0, null)
+            else {
+                try {
+                    val data = request.data
+                    check(data.keySet() == setOf("caDer"))
+                    val ca = checkNotNull(data.getByteArray("caDer"))
+                    check(ca.size in 1..4096)
+                    reference.configure(ca)
+                    respond(reply, id, OK, 0, null)
+                } catch (_: Exception) {
+                    try { reference.close() } catch (_: Exception) { /* Configuration remains sealed. */ }
+                    respond(reply, id, INVALID, 0, null, "traffic_reference_configuration")
+                }
+            }
+            true
         } else if (request.what == FINISH) {
             if (!request.data.isEmpty || busy.get()) respond(reply, id, INVALID, 0, null)
             else {
                 executor.shutdown()
                 val joined = executor.awaitTermination(2000, TimeUnit.MILLISECONDS)
-                respond(reply, id, if (joined && owned == null) OK else FAILED, 0, null)
+                val trustClosed = try { reference.close(); true } catch (_: Exception) { false }
+                respond(reply, id, if (joined && owned == null && trustClosed) OK else FAILED, 0, null)
             }
             true
         } else if (!request.data.isEmpty || directPort == 0 || executor.isShutdown ||
@@ -84,9 +102,12 @@ class TrafficService : Service() {
                         WAIT_VPN -> { awaitRoute(true); ByteArray(0) }
                         WAIT_NON_VPN -> { awaitRoute(false); ByteArray(0) }
                         ENROLLED_HTTP -> enrolledHttp()
+                        REFERENCE_HTTP, REFERENCE_HTTPS -> reference.execute(command) { owned = it }
                         else -> error("finite_command")
                     }
                     status = OK; size = bytes.size; digest = if (command in WAIT_VPN..WAIT_NON_VPN) null else hash(bytes)
+                } catch (failure: ReferenceTunTraffic.Failure) {
+                    status = FAILED; failureCode = failure.code
                 } catch (failure: TrafficCommandFailure) {
                     status = failure.status; failureCode = failure.code
                 } catch (failure: Exception) {
@@ -98,6 +119,12 @@ class TrafficService : Service() {
                         if (failureCode == null) failureCode = if (failure is IOException) "traffic_close_io" else "traffic_command_failed"
                     }
                     owned = null
+                    if (command in REFERENCE_HTTP..REFERENCE_HTTPS && status != OK) {
+                        try { reference.close() } catch (_: Exception) {
+                            status = FAILED; size = 0; digest = null
+                            if (failureCode == null) failureCode = "traffic_reference_close"
+                        }
+                    }
                     busy.set(false)
                 }
                 respond(reply, id, status, size, digest, failureCode)
@@ -109,7 +136,9 @@ class TrafficService : Service() {
     override fun onBind(intent: Intent): IBinder = messenger.binder
 
     override fun onDestroy() {
-        try { owned?.close() } finally { executor.shutdownNow(); super.onDestroy() }
+        try { owned?.close() } finally {
+            try { reference.close() } finally { executor.shutdownNow(); super.onDestroy() }
+        }
     }
 
     private fun tcp(address: ByteArray, port: Int, payload: ByteArray): ByteArray {
@@ -254,6 +283,7 @@ class TrafficService : Service() {
     companion object {
         const val CONFIGURE = 1
         const val FINISH = 2
+        const val CONFIGURE_REFERENCE = 3
         const val HTTP = 10
         const val HTTPS_OPAQUE = 11
         const val DIRECT_TCP = 12
@@ -264,12 +294,14 @@ class TrafficService : Service() {
         const val WAIT_VPN = 17
         const val WAIT_NON_VPN = 18
         const val ENROLLED_HTTP = 19
+        const val REFERENCE_HTTP = 20
+        const val REFERENCE_HTTPS = 21
         const val RESULT = 100
         const val OK = 0
         const val INVALID = 1
         const val TIMEOUT = 2
         const val FAILED = 3
-        private val COMMANDS = setOf(CONFIGURE, FINISH, HTTP, HTTPS_OPAQUE, DIRECT_TCP, UDP, DNS, UDP_443, IPV6_HTTP, WAIT_VPN, WAIT_NON_VPN, ENROLLED_HTTP)
+        private val COMMANDS = setOf(CONFIGURE, FINISH, CONFIGURE_REFERENCE, HTTP, HTTPS_OPAQUE, DIRECT_TCP, UDP, DNS, UDP_443, IPV6_HTTP, WAIT_VPN, WAIT_NON_VPN, ENROLLED_HTTP, REFERENCE_HTTP, REFERENCE_HTTPS)
         private val HOST = byteArrayOf(10, 0, 2, 2)
         private val IPV6 = byteArrayOf(0x20, 0x01, 0x0d, 0xb8.toByte(), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x80.toByte())
         private val BODY = ByteArray(16_421) { ((it * 31 + 7) and 255).toByte() }

@@ -127,8 +127,18 @@ New checkpoint CI must be inspected before claiming hosted validation of later c
    351 unique JVM methods, 46 clean-source CA receipts and nine clean lint XMLs.
    Reference Node totals are 72 passes/one root-only filesystem skip, zero
    failures/cancellations. The Kotlin host checkpoint is accepted; local Java/SDK
-   remains absent. Next is separately scoped Android selected-UID reference
-   execution, not inferred Android acceptance.
+   remains absent. Next is separately scoped
+   [Android selected-UID reference preparation](reference-android-tun-research.md):
+   two new instrumentation methods/service/consent, real scoped HTTP/TLS traffic,
+   private fixture/worker and finite driver/report packages are integrated on the
+   coordinator branch, not runtime accepted. Source review passes for Android,
+   root IPC hooks and driver. Traffic/worker review found two defects, corrected
+   as `d57d749` (per-handshake CA validity) and `ec420bc` (negative child cleanup
+   evidence); independent corrective reviews found no concrete defect. Independent verifier
+   `9112e5c` passes11/11 tests and synthetic actual-producer replay on both APIs.
+   Root finite/doc/contract checks36/36 and eight actual workflow
+   shell checks pass. New host compilation/positive Node24/JVM/lint acceptance
+   must precede a fresh two-API dispatch. No Android acceptance is inferred.
    No control is weakened.
    It is not the missing desktop backend, C5 or USB acceptance.
    Obtain and verify the exact already-authorized reviewed desktop source

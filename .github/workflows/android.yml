@@ -47,6 +47,8 @@ jobs:
         run: python3 -m unittest discover -s scripts/tests -p 'test_capture_runtime.py'
       - name: Test independent cold TCP evidence verification
         run: python3 -m unittest discover -s scripts/tests -p 'test_capture_cold_runtime.py'
+      - name: Test independent reference TUN evidence verification
+        run: python3 -I -m unittest discover -s scripts/tests -p 'test_reference_tun_runtime.py'
       - name: Check committed whitespace
         run: git diff --check --no-renames "$(git hash-object -t tree --stdin </dev/null)" HEAD
       - name: Validate workflow syntax
@@ -139,6 +141,15 @@ jobs:
           tools/transport-spike/reference-interception-backend.test.mjs
           tools/transport-spike/reference-interception-enrollment.test.mjs
           tools/transport-spike/reference-interception-peer.test.mjs
+      - name: Test separate Android reference TUN fixture and runtime owners
+        run: >-
+          node --test tools/transport-spike/reference-tun-fixture.test.mjs
+          tools/transport-spike/reference-tun-worker.test.mjs
+          tools/transport-spike/reference-tun-worker-client.test.mjs
+          tools/transport-spike/reference-tun-descriptor.test.mjs
+          tools/transport-spike/reference-tun-results.test.mjs
+          tools/transport-spike/reference-tun-driver.test.mjs
+          tools/transport-spike/reference-tun-workflow.test.mjs
       - name: Test the authenticated draft-stream peer and owned cleanup
         run: node --test tools/transport-spike/companion-stream-peer*.test.mjs
       - name: Test finite capture receivers, execution gates and owned cleanup

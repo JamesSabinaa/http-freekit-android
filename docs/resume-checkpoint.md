@@ -7,7 +7,7 @@ The original goal is active and incomplete.
 
 ## Current Linux resume position
 
-- The previous Android public `main` checkpoint is `fb4dd7a`.
+- The current Android public `main` checkpoint is `751e35a`.
   The latest accepted Kotlin/reference host implementation is exact source
   `65cd93f9ff11eabd208b47af48c29f345e73853b`, run40316060504. All three jobs
   pass; independent original-artifact/log audit verifies all six fresh strict-JSSE
@@ -19,8 +19,30 @@ The original goal is active and incomplete.
   Original evidence is `/tmp/reference-kotlin-accepted.hNBq87`; finite ignored
   coordinator export `dist/reference-kotlin-host-audit.json` has SHA256
   `485dfe77df32a13c80b413fe477b94cf28759049dff2c20e00f3af1c9e76a3cd`.
-  No shared wire contract changed. Next is separately named Android selected-UID
-  reference work; read-only seam research is complete, implementation unassigned.
+  No shared wire contract changed. The separately named
+  [Android selected-UID reference preparation](reference-android-tun-research.md)
+  now lives only in `.claude/worktrees/coord-a23-resume`, branch
+  `worktree-coord-a23-resume`: private profile `e8fbcbf`/`86d92be`, descriptor
+  `09445ec`/`7bed346`, Android instrumentation `2d96066`, driver/report
+  `4bfb492`/`29b88a8`, worker `b304166`/`b82037c`/`00ac25c` and traffic `a4ffe44`.
+  Root shared IPC/decoder/tests/test-manifest hooks and the separately named
+  workflow/guard/host-CI/evidence updates form the next provisional coordinator
+  checkpoint; do not promote to main before pinned host validation passes.
+  Independent verifier `9112e5c` is integrated and source-reviewed without a
+  concrete finding;11/11 Python tests and synthetic actual-producer replay on both
+  APIs pass, not device evidence. Android/root-hook/driver reviews found no
+  concrete defect. Traffic review found missing per-handshake CA validity,
+  corrected in `d57d749` and independently re-reviewed without a concrete finding.
+  Worker review found lost negative child cleanup evidence, corrected in
+  `ec420bc`; actual pure aggregation test1/1 passes and fresh independent review
+  found no concrete defect. Prior reviewer worktrees were absent, not bypassed.
+  Local finite checks36/36 and eight actual
+  Bash/ShellCheck workflow blocks pass, clock gate byte-identical. Actual Node22
+  fixture run17 has10 passes/seven failures (six startup tun_unavailable, one
+  child warning); narrow warning correction subsequently passes actual worker
+  checks. No positive fixture retry, Java/SDK execution or new Android dispatch.
+  Main replay40318725140 at `751e35a` is terminal success, metadata observed only;
+  exact65cd93f original artifacts remain the Kotlin acceptance evidence.
   Old C5/desktop source recovery, Android trust/TUN, USB and production remain open.
   The following entries preserve the earlier source-specific history.
   B5 source `5e8d8dae990cb25092e27421723f790eadbf9965` has independently

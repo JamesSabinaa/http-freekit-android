@@ -5,8 +5,29 @@
     <uses-permission android:name="com.httpfreekit.capturetest.permission.CONTROL_TRAFFIC" />
     <queries>
         <package android:name="com.httpfreekit.capturetraffic" />
+        <package android:name="com.httpfreekit.capturetest" />
     </queries>
     <application>
+        <activity
+            android:name="com.httpfreekit.interop.DraftReferenceTunConsentActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:theme="@android:style/Theme.Material.Light.NoActionBar" />
+        <service
+            android:name="com.httpfreekit.interop.DraftReferenceTunService"
+            android:exported="true"
+            android:permission="android.permission.BIND_VPN_SERVICE"
+            android:foregroundServiceType="specialUse">
+            <intent-filter>
+                <action android:name="android.net.VpnService" />
+            </intent-filter>
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Controlled reference selected-UID HTTP and H1 HTTPS research" />
+            <meta-data
+                android:name="android.net.VpnService.SUPPORTS_ALWAYS_ON"
+                android:value="false" />
+        </service>
         <activity
             android:name="com.httpfreekit.interop.DraftEnrolledTunConsentActivity"
             android:exported="false"
