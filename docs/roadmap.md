@@ -149,7 +149,10 @@ New checkpoint CI must be inspected before claiming hosted validation of later c
    truthful SDK guards/RequiresApi bridges and direct JVM ALPN coverage; root
    source review found no concrete defect. `37ba80e`/host40332128274 then fails
    earlier app lint on outdated annotation1.9.1; root corrects to stable1.11.0
-   without suppression. Fresh full host gate remains required. Historical runs remain failed. No Android acceptance is inferred.
+   without suppression. `3827a5f`/host40334229107 verifies375 passing JVM methods,
+   but fails `UseSdkSuppress` on the JVM-only test annotation; root removes only
+   that unnecessary annotation, without skip/assertion/production changes.
+   Fresh full host gate remains required. Historical runs remain failed. No Android acceptance is inferred.
    No control is weakened.
    It is not the missing desktop backend, C5 or USB acceptance.
    Obtain and verify the exact already-authorized reviewed desktop source

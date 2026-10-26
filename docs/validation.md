@@ -310,6 +310,15 @@ are in `/tmp/reference-tun-host-api-failure.nc6zD0`. Root updates only the
 compile/test-only annotation pin to1.11.0; no lint baseline or suppression.
 A fresh full host gate remains required.
 
+Source `3827a5f`/host40334229107 reaches the corrected traffic code: retained
+original reports verify375 unique passing JVM methods/47 XMLs, including the
+unskipped direct ALPN method once. Full host still fails on the sole retained
+lint issue `UseSdkSuppress`: a JVM-only `@Test` unnecessarily has `RequiresApi`.
+Original evidence is `/tmp/reference-tun-host-stable-failure.8oVfDR`. Root removes
+only that test annotation; it does not add `SdkSuppress`, a skip, a lint suppression
+or an assertion change. Production `RequiresApi` annotations/real SDK guards and
+all test bodies stay intact. Local Java remains absent; require fresh full host.
+
 ## Authenticated public interception CA research
 
 The [A23 contract](protocol-interception-ca.md) is checked by the compiled shared

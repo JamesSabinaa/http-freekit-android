@@ -31,7 +31,6 @@ class ReferenceTunTrustTest {
     }
 
     /** Direct public API29 bridge checks on host Java17, NOT Android ALPN negotiation evidence. */
-    @androidx.annotation.RequiresApi(29)
     @Test fun publicAlpnBridgeOffersOnlyH1AndRejectsOtherProtocolsOnHostJvm() {
         assertEquals(0, android.os.Build.VERSION.SDK_INT)
         for (sdk in listOf(29, 37)) {

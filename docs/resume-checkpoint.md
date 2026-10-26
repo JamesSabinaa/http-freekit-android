@@ -64,7 +64,12 @@ The original goal is active and incomplete.
   than stable1.11.0; original log/metadata:
   `/tmp/reference-tun-host-api-failure.nc6zD0`. Documentation/native and40 new
   Node/84 finite capture cases pass, not full host acceptance. Root corrects
-  only the annotation pin to1.11.0; fresh full host validation remains next.
+  only the annotation pin to1.11.0. Host40334229107 at `3827a5f` then verifies
+  375 passing JVM methods/47 XMLs but fails the sole retained lint issue
+  `UseSdkSuppress` on the JVM-only test's `RequiresApi`. Original evidence:
+  `/tmp/reference-tun-host-stable-failure.8oVfDR`. Root owns removal of that single
+  test annotation; no SdkSuppress/skip/assertion/production change. Fresh full
+  host validation remains next.
   No lint suppression, weaker SDK guard, blind rerun or Android dispatch.
   Independent workflow review found no concrete defect. Main remains unchanged.
   Main replay40318725140 at `751e35a` is terminal success, metadata observed only;
