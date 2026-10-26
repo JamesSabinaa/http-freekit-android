@@ -114,6 +114,27 @@ is unassigned until root freezes the new private profile and contracts after
 the accepted Kotlin gate. Command11 plaintext traffic and every old C5
 pin/method/report remain unchanged.
 
+## Android reference selected-UID preparation
+
+The [new private profile](../docs/reference-android-tun-research.md) is assigned
+after accepted Kotlin host `65cd93f`/run40316060504. Root owns the profile,
+shared traffic hooks, test manifest/build/CI/workflow and evidence integration.
+Unique packages below are assigned before parallel work; exact isolated
+owner/branch IDs are recorded when launched. No old C5/worker/report changes.
+
+| Package | Exclusive scope | Dependencies/status |
+| --- | --- | --- |
+| T-R traffic | new ReferenceTunTraffic/Trust/HttpResponse main and focused test files under capture-spike/traffic | frozen command3/20/21, fixed payload and scoped trust API; implementation assigned, no shared edits |
+| N-R fixture/worker | new reference-tun-fixture/worker/worker-client modules and focused tests | existing accepted reference backend/enrollment; publish private child schema to root before F-R binds; implementation assigned |
+| F-R finite validation | new reference-tun-descriptor/results/run-reference-tun-runtime modules and focused tests | first freeze descriptor/phases/facts/gate and send root/A-R; then bind N-R committed parent API; implementation assigned |
+| A-R Android | new DraftReferenceTunInteropTest/Service/ConsentActivity instrumentation files | service/consent first; no emitted phases/facts until F-R descriptor is committed/root-agreed; T-R API and N-R fixture for execution; implementation assigned |
+| Profile review | read-only new profile plus existing relevant trust/traffic/host seams | bounded independent correctness/security/API feasibility review; no edits/runtime claim |
+
+Each uses its own branch/worktree; no subagent toolchain installation,
+publication, CI/device dispatch or changes to another package. Current source
+has no new Android reference implementation or runtime evidence. Meaningful
+pinned host compilation/tests/lint and review precede any fresh API26/37 matrix.
+
 ## Current independent capture package
 
 B5 local selection admission is assigned from `77129a0` after A23 acceptance.
