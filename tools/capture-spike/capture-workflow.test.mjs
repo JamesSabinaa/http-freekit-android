@@ -60,7 +60,6 @@ if [[ "$step" == root ]]; then
  printf '%s\\n' "$mode" > "$TEST_STATE"
  case "$TEST_ROOT_MODE" in nonzero_verified|nonzero_unverified) exit 9 ;; esac
 fi
-if [[ "$step" == root_wait && "$TEST_ROOT_MODE" == shared_deadline ]]; then sleep 29; fi
 if [[ "$step" == root_identity ]]; then
  case "$TEST_ROOT_MODE" in
   unknown) echo unknown; exit 0 ;;
@@ -86,14 +85,38 @@ fi
 printf '%s\\n' "$mode" > "$TEST_STATE"
 case "$step" in root_identity) echo 0 ;; shell_identity) echo 2000 ;; auto_read) echo 0 ;; esac
 `;
-const clock = (failAt = '', badTime = false, restoreMode = '', rootMode = '') => temporary(directory => {
+// Control Bash's integer clock at the shared-budget calculation, not with a
+// wall-clock sleep that can land on either side of its whole-second boundary.
+// The extracted function and the real timeout command remain unchanged.
+const sharedDeadlineClock = `
+set -T
+trap 'if [[ "$BASH_COMMAND" == '"'"'remaining=$((root_deadline - SECONDS))'"'"' ]]; then
+  SECONDS=$TEST_CLOCK_NOW
+  printf "remaining=%s\\n" "$TEST_ROOT_REMAINING" >> "$test_bin/deadline"
+fi' DEBUG
+timeout() {
+  local status=0
+  command timeout "$@" || status=$?
+  printf '%s exit=%s\\n' "$*" "$status" >> "$test_bin/timeouts"
+  if [[ "$*" == '--kill-after=1s 30s adb -s emulator-5554 wait-for-device' ]]; then
+    # Advance reconnect time against the deadline that existed during the wait.
+    # Keep that clock value fixed even if a new deadline is wrongly introduced.
+    TEST_CLOCK_NOW=$((root_deadline - TEST_ROOT_REMAINING))
+    SECONDS=$TEST_CLOCK_NOW
+  fi
+  return "$status"
+}
+`;
+const clock = (failAt = '', badTime = false, restoreMode = '', rootMode = '', rootRemaining = 0) => temporary(directory => {
   fs.writeFileSync(path.join(directory, 'adb'), fakeAdb, { mode: 0o700 });
   fs.writeFileSync(path.join(directory, 'date'), '#!/usr/bin/env bash\nif [[ "$TEST_BAD_TIME" == 1 ]]; then printf \'1792879320.123456789;false\\n\'; else exec /usr/bin/date "$@"; fi\n', { mode: 0o700 });
-  const script = setup + 'export TEST_LOG="$test_bin/order" TEST_STATE="$test_bin/state"\n' + alignment + '\nalign_capture_clock\nprintf "DRIVER_ALLOWED\\n"\n';
+  const script = setup + 'export TEST_LOG="$test_bin/order" TEST_STATE="$test_bin/state"\n' +
+    (rootMode === 'shared_deadline' ? sharedDeadlineClock : '') + alignment + '\nalign_capture_clock\nprintf "DRIVER_ALLOWED\\n"\n';
   const result = spawnSync(bash, ['-c', script], { cwd: directory, encoding: 'utf8', timeout: 45000, windowsHide: true,
-      env: { ...process.env, TEST_DIRECTORY: directory, TEST_NODE_DIRECTORY: path.dirname(process.execPath), TEST_FAIL_AT: failAt, TEST_BAD_TIME: badTime ? '1' : '0', TEST_RESTORE_MODE: restoreMode, TEST_ROOT_MODE: rootMode } });
+      env: { ...process.env, TEST_DIRECTORY: directory, TEST_NODE_DIRECTORY: path.dirname(process.execPath), TEST_FAIL_AT: failAt, TEST_BAD_TIME: badTime ? '1' : '0', TEST_RESTORE_MODE: restoreMode, TEST_ROOT_MODE: rootMode, TEST_ROOT_REMAINING: String(rootRemaining) } });
   assert.equal(result.error, undefined);
-  return { ...result, order: fs.existsSync(path.join(directory, 'order')) ? fs.readFileSync(path.join(directory, 'order'), 'utf8').trim().split('\n') : [] };
+  const lines = name => fs.existsSync(path.join(directory, name)) ? fs.readFileSync(path.join(directory, name), 'utf8').trim().split('\n') : [];
+  return { ...result, order: lines('order'), deadline: lines('deadline'), timeouts: lines('timeouts') };
 });
 test('actual capture clock function validates the setter and restores ordinary shell before driver admission', () => {
   const result = clock(); assert.equal(result.status, 0, result.stderr); assert.deepEqual(result.order, order); assert.match(result.stdout, /DRIVER_ALLOWED/);
@@ -130,12 +153,29 @@ for (const mode of ['unknown', 'read_failure', 'nonzero_unverified']) test(`capt
   assert.doesNotMatch(result.stdout, /DRIVER_ALLOWED/); assert.ok(!result.order.includes('setter'));
 });
 
+test('root reconnect exhausting the shared deadline refuses even the first identity read', () => {
+  const result = clock('', false, '', 'shared_deadline', 0);
+  assert.equal(result.status, 1, result.stderr);
+  assert.deepEqual(result.deadline, ['remaining=0']);
+  assert.deepEqual(result.order, order.slice(0, 2));
+  assert.deepEqual(result.timeouts, [
+    '--kill-after=1s 10s adb -s emulator-5554 root exit=0',
+    '--kill-after=1s 30s adb -s emulator-5554 wait-for-device exit=0',
+  ]);
+  assert.doesNotMatch(result.stdout, /DRIVER_ALLOWED/); assert.ok(!result.order.includes('setter'));
+});
 test('root reconnect and identity read share one deadline without granting a fresh read budget', () => {
-  const began = performance.now(), result = clock('', false, '', 'shared_deadline');
-  const elapsed = performance.now() - began;
+  const result = clock('', false, '', 'shared_deadline', 1);
   assert.equal(result.status, 124, result.stderr);
+  assert.deepEqual(result.deadline, ['remaining=1']);
   assert.deepEqual(result.order, order.slice(0, 3));
-  assert.ok(elapsed >= 29000 && elapsed < 34000, `elapsed ${elapsed}`);
+  // The actual five-second fake ADB read is killed by real timeout with only
+  // the remaining second, not a fresh ten-second identity-read allowance.
+  assert.deepEqual(result.timeouts, [
+    '--kill-after=1s 10s adb -s emulator-5554 root exit=0',
+    '--kill-after=1s 30s adb -s emulator-5554 wait-for-device exit=0',
+    '--kill-after=1s 1s adb -s emulator-5554 shell id -u exit=124',
+  ]);
   assert.doesNotMatch(result.stdout, /DRIVER_ALLOWED/); assert.ok(!result.order.includes('setter'));
 });
 test('nonzero unroot transport response admits the driver only after actual ordinary UID verification', () => {
