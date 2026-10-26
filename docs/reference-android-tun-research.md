@@ -310,6 +310,7 @@ Owner `09d2564`, integrated `14a29e5`, implements this two-file package.
 Coordinator replay passes25/25 descriptor/results/driver/workflow checks and11/11
 independent Python verifier tests, with no skips. Actual diagnostic logging,
 quiet/no-probe branches and hostile raw canary privacy checks pass. Independent
-exact-commit review is assigned to isolated `a706195aa04dae520`; pinned full host
-validation remains pending. Historical failure cause remains unknown. Both gates
-must precede a separately recorded diagnostic matrix.
+exact-commit reviewer `a706195aa04dae520` found no concrete correctness/privacy
+defect (static only). Fresh full pinned host40345446373 at exact `ca0b3cc` is in
+progress; no new Android runtime is dispatched yet. Historical failure cause
+remains unknown. Host acceptance must precede a diagnostic matrix.

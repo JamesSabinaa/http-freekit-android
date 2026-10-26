@@ -39,8 +39,9 @@ The original goal is active and incomplete.
   Revision1 reports/gates/deadlines stay unchanged; root retains integration.
   Owner `09d2564`, integrated `14a29e5`, now passes coordinator25/25 finite Node
   checks and11/11 independent Python verifier tests without skips. Read-only
-  exact-commit reviewer `a706195aa04dae520` and fresh pinned host gate are pending;
-  no new runtime is authorized by local checks alone.
+  exact-commit reviewer `a706195aa04dae520` found no concrete defect (static).
+  Fresh pinned host40345446373 at exact `ca0b3cc` is in progress with a bounded
+  40-minute completion watch. No new runtime is dispatched before host acceptance.
   Finite ignored runtime audit SHA256:
   `b970f82c38e04897b5b6fedb73814203c2b85cd0419f1bd20fde197ad48d2581`.
   No third retry is dispatched. Require both APIs in one same-source attempt;

@@ -361,8 +361,9 @@ deadlines and cleanup. Coordinator descriptor/results/driver/workflow replay
 passes25/25 and independent Python verifier tests11/11, zero skips. Deterministic
 failed probes preserve passed HTTP and zero-start HTTPS; missing close/group facts
 also honestly produce cleanup failure. Actual log success/failure/quiet/no-probe
-branches and hostile raw privacy canaries pass. Exact-commit independent review
-and full fresh pinned host validation are pending before a diagnostic matrix.
+branches and hostile raw privacy canaries pass. Exact-commit independent static
+review found no concrete defect. Fresh full pinned host40345446373 at exact
+`ca0b3cc` is in progress before a diagnostic matrix.
 Historical command cause is still unknown; no speculative timing fix is applied.
 
 ## Authenticated public interception CA research

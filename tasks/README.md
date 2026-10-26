@@ -170,7 +170,8 @@ and deterministic failure regressions. Owner `09d2564` is integrated `14a29e5`;
 coordinator25/25 finite Node and11/11 Python checks pass without skips. Missing
 command/group joins honestly add cleanup failure; no gate was weakened. Isolated
 read-only reviewer `a706195aa04dae520`, branch `worktree-agent-a706195aa04dae520`,
-checks exact owner commit; review and fresh full pinned host gate are pending.
+checks exact owner commit; static review complete, no concrete correctness/privacy
+finding. Fresh full pinned host40345446373 at exact `ca0b3cc` is in progress.
 Root retains all profile/board/integration and dispatch; no report-schema, gate,
 timeout or shared-helper changes assigned.
 Input/ACK absence observations are false after HTTP, but the underlying failed
