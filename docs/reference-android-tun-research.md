@@ -330,4 +330,10 @@ read exit1 from admitted-read actual timeout124. Production workflow/clock bytes
 stay unchanged; no historical path is inferred. Owner full clock29/29 and full
 Node documentation162/162 pass; coordinator focused4/4 and finite reference25/25
 pass without skips. Independent read-only exact-commit reviewer
-`a108c4e4931c4593f` is assigned; fresh full pinned host validation is next.
+`a108c4e4931c4593f` found a concrete test-coverage gap: deriving injected time
+from the production deadline masks a30-to60-second budget regression. The same
+exclusive owner must independently anchor/assert the original30-second budget
+and reject root/unroot enlarged-budget mutations. Fresh host40349604793 at
+exact `86499d4` is running, but cannot authorize runtime until this review issue
+is corrected, independently re-reviewed and fresh full host validation passes.
+Production clock bytes remain unchanged.

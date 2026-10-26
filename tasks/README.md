@@ -185,8 +185,12 @@ or blind retry. Owner `6dcf765`, integrated `38409e5`, reproduces both old path
 assertions red and separates exact no-read1 from admitted-read real timeout124.
 Owner clock29/29 and full Node documentation162/162 pass; coordinator focused4/4
 and reference finite25/25 pass. Isolated read-only reviewer `a108c4e4931c4593f`,
-branch `worktree-agent-a108c4e4931c4593f`, checks exact one-file correction;
-fresh full pinned host validation remains next. Root owns evidence/integration.
+branch `worktree-agent-a108c4e4931c4593f`, found a concrete coverage gap: clock
+injection derived from the production deadline masks30-to60-second budget changes.
+The same exclusive owner is resumed for only the clock test: independently anchor/
+assert30 seconds and reject enlarged root/unroot budgets. Host40349604793 at
+exact `86499d4` is in progress but cannot authorize runtime before correction,
+independent re-review and fresh host acceptance. Root owns evidence/integration.
 Root retains all profile/board/integration and dispatch; no report-schema, gate,
 timeout or shared-helper changes assigned.
 Input/ACK absence observations are false after HTTP, but the underlying failed

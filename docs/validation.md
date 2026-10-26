@@ -377,8 +377,12 @@ owner `6dcf765`, integrated `38409e5`, deterministically reproduces both old
 root/unroot assertions red, then checks exact no-read exit1 and admitted-read
 real timeout124 separately. Production clock/workflow bytes are unchanged.
 Owner clock29/29/full Node documentation162/162 pass; coordinator focused4/4
-and finite reference25/25 pass without skips. Independent exact-commit review
-and fresh full pinned host validation remain next.
+and finite reference25/25 pass without skips. Independent static review found
+that injected time derived from the production deadline masks enlarged30-to60-
+second budgets. The same isolated test owner must anchor/assert30 seconds
+independently and reject root/unroot enlarged budgets. Host40349604793 at exact
+`86499d4` is running, but cannot authorize runtime until correction, independent
+re-review and fresh full host acceptance.
 
 ## Authenticated public interception CA research
 

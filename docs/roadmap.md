@@ -176,8 +176,11 @@ New checkpoint CI must be inspected before claiming hosted validation of later c
    but the full host gate stays failed. Test-only owner `6dcf765`, integrated
    `38409e5`, reproduces old assertions red and separates both deadline paths;
    owner clock29/29/full Node documentation162/162 and coordinator focused4/4 /
-   finite reference25/25 pass. Independent review and fresh full host remain next;
-   no diagnostic matrix before acceptance. Production clock bytes stay unchanged.
+   finite reference25/25 pass. Independent review found deadline-relative injection
+   masks an enlarged budget; the owner must independently anchor/assert30 seconds
+   and reject root/unroot60-second mutations. Host40349604793 at `86499d4` is in
+   progress but cannot authorize runtime until this issue is corrected/re-reviewed
+   and fresh full host passes. Production clock bytes stay unchanged.
    No control is weakened.
    It is not the missing desktop backend, C5 or USB acceptance.
    Obtain and verify the exact already-authorized reviewed desktop source
