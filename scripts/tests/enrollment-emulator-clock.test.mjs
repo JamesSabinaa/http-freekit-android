@@ -62,27 +62,43 @@ case "$step" in root_identity) echo 0 ;; shell_identity) echo 2000 ;; auto_read)
 // extracted function and timeout command stay unchanged, including read expiry.
 const sharedDeadlineClock = `
 set -T
-trap 'if [[ "$BASH_COMMAND" == "$TEST_DEADLINE_COMMAND" ]]; then
+TEST_ANCHORED=0
+trap 'if [[ "$BASH_COMMAND" == "$TEST_DEADLINE_NAME="* ]] && (( TEST_ANCHORED == 0 )); then
+  # Anchor independently of the value the production assignment will compute.
+  SECONDS=100
+  TEST_RECONNECT_ENTRY_CLOCK=$SECONDS
+  TEST_ANCHORED=1
+elif [[ "$BASH_COMMAND" == "$TEST_DEADLINE_COMMAND" ]]; then
   SECONDS=$TEST_CLOCK_NOW
   printf "remaining=%s\\n" "$TEST_REMAINING" >> "$test_bin/deadline"
 fi' DEBUG
 TEST_WAIT_COUNT=0
 timeout() {
-  local status=0
-  command timeout "$@" || status=$?
-  printf '%s exit=%s\\n' "$*" "$status" >> "$test_bin/timeouts"
+  local status=0 selected_wait=0
   if [[ "$*" == '--kill-after=1s 30s adb -s emulator-5554 wait-for-device' ]]; then
     TEST_WAIT_COUNT=$((TEST_WAIT_COUNT + 1))
     if (( TEST_WAIT_COUNT == TEST_WAIT_NUMBER )); then
-      # Retain the existing deadline even if a fresh one is wrongly introduced.
-      TEST_CLOCK_NOW=$((\${!TEST_DEADLINE_NAME} - TEST_REMAINING))
-      SECONDS=$TEST_CLOCK_NOW
+      selected_wait=1
+      # Freeze reconnect entry at the independently captured assignment clock.
+      # Check the original thirty-second budget BEFORE deadline-relative injection.
+      SECONDS=$TEST_RECONNECT_ENTRY_CLOCK
+      local entry_clock=$SECONDS
+      local budget=$((\${!TEST_DEADLINE_NAME} - entry_clock))
+      printf 'budget=%s\\n' "$budget" >> "$test_bin/budget"
+      if (( budget != 30 )); then return 97; fi
     fi
+  fi
+  command timeout "$@" || status=$?
+  printf '%s exit=%s\\n' "$*" "$status" >> "$test_bin/timeouts"
+  if (( selected_wait )); then
+    # Retain the existing deadline even if a fresh one is wrongly introduced.
+    TEST_CLOCK_NOW=$((\${!TEST_DEADLINE_NAME} - TEST_REMAINING))
+    SECONDS=$TEST_CLOCK_NOW
   fi
   return "$status"
 }
 `;
-function execute(failAt = '', badHostTime = false, rootMode = '', restoreMode = '', remaining = 0) {
+function execute(failAt = '', badHostTime = false, rootMode = '', restoreMode = '', remaining = 0, alignmentSource = alignment) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'freekit-a22-clock-'));
   try {
     fs.writeFileSync(path.join(directory, 'adb'), adb, { mode: 0o700 });
@@ -92,7 +108,7 @@ function execute(failAt = '', badHostTime = false, rootMode = '', restoreMode = 
       'export PATH="$test_bin:$PATH"\nexport TEST_LOG="$test_bin/order" TEST_STATE="$test_bin/state" TEST_SETTER="$test_bin/setter"\n';
     const shared = rootMode === 'shared_deadline' || restoreMode === 'shared_deadline';
     const deadlineName = rootMode === 'shared_deadline' ? 'root_deadline' : 'shell_deadline';
-    const result = spawnSync(bash, ['-c', setup + (shared ? sharedDeadlineClock : '') + alignment + '\nalign_enrollment_clock\nprintf "DRIVER_CAN_START\\n"\n'], {
+    const result = spawnSync(bash, ['-c', setup + (shared ? sharedDeadlineClock : '') + alignmentSource + '\nalign_enrollment_clock\nprintf "DRIVER_CAN_START\\n"\n'], {
       cwd: directory, encoding: 'utf8', timeout: 45000, windowsHide: true,
       env: { ...process.env, TEST_DIRECTORY: directory, TEST_FAIL_AT: failAt, TEST_BAD_HOST_TIME: badHostTime ? '1' : '0',
         TEST_ROOT_MODE: rootMode, TEST_RESTORE_MODE: restoreMode, TEST_REMAINING: String(remaining),
@@ -106,7 +122,7 @@ function execute(failAt = '', badHostTime = false, rootMode = '', restoreMode = 
     assert.ok(observed.filter(step => step === 'unroot').length <= 1, 'never retry unroot');
     const lines = name => fs.existsSync(path.join(directory, name)) ? fs.readFileSync(path.join(directory, name), 'utf8').trim().split('\n') : [];
     return { status: result.status, stdout: result.stdout, stderr: result.stderr, observed, setter,
-      deadline: lines('deadline'), timeouts: lines('timeouts') };
+      budget: lines('budget'), deadline: lines('deadline'), timeouts: lines('timeouts') };
   } finally {
     assert.equal(path.dirname(path.resolve(directory)), path.resolve(os.tmpdir()));
     assert.match(path.basename(directory), /^freekit-a22-clock-/);
@@ -159,6 +175,7 @@ for (const transition of ['root', 'unroot']) {
     : `${transition} reconnect and identity read share one deadline without a fresh read budget`, () => {
     const result = run('shared_deadline', remaining), position = order.indexOf(identity);
     assert.equal(result.status, remaining === 0 ? 1 : 124, result.stderr);
+    assert.deepEqual(result.budget, ['budget=30']);
     assert.deepEqual(result.deadline, [`remaining=${remaining}`]);
     assert.deepEqual(result.observed, order.slice(0, position + remaining));
     const prior = [
@@ -178,6 +195,22 @@ for (const transition of ['root', 'unroot']) {
     assert.deepEqual(result.timeouts, [...prior, ...(remaining === 0 ? [] : [
       '--kill-after=1s 1s adb -s emulator-5554 shell id -u exit=124',
     ])]);
+    assert.doesNotMatch(result.stdout, /DRIVER_CAN_START|alignment completed/);
+    if (transition === 'root') assert.equal(result.setter, null);
+    else assert.match(result.setter, /^@[0-9]{10}\.[0-9]{9}$/);
+  });
+  for (const remaining of [0, 1]) test(`${transition} deadline guard rejects a sixty-second mutation before injecting remaining=${remaining}`, () => {
+    const deadlineName = transition === 'root' ? 'root_deadline' : 'shell_deadline';
+    const assignment = `${deadlineName}=$((SECONDS + 30))`;
+    assert.equal(alignment.split(assignment).length, 2, 'mutate exactly the selected deadline');
+    // Mutate only the in-memory test input, never the production workflow file.
+    const mutated = alignment.replace(assignment, `${deadlineName}=$((SECONDS + 60))`);
+    const result = execute('', false, transition === 'root' ? 'shared_deadline' : '',
+      transition === 'unroot' ? 'shared_deadline' : '', remaining, mutated);
+    assert.equal(result.status, 97, result.stderr);
+    assert.deepEqual(result.budget, ['budget=60']);
+    assert.deepEqual(result.deadline, [], 'reject before deadline-relative clock injection');
+    assert.deepEqual(result.observed, order.slice(0, order.indexOf(identity) - 1));
     assert.doesNotMatch(result.stdout, /DRIVER_CAN_START|alignment completed/);
     if (transition === 'root') assert.equal(result.setter, null);
     else assert.match(result.setter, /^@[0-9]{10}\.[0-9]{9}$/);
