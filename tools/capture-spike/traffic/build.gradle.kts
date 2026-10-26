@@ -19,4 +19,8 @@ android {
 }
 kotlin { jvmToolchain(17) }
 
-dependencies { testImplementation(libs.junit) }
+dependencies {
+    compileOnly(libs.androidx.annotation)
+    testCompileOnly(libs.androidx.annotation)
+    testImplementation(libs.junit)
+}

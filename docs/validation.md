@@ -284,6 +284,24 @@ case, production change or host retry. Independent corrective review found no
 concrete defect in exact `673b119` (static review, not another test execution).
 Independent workflow integration review found no concrete defect.
 
+Corrected exact source `6e1a68c`/host40328901621 passes documentation/native,
+all40 new reference Node cases and all84 finite capture cases. It fails strict
+`:capture-traffic:lintDebug` on two `UseRequiresApi` errors for `TargetApi(29)`
+at `ReferenceTunTrust.kt:78,81`; no full host or Android runtime acceptance.
+Independent retained original-report audit verifies374 unique JVM methods/47 XMLs,
+including all21 new traffic methods and the two new shared decoder methods;
+46 source-bound CA receipts/all peer joins pass. Seven lint XMLs are retained:
+six clean, one with those two errors. Original log/metadata/reports are in
+`/tmp/reference-tun-host-corrected-failure.lE2erY`. The traffic owner's `63f134f`, integrated `ddd5a7f`, replaces both annotations
+with `RequiresApi(29)` and requires the real platform SDK guard as well as the
+existing injected SDK guard before either API29 bridge. A direct Java17 bridge
+test preserves H1 offer/accept and non-H1 rejection; Build0 unit tests explicitly
+assert no platform ALPN call. Root source review found no concrete defect.
+Root adds pinned AndroidX annotation1.9.1 compileOnly/testCompileOnly dependencies;
+no annotation library runtime dependency, lint suppression or budget change.
+Available contract5/5, catalog/static/link checks pass; local Java remains absent.
+Fresh pinned compilation/JVM/lint validation is required before runtime dispatch.
+
 ## Authenticated public interception CA research
 
 The [A23 contract](protocol-interception-ca.md) is checked by the compiled shared

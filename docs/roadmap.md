@@ -143,7 +143,12 @@ New checkpoint CI must be inspected before claiming hosted validation of later c
    regression (`1 !== 124`) before Kotlin/lint. Test-only `673b119` reproduces
    and separates both deadline paths with unchanged production bytes, passing
    focused2/2 and clean full84/84 locally; independent exact-commit review found
-   no concrete defect. A fresh host gate is next. Historical run remains failed. No Android acceptance is inferred.
+   no concrete defect. Fresh `6e1a68c`/host40328901621 passes all84 capture and40
+   new Node cases; retained partial artifacts verify374 JVM methods/46 CA receipts,
+   but strict lint fails two API annotation errors. Correction `ddd5a7f` adds
+   truthful SDK guards/RequiresApi bridges and direct JVM ALPN coverage; root
+   source review found no concrete defect. Root wires compile-only annotations;
+   fresh full host gate remains required. Historical runs remain failed. No Android acceptance is inferred.
    No control is weakened.
    It is not the missing desktop backend, C5 or USB acceptance.
    Obtain and verify the exact already-authorized reviewed desktop source

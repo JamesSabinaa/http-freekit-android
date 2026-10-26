@@ -50,7 +50,18 @@ The original goal is active and incomplete.
   path remains unknown. All26 workflow cases pass; precommit full82/84 retains
   two dirty-source CLI failures, clean same-command full84/84 then passes.
   Independent exact-commit correction review found no concrete defect;
-  fresh pinned host validation is next, with no runtime dispatch yet.
+  Fresh host40328901621 at `6e1a68c` passes all84 finite capture and40 new
+  Node cases plus documentation/native jobs, but fails two `UseRequiresApi`
+  lint errors at `ReferenceTunTrust.kt:78,81`. Independent partial artifact audit
+  verifies374 JVM methods/47 XMLs, all21 traffic additions and46 CA receipts/all
+  joins; seven retained lint XMLs include those two errors. Full host acceptance
+  remains open. Original reports/log/metadata are in
+  `/tmp/reference-tun-host-corrected-failure.lE2erY`. Traffic correction
+  `63f134f`, integrated `ddd5a7f`, uses real SDK guards/RequiresApi bridges with
+  direct JVM ALPN coverage; root source review found no concrete defect.
+  Root owns pinned annotation1.9.1 compileOnly/testCompileOnly dependency wiring
+  and evidence docs. Fresh pinned compilation/JVM/lint validation is next.
+  No lint suppression, weaker SDK guard, blind rerun or Android dispatch.
   Independent workflow review found no concrete defect. Main remains unchanged.
   Main replay40318725140 at `751e35a` is terminal success, metadata observed only;
   exact65cd93f original artifacts remain the Kotlin acceptance evidence.
