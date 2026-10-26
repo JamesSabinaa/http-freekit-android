@@ -280,6 +280,15 @@ test('concurrent bound is not a lifetime cap and evidence is bounded private his
   }
   assert.equal(backend.snapshot().ownersCreated, 3); assert.equal(backend.snapshot().ownersClosed, 3);
   assert.equal(backend.snapshot().upstreamHttpRequests, 3); assert.equal(backend.evidence().length, 2);
+  const history = backend.evidence();
+  for (let index = 0; index < history.length; index++) {
+    const body = Buffer.from([index + 1]);
+    assert.equal(history[index].mode, 'http');
+    assert.equal(history[index].requestBytes, body.length); assert.equal(history[index].responseBytes, 81);
+    assert.equal(history[index].requestSha256 === hash(body), true);
+    assert.equal(history[index].responseSha256 === hash(expected(body)), true);
+  }
+  assert.equal(history.some(row => row.requestSha256 === hash(Buffer.from([0]))), false);
   const snapshot = backend.snapshot();
   assert.deepEqual(Object.keys(snapshot).sort(), ['ownersCreated', 'ownersClosed', 'activeOwners', 'activeSockets', 'activeRequests',
     'listeners', 'upstreamDials', 'interceptedHttpRequests', 'interceptedHttpsRequests', 'upstreamHttpRequests',

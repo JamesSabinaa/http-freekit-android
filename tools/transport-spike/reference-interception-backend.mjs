@@ -129,7 +129,8 @@ export async function startReferenceInterceptionBackend({ assets } = {}) {
         if (!admission.live()) return fail();
         const response = referenceInterceptionResponse(body);
         counters[mode === 'http' ? 'upstreamHttpRequests' : 'upstreamHttpsRequests']++;
-        if (rows.length < P.maxOwners) rows.push(Object.freeze({ mode, requestBytes: body.length,
+        if (rows.length === P.maxOwners) rows.shift();
+        rows.push(Object.freeze({ mode, requestBytes: body.length,
           responseBytes: response.length, requestSha256: digest(body), responseSha256: digest(response) }));
         res.writeHead(200, { 'Content-Length': response.length, 'Connection': 'close', 'Content-Type': 'application/octet-stream' });
         res.end(response);
