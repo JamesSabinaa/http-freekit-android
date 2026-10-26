@@ -171,7 +171,8 @@ export async function startReferenceInterceptionBackend({ assets } = {}) {
     }
     function ownRequest(request) { joins.push(watchClose(request)); }
     own(transport); own(peer);
-    const transportCallbacks = ownCallbacks(transport), peerCallbacks = ownCallbacks(peer);
+    const callbackCounts = [ownCallbacks(transport), ownCallbacks(peer)];
+    let tlsWire, tlsSocket;
     let closeTask, settleStart;
     const startJoined = new Promise(resolve => { settleStart = resolve; });
     const stop = () => {
@@ -186,7 +187,7 @@ export async function startReferenceInterceptionBackend({ assets } = {}) {
       stop();
       await Promise.all(joins);
       await Promise.all([...operations].map(operation => operation instanceof Promise ? operation : watchClose(operation)));
-      if (transportCallbacks() || peerCallbacks()) throw new Failure('cleanup_unjoined', false);
+      if (callbackCounts.some(count => count())) throw new Failure('cleanup_unjoined', false);
       owners.delete(owner); counters.ownersClosed++;
     })();
     closed.catch(() => {});
@@ -237,7 +238,7 @@ export async function startReferenceInterceptionBackend({ assets } = {}) {
     }
     function attach() {
       parser = mode === 'http' ? http.createServer(parserOptions) : https.createServer({ ...interceptionTls,
-        ...parserOptions, SNICallback: (name, cb) => name === P.hostname && live() ?
+        ...parserOptions, allowHalfOpen: true, SNICallback: (name, cb) => name === P.hostname && live() ?
           cb(null, tls.createSecureContext(interceptionTls)) : cb(new Failure('admission_closed')) });
       // Node's HTTP server otherwise ends its writable side on upload EOF,
       // before an asynchronous origin reply. Keep its maintained parser and
@@ -249,6 +250,22 @@ export async function startReferenceInterceptionBackend({ assets } = {}) {
       parser.on('secureConnection', socket => {
         own(socket);
         if (!live() || socket.servername !== P.hostname) return stop();
+        // HTTP Connection: close normally uses destroySoon(), which tears down
+        // TLS before the peer's close_notify. End only the real TLS write side;
+        // the read side and the original deadline still own completion/abort.
+        socket.destroySoon = () => { socket.end(); return socket; };
+        socket.on('error', stop);
+        socket.once('close', () => {
+          if (stopped) return;
+          if (!socket.readableEnded || !socket.writableFinished) return stop();
+          // A complete TLS session is not the carrier upload END_WRITE. TLS
+          // owns only its isolated pair endpoint, never the gateway's raw peer.
+          peer.unpipe(tlsWire);
+          peer.on('data', stop); // No ciphertext is legal after close_notify.
+          if (peer.readableEnded) tlsWire.destroy();
+          else peer.once('end', () => tlsWire.destroy());
+          peer.resume();
+        });
         counters.interceptionTlsHandshakes++;
       });
       let count = 0;
@@ -262,13 +279,23 @@ export async function startReferenceInterceptionBackend({ assets } = {}) {
           operations.add(work); work.finally(() => operations.delete(work));
         });
       });
-      // duplexPair can complete a TLS handshake reentrantly inside tls.connect,
-      // before Node attaches client verification listeners. Defer only the first
-      // server flight through maintained writable corking (no synthetic events).
-      if (mode === 'https') peer.cork();
-      parser.emit('connection', peer);
+      // TLS owns an isolated maintained pair: its natural auto-destroy after
+      // close_notify must not destroy the independently half-open raw carrier.
+      // Each pipe forwards actual data/EOF with maintained backpressure.
+      let input = peer;
       if (mode === 'https') {
-        const work = new Promise(resolve => setImmediate(() => { peer.uncork(); resolve(); }));
+        [tlsSocket, tlsWire] = duplexPair({ allowHalfOpen: true, readableHighWaterMark: 4096, writableHighWaterMark: 4096 });
+        own(tlsSocket); own(tlsWire);
+        callbackCounts.push(ownCallbacks(tlsSocket), ownCallbacks(tlsWire));
+        tlsSocket.on('error', stop); tlsWire.on('error', stop);
+        peer.pipe(tlsWire); tlsWire.pipe(peer);
+        input = tlsSocket;
+      }
+      // Prevent a reentrant handshake before tls.connect installs verification.
+      if (mode === 'https') input.cork();
+      parser.emit('connection', input);
+      if (mode === 'https') {
+        const work = new Promise(resolve => setImmediate(() => { input.uncork(); resolve(); }));
         operations.add(work); work.finally(() => operations.delete(work));
       }
     }

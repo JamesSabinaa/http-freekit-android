@@ -127,6 +127,46 @@ test('coalesced CONNECT and actual TLS ClientHello preserve handshake bytes', { 
     client.destroy(); clientTransport.destroy(); wire.destroy(); await owner.close();
   }
 });
+for (const termination of ['end', 'deadline']) test(`clean TLS reply preserves raw upload until actual ${termination}`, { timeout: 15000 }, async t => {
+  const { backend, assets } = await fixture(t);
+  const owner = backend.factory(context('https')); await owner.start();
+  await acknowledge(owner.transport, preface('https'));
+  const [clientTransport, wire] = duplexPair({ allowHalfOpen: true, highWaterMark: 4096 });
+  clientTransport.on('error', () => {}); wire.on('error', () => {});
+  owner.transport.pipe(wire); wire.pipe(owner.transport, { end: false });
+  const rawReadEof = once(owner.transport, 'end'), errors = [];
+  owner.transport.on('error', error => errors.push(error.code));
+  const localJoins = [clientTransport, wire].map(stream => new Promise(resolve => stream.once('close', resolve)));
+  let joined = false;
+  owner.closed.then(() => { joined = true; });
+  const client = tls.connect({ socket: clientTransport, servername: host, ca: assets.caPem('interception'),
+    rejectUnauthorized: true, allowHalfOpen: true, ALPNProtocols: ['http/1.1'] });
+  localJoins.push(new Promise(resolve => client.once('close', resolve)));
+  client.on('error', () => {});
+  try {
+    await once(client, 'secureConnect'); assert.equal(client.authorized, true);
+    const reply = collect(client), body = Buffer.from('delayed-raw-end');
+    client.write(request(body)); assertResponse(await reply, body);
+    client.end(); await rawReadEof;
+    // Drain queued TLS/raw close callbacks, without inventing upload EOF.
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(client.readableEnded, true); assert.equal(client.writableFinished, true);
+    assert.equal(owner.transport.readableEnded, true);
+    assert.equal(owner.transport.writableFinished, false);
+    assert.equal(owner.transport.destroyed, false);
+    assert.equal(joined, false); assert.equal(backend.snapshot().activeOwners, 1); assert.equal(errors.length, 0);
+    await new Promise((resolve, reject) => owner.transport.write(Buffer.alloc(0), error => error ? reject(error) : resolve()));
+    if (termination === 'end') {
+      await new Promise((resolve, reject) => owner.transport.end(error => error ? reject(error) : resolve()));
+    }
+    await owner.closed;
+    assert.equal(owner.transport.writableFinished, termination === 'end');
+    assert.deepEqual(errors, termination === 'end' ? [] : ['backend_closed']);
+    assert.equal(joined, true); assert.equal(backend.snapshot().activeOwners, 0);
+  } finally {
+    client.destroy(); clientTransport.destroy(); wire.destroy(); await owner.close(); await Promise.all(localJoins);
+  }
+});
 for (const wrong of ['ca', 'hostname']) test(`incoming wrong ${wrong} never decrypts or dispatches`, { timeout: 15000 }, async t => {
   const { backend, assets } = await fixture(t);
   await assert.rejects(transaction(backend, assets, 'https', Buffer.from('private'),
