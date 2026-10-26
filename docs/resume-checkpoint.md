@@ -176,6 +176,11 @@ The original goal is active and incomplete.
   Both B/C repairs are integrated and root-reviewed. Publish the corrected
   branch and require fresh exact-source pinned host success before main;
   authenticated composition remains pending and the first run remains failed.
+  Corrected branch source is `d6ee09c91060485adfa9815318eca486e0e39dfb` in
+  [run 40311327186](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40311327186).
+  Its mandatory reference composition step passes on pinned Node24; full host
+  validation and original-log/artifact audit are still pending. Keep main at
+  the previous checked checkpoint until the complete host gate passes.
 - User explicitly authorized continued publication of validated Android main
   checkpoints and existing hosted validation workflows for this goal without
   asking for every checkpoint. This does not authorize paid infrastructure,

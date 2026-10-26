@@ -65,6 +65,27 @@ integrated and root-reviewed; fresh pinned host composition is still required.
 No protocol change, skip,
 SQLite-defense bypass, toolchain install, device action or C5 substitution.
 
+## Next reference Kotlin composition seam
+
+Read-only owner `a63aa0211392bdb70`, branch
+`worktree-agent-a63aa0211392bdb70`, completed the bounded API-seam investigation:
+real software-key CSR enrollment, existing factory configuration and separate
+JSSE/Node ownership checks can compose without C5 or desktop changes. No source
+was edited or executed. The [new private profile](../docs/reference-kotlin-interception-research.md)
+freezes the next host-only peer interface and these unique packages before edits:
+
+| Package | Exclusive new files | Owner/status/dependencies |
+| --- | --- | --- |
+| K-N, private reference peer | `tools/transport-spike/reference-interception-peer.mjs` + `.test.mjs` | isolated Node owner assigned after profile commit; depends on unchanged checked A/B backend and existing enrollment fixture |
+| K-J, real Kotlin composition | `tools/capture-spike/transport/src/test/kotlin/com/httpfreekit/capture/transport/CaptureReferenceNodePeer.kt` + `EnrolledCaptureReferenceTest.kt` | isolated Kotlin owner assigned after profile commit; depends on frozen private peer API and checked Node implementation for actual execution |
+
+Root exclusively owns profile/board, Gradle task/exclusions, host workflow,
+contract guard and evidence. Node step40311327186 at `d6ee09c` passes; full-host
+acceptance and original evidence audit are still required before promoting that
+checkpoint. These next packages do not change production wire, old C5, Android
+runtime, desktop, global trust or target-app CA installation. No new runtime,
+CI/publication action or toolchain installation is assigned to subagents.
+
 ## Current independent capture package
 
 B5 local selection admission is assigned from `77129a0` after A23 acceptance.
