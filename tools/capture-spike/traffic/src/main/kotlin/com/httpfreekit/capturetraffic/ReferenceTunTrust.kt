@@ -1,5 +1,7 @@
 package com.httpfreekit.capturetraffic
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import java.io.ByteArrayInputStream
 import java.nio.ByteBuffer
 import java.nio.charset.CodingErrorAction
@@ -66,20 +68,20 @@ internal class ReferenceTunTrust private constructor(val context: SSLContext, pr
             val parameters = socket.sslParameters
             parameters.endpointIdentificationAlgorithm = "HTTPS"
             parameters.serverNames = listOf(SNIHostName(ReferenceTunHttpResponse.HOST))
-            if (sdk >= 29) offerH1(parameters)
+            if (sdk >= 29 && Build.VERSION.SDK_INT >= 29) offerH1(parameters)
             socket.sslParameters = parameters
         }
 
         fun requireH1(socket: SSLSocket, sdk: Int) {
             // Absent ALPN is permitted by this H1-only profile, never called negotiated H1.
-            if (sdk >= 29) checkH1(socket)
+            if (sdk >= 29 && Build.VERSION.SDK_INT >= 29) checkH1(socket)
         }
 
-        @android.annotation.TargetApi(29)
-        private fun offerH1(parameters: javax.net.ssl.SSLParameters) { parameters.applicationProtocols = arrayOf("http/1.1") }
+        @RequiresApi(29)
+        internal fun offerH1(parameters: javax.net.ssl.SSLParameters) { parameters.applicationProtocols = arrayOf("http/1.1") }
 
-        @android.annotation.TargetApi(29)
-        private fun checkH1(socket: SSLSocket) {
+        @RequiresApi(29)
+        internal fun checkH1(socket: SSLSocket) {
             check(socket.applicationProtocol.isNullOrEmpty() || socket.applicationProtocol == "http/1.1")
         }
 

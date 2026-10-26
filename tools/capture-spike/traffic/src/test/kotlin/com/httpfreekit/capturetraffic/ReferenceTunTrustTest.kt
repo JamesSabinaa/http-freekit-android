@@ -30,6 +30,31 @@ class ReferenceTunTrustTest {
         assertNotNull(trust.context.socketFactory)
     }
 
+    /** Direct public API29 bridge checks on host Java17, NOT Android ALPN negotiation evidence. */
+    @androidx.annotation.RequiresApi(29)
+    @Test fun publicAlpnBridgeOffersOnlyH1AndRejectsOtherProtocolsOnHostJvm() {
+        assertEquals(0, android.os.Build.VERSION.SDK_INT)
+        for (sdk in listOf(29, 37)) {
+            ReferenceTunTrafficTest.Tls(mutableListOf()).use { socket ->
+                ReferenceTunTrust.prepare(socket, sdk)
+                // Injected SDK cannot bypass the real Build guard on local-unit-test stubs.
+                assertArrayEquals(emptyArray<String>(), socket.sslParameters.applicationProtocols)
+                val parameters = socket.sslParameters
+                ReferenceTunTrust.offerH1(parameters)
+                socket.sslParameters = parameters
+                assertArrayEquals(arrayOf("http/1.1"), socket.sslParameters.applicationProtocols)
+                for (allowed in listOf(null, "", "http/1.1")) {
+                    socket.selectedProtocol = allowed
+                    ReferenceTunTrust.checkH1(socket)
+                }
+                for (rejected in listOf("h2", "h2c", "other")) {
+                    socket.selectedProtocol = rejected
+                    assertThrows(IllegalStateException::class.java) { ReferenceTunTrust.checkH1(socket) }
+                }
+            }
+        }
+    }
+
     @Test fun retainedAuthorityValidityRechecksBothActualCertificateBounds() {
         val authority = ReferenceTunTestCertificates.authority().certificate
         val trust = ReferenceTunTrust.create(authority.encoded, authority.notBefore)

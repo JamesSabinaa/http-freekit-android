@@ -69,6 +69,8 @@ class ReferenceTunTrafficTest {
     }
 
     @Test fun scopedTlsAndRawEofAreDistinctAndNeverUseTlsShutdownOutput() {
+        // Android local-unit-test stubs report Build0; an injected SDK must not bypass the real API guard.
+        assertEquals(0, android.os.Build.VERSION.SDK_INT)
         for (api in listOf(26, 29, 37)) {
             val raw = Raw(true)
             val tls = Tls(raw.events)
@@ -81,7 +83,7 @@ class ReferenceTunTrafficTest {
             assertEquals("HTTPS", tls.sslParameters.endpointIdentificationAlgorithm)
             assertEquals(ReferenceTunHttpResponse.HOST, (tls.sslParameters.serverNames.single() as javax.net.ssl.SNIHostName).asciiName)
             assertTrue(tls.enabledProtocols.all { it in listOf("TLSv1.2", "TLSv1.3") })
-            if (api >= 29) assertArrayEquals(arrayOf("http/1.1"), tls.sslParameters.applicationProtocols)
+            assertArrayEquals(emptyArray<String>(), tls.sslParameters.applicationProtocols)
             traffic.close()
         }
     }
@@ -114,12 +116,12 @@ class ReferenceTunTrafficTest {
         }
     }
 
-    @Test fun hostileAlpnHandshakeAndRawEofCannotBecomeSuccess() {
-        for (mode in 0..3) {
+    @Test fun hostileHandshakeAndRawEofCannotBecomeSuccess() {
+        // ALPN bridge offer/reject coverage lives in ReferenceTunTrustTest: real Build0 skips it here.
+        for (mode in 1..3) {
             val raw = Raw(true)
             val tls = Tls(raw.events)
             when (mode) {
-                0 -> tls.selectedProtocol = "h2"
                 1 -> tls.handshakeFailure = true
                 2 -> raw.eofFailure = true
                 3 -> tls.eofFailure = true
@@ -322,10 +324,10 @@ class ReferenceTunTrafficTest {
         }
     }
 
-    private class Tls(private val events: MutableList<String>) : SSLSocket() {
+    internal class Tls(private val events: MutableList<String>) : SSLSocket() {
         private val delegate = SSLContext.getDefault().socketFactory.createSocket() as SSLSocket
         val written = ByteArrayOutputStream()
-        var selectedProtocol = ""
+        var selectedProtocol: String? = ""
         var closed = false
         var handshakeFailure = false
         var eofFailure = false
