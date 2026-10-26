@@ -86,9 +86,14 @@ New checkpoint CI must be inspected before claiming hosted validation of later c
 Independent Android work is active while exact desktop C5/physical USB remain
 gated: [B6 selected-app preflight](selected-app-preflight.md) adds a real
 installed-mode exact-package check with off-main-thread PackageManager observations
-and stale-result rejection, never capture readiness. A separate offline delivered
-APK/checksum/metadata integrity verifier is assigned in parallel. Neither is
-implemented/validated yet; unique owners and current status are on the work board.
+and stale-result rejection, never capture readiness. Platform owner `c4ebbce`
+(integrated `91c1c33`) and app owner `d4bcc1c` (integrated `e711b47`) are committed;
+independent exact-commit reviews found no concrete defect. The separate offline
+APK/checksum/metadata integrity verifier is owner `21def75` (integrated `b39d539`),
+also independently reviewed, with 24/24 focused and 102/102 total Python checks
+passing locally. Fresh pinned host compilation/JVM/lint and actual app/platform
+runtime remain pending; authored tests are not execution. The work board tracks
+additional real PackageManager adapter test source and exact runtime report gates.
 Approval-bound combined credential persistence is the next verified foundation
 gap; it is not an excuse to declare production v1 frozen or silently reuse
 research storage. Existing service/native lifecycle is reusable, not duplicated.

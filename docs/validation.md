@@ -1093,6 +1093,29 @@ Measure latency against a direct connection, throughput, concurrent-flow memory,
 
 Start with reproducible debug APKs and ADB installation. Export deliverables to dist/http-freekit-android-debug.apk and later dist/http-freekit-android.apk, with stable checksum and build metadata filenames directly in dist/. Gradle's standard build directories may remain. Metadata records version, protocol version, source commit, and compatible desktop version or tested commit. Keep signing credentials outside the repository and expose them to CI through its secret mechanism.
 
+The independent receiving-side debug bundle gate is implemented as owner
+`21def75`, integrated `b39d539`, with 24/24 focused and 102/102 total Python checks
+passing locally. Independent exact-commit implementation review found no concrete
+defect; full host integration remains pending. On a safe-descriptor POSIX host,
+run it outside any untrusted download folder, supplying the separately known
+expected Android commit:
+
+```sh
+python3 -I scripts/verify-debug-delivery.py --source <expected-40-hex-commit>
+```
+
+Defaults read the three stable debug dist files; `--apk`, `--checksum` and
+`--metadata` accept explicit bounded paths. The gate strictly checks the producer
+schema, self-reported clean source, exact filename/checksum/metadata agreement and
+actual streamed APK byte hash, including safe no-follow/race checks. Windows or
+other hosts lacking the required descriptor operations fail closed. The producer
+can export dirty builds, but this receiving policy refuses them. Tiny opaque test
+fixtures verify bundle handling only; no real APK has yet been verified by this
+new gate. Integrity success is not signing, embedded manifest/version, provenance
+attestation, desktop compatibility, device installation or USB acceptance; null
+desktop compatibility remains unavailable. It performs no build/device/network/
+publication action and does not rewrite outputs.
+
 CI first runs compile, unit tests, lint, and dependency/licence checks. Add emulator instrumentation once a runner supports it. Signed releases require upgrade-install testing, required notices and corresponding source obligations for included dependencies, checksum verification, and a tested previous compatible release. Do not automatically publish or upload artifacts from a planning task.
 
 ## Handoff format

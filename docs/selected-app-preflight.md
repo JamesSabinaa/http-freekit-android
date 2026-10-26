@@ -1,7 +1,14 @@
 # Selected-app platform preflight (B6)
 
-Status: assigned implementation preparation after reference Android TUN acceptance
-at `4cd60b8`; not production capture or wire integration. This package adds real
+Status: implemented locally after reference Android TUN acceptance at `4cd60b8`,
+not yet host/runtime accepted; not production capture or wire integration.
+Platform owner `c4ebbce` is integrated `91c1c33`; app owner `d4bcc1c` is integrated
+`e711b47`. Independent exact-commit reviews found no concrete defect. Thirteen
+platform and eighteen pure state JVM methods plus eight controlled Activity
+methods are authored, not locally executed (Java/SDK absent). Three additional
+actual PackageManager adapter methods (owner `4248ace`, integrated `cd0b8ee`) and
+the exact 21-method preview workflow gate (owner `6c959d3`, integrated `2af62db`)
+are committed. This package adds real
 current-user PackageManager observations to the running app without starting a
 VPN, requesting permissions, connecting sockets or changing simulated pairing.
 

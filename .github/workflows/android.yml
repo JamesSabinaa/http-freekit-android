@@ -32,8 +32,8 @@ jobs:
           node scripts/check-doc-links.mjs
       - name: Test exact Keystore report verification
         run: python3 -m unittest discover -s scripts/tests -p 'test_keystore_results.py'
-      - name: Test bounded preview emulator cleanup
-        run: node --test scripts/tests/preview-emulator-cleanup.test.mjs
+      - name: Test bounded preview emulator cleanup and exact preflight report gate
+        run: node --test scripts/tests/preview-emulator-cleanup.test.mjs scripts/tests/preview-preflight-workflow.test.mjs
       - name: Validate draft protocol corpus and guard regressions
         run: |
           python3 -m unittest discover -s scripts/tests -p 'test_protocol_corpus.py'
@@ -43,6 +43,11 @@ jobs:
         run: |
           node --test scripts/tests/enrollment-*.test.mjs scripts/tests/enrolled-tun-runtime.test.mjs
           node scripts/check-enrollment-corpus.mjs
+      - name: Test debug delivery bundle integrity
+        run: |
+          test -f scripts/verify-debug-delivery.py
+          test -f scripts/tests/test_debug_delivery.py
+          python3 -I -m unittest discover -s scripts/tests -p 'test_debug_delivery.py'
       - name: Test independent capture runtime evidence verification
         run: python3 -m unittest discover -s scripts/tests -p 'test_capture_runtime.py'
       - name: Test independent cold TCP evidence verification

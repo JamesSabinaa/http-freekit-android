@@ -13,12 +13,20 @@ The original goal is active and incomplete.
   `a0e6179fa35a7a489`, real app action/generation/lifecycle wiring to isolated
   `ad8bda487fe4db060`, and offline debug bundle integrity verification to isolated
   `a20e7ee50dab04e62` (`delivery-integrity-implementation`). These packages do not
-  start capture, enable production wire or claim USB. Both pre-landing contract
-  reviews are complete; no blocking issue, and root explicitly chose clean-source-
-  only delivery verification without attestation claims. Implementation reviews,
-  JVM/lint/build and fresh pinned host acceptance remain pending. Root owns
-  profile/docs/board and a currently uncommitted additive D-I test step in
-  `.github/workflows/android.yml`, pending the owner test files. See the work board.
+  start capture, enable production wire or claim USB. Platform owner `c4ebbce`
+  is integrated `91c1c33`; app owner `d4bcc1c` is integrated `e711b47`; delivery
+  owner `21def75` is integrated `b39d539`. Independent exact-commit implementation
+  reviews found no concrete defect in all three packages. Coordinator delivery
+  checks pass 24/24 focused and 102/102 total Python tests; docs pass 293 local
+  links and nine checker regressions. Java/SDK are absent locally, so authored
+  13 platform/18 state JVM and eight Activity methods are not locally executed.
+  Fresh pinned host/build/JVM/lint and actual runtime remain pending. Three actual
+  adapter methods (owner `4248ace`, integrated `cd0b8ee`) and strict exact21-method
+  preview runtime gate (owner `6c959d3`, integrated `2af62db`) are committed.
+  Coordinator documentation/workflow Node checks pass 166/166; root owns docs/board
+  and additive host CI tests. Both
+  pre-landing contract reviews passed, with clean-source-only receiving policy
+  and no attestation claims. No shared wire contract changed. See the work board.
 
 - Latest diagnostic host checkpoint is accepted at exact
   `4cd60b8a9bbdc7c04eaf516b3b05acef69d9f9ec`, host40351833250 attempt1. All three
