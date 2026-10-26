@@ -167,6 +167,9 @@ New checkpoint CI must be inspected before claiming hosted validation of later c
    Both emulator cleanups join/exit0. Investigate the input handoff before any
    further dispatch; require both APIs in one same-source attempt, never combined
    across retries. Historical failures remain failed; combined acceptance is open.
+   Finite log-only diagnostic owner `09d2564`, integrated `14a29e5`, preserves
+   reports/gates/deadlines and passes25 finite Node/11 independent verifier cases.
+   Independent review and fresh pinned host acceptance precede a diagnostic matrix.
    No control is weakened.
    It is not the missing desktop backend, C5 or USB acceptance.
    Obtain and verify the exact already-authorized reviewed desktop source

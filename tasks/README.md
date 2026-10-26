@@ -166,8 +166,13 @@ New isolated owner `ae26c242ad0d419bb`, branch
 `worktree-agent-ae26c242ad0d419bb`, is assigned only
 `run-reference-tun-runtime.mjs` and `reference-tun-driver.test.mjs` to implement
 the [frozen finite absence diagnostic](../docs/reference-android-tun-research.md#post-method-absence-diagnostic-follow-up)
-and deterministic failure regressions. Root retains all profile/board/integration
-and dispatch; no report-schema, gate, timeout or shared-helper changes assigned.
+and deterministic failure regressions. Owner `09d2564` is integrated `14a29e5`;
+coordinator25/25 finite Node and11/11 Python checks pass without skips. Missing
+command/group joins honestly add cleanup failure; no gate was weakened. Isolated
+read-only reviewer `a706195aa04dae520`, branch `worktree-agent-a706195aa04dae520`,
+checks exact owner commit; review and fresh full pinned host gate are pending.
+Root retains all profile/board/integration and dispatch; no report-schema, gate,
+timeout or shared-helper changes assigned.
 Input/ACK absence observations are false after HTTP, but the underlying failed
 command is not yet established. No third retry is dispatched. Require both APIs
 in one same-source attempt; no merging earlier success. No physical USB, desktop

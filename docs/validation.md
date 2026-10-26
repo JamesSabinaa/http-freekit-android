@@ -355,6 +355,16 @@ attempt2 files/metadata/log are in `/tmp/reference-tun-runtime-second.yHp565`.
 No third retry is dispatched. Investigate the handoff, then require both APIs in
 one fresh same-source attempt; never combine prior individual successes.
 
+Log-only diagnostic owner `09d2564`, integrated `14a29e5`, preserves revision1
+reports, three-path absence checks, exact marker/zero-stderr/command-close gate,
+deadlines and cleanup. Coordinator descriptor/results/driver/workflow replay
+passes25/25 and independent Python verifier tests11/11, zero skips. Deterministic
+failed probes preserve passed HTTP and zero-start HTTPS; missing close/group facts
+also honestly produce cleanup failure. Actual log success/failure/quiet/no-probe
+branches and hostile raw privacy canaries pass. Exact-commit independent review
+and full fresh pinned host validation are pending before a diagnostic matrix.
+Historical command cause is still unknown; no speculative timing fix is applied.
+
 ## Authenticated public interception CA research
 
 The [A23 contract](protocol-interception-ca.md) is checked by the compiled shared

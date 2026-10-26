@@ -302,5 +302,14 @@ actual probe when not quiet, containing only the existing finite command
 observation plus boolean `stderrPresent` and `markerMatched`. Do not emit raw
 stdout/stderr, serials, paths, input, CA, identity or traffic. No new report field
 or shared wire contract is introduced. Failure cases must preserve passed HTTP,
-zero-start HTTPS and all independent cleanup. Fresh pinned host validation and
-independent review precede a separately recorded diagnostic matrix.
+zero-start HTTPS and attempted independent cleanup. Missing command/group close
+must also retain `enrollment_cleanup_failed` and false actual command-join facts;
+joined failure vectors retain only `enrollment_input_failed`.
+
+Owner `09d2564`, integrated `14a29e5`, implements this two-file package.
+Coordinator replay passes25/25 descriptor/results/driver/workflow checks and11/11
+independent Python verifier tests, with no skips. Actual diagnostic logging,
+quiet/no-probe branches and hostile raw canary privacy checks pass. Independent
+exact-commit review is assigned to isolated `a706195aa04dae520`; pinned full host
+validation remains pending. Historical failure cause remains unknown. Both gates
+must precede a separately recorded diagnostic matrix.
