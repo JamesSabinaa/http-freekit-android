@@ -54,9 +54,12 @@ The original goal is active and incomplete.
   coverage gap: deadline-relative injection masks an enlarged30-to60-second
   production budget. The same isolated test owner is resumed to independently
   anchor/assert30 seconds and reject root/unroot enlarged budgets. Host40349604793
-  at exact `86499d4` is running, but cannot authorize runtime before the review
-  issue is corrected/re-reviewed and fresh host validation passes. Production
-  clock bytes remain unchanged.
+  at exact `86499d4` passes all jobs (metadata only), but predates the repair.
+  Follow-up `5085cb5`, integrated `4663e66`, independently anchors/asserts30 seconds
+  and rejects four60-second mutations. Coordinator focused8/8 and full integrated
+  Node documentation166/166 pass, owner clock33/33 passes; independent reviewer
+  `a9cc5f4400d6f29c6` found no concrete remaining finding (static). Production clock
+  bytes stay unchanged. Fresh full host validation of repaired source is next.
   No new runtime is dispatched before corrected full host acceptance.
   Finite ignored runtime audit SHA256:
   `b970f82c38e04897b5b6fedb73814203c2b85cd0419f1bd20fde197ad48d2581`.

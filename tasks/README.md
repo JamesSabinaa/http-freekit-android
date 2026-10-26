@@ -189,8 +189,13 @@ branch `worktree-agent-a108c4e4931c4593f`, found a concrete coverage gap: clock
 injection derived from the production deadline masks30-to60-second budget changes.
 The same exclusive owner is resumed for only the clock test: independently anchor/
 assert30 seconds and reject enlarged root/unroot budgets. Host40349604793 at
-exact `86499d4` is in progress but cannot authorize runtime before correction,
-independent re-review and fresh host acceptance. Root owns evidence/integration.
+exact `86499d4` subsequently passes all jobs (metadata only), not runtime
+acceptance. Follow-up `5085cb5`, integrated `4663e66`, adds the independent anchor/
+30-second assertion and four enlarged-budget mutation regressions. Coordinator
+focused8/8 and full integrated documentation166/166 pass, owner clock33/33 passes.
+Isolated read-only follow-up reviewer `a9cc5f4400d6f29c6`, branch
+`worktree-agent-a9cc5f4400d6f29c6`, found no concrete remaining finding. Fresh full
+pinned host validation of repaired source remains next. Root owns integration.
 Root retains all profile/board/integration and dispatch; no report-schema, gate,
 timeout or shared-helper changes assigned.
 Input/ACK absence observations are false after HTTP, but the underlying failed

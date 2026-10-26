@@ -333,7 +333,13 @@ pass without skips. Independent read-only exact-commit reviewer
 `a108c4e4931c4593f` found a concrete test-coverage gap: deriving injected time
 from the production deadline masks a30-to60-second budget regression. The same
 exclusive owner must independently anchor/assert the original30-second budget
-and reject root/unroot enlarged-budget mutations. Fresh host40349604793 at
-exact `86499d4` is running, but cannot authorize runtime until this review issue
-is corrected, independently re-reviewed and fresh full host validation passes.
-Production clock bytes remain unchanged.
+and reject root/unroot enlarged-budget mutations. Host40349604793 at exact
+`86499d4` subsequently succeeds in all three jobs (metadata only, no new artifact
+audit), but is not runtime authorization because its source predates that repair.
+Owner follow-up `5085cb5`, integrated `4663e66`, independently anchors the
+pre-assignment clock, asserts exactly30 seconds before reconnect/injection and
+rejects four root/unroot60-second mutations. Coordinator focused8/8 and integrated
+full Node documentation166/166 pass without skips; owner clock33/33 also passes.
+Independent exact follow-up reviewer `a9cc5f4400d6f29c6` found no concrete remaining
+finding (static). Production clock/workflow bytes remain unchanged. Fresh full
+pinned host validation of the repaired source must precede diagnostic runtime.

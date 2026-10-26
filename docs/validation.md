@@ -381,8 +381,12 @@ and finite reference25/25 pass without skips. Independent static review found
 that injected time derived from the production deadline masks enlarged30-to60-
 second budgets. The same isolated test owner must anchor/assert30 seconds
 independently and reject root/unroot enlarged budgets. Host40349604793 at exact
-`86499d4` is running, but cannot authorize runtime until correction, independent
-re-review and fresh full host acceptance.
+`86499d4` passes all jobs (metadata only), but predates repaired source `5085cb5`,
+integrated `4663e66`. The repair anchors the independent pre-assignment clock,
+asserts30 seconds before reconnect/injection and rejects all four60-second
+mutations. Coordinator focused8/8 and full documentation166/166 pass, owner
+clock33/33 passes. Independent corrective static review finds no concrete
+remaining finding. Require fresh repaired-source full host before runtime.
 
 ## Authenticated public interception CA research
 

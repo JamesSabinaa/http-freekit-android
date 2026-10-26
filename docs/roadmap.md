@@ -178,9 +178,12 @@ New checkpoint CI must be inspected before claiming hosted validation of later c
    owner clock29/29/full Node documentation162/162 and coordinator focused4/4 /
    finite reference25/25 pass. Independent review found deadline-relative injection
    masks an enlarged budget; the owner must independently anchor/assert30 seconds
-   and reject root/unroot60-second mutations. Host40349604793 at `86499d4` is in
-   progress but cannot authorize runtime until this issue is corrected/re-reviewed
-   and fresh full host passes. Production clock bytes stay unchanged.
+   and reject root/unroot60-second mutations. Host40349604793 at `86499d4` passes
+   all jobs (metadata only), but predates repair `5085cb5`, integrated `4663e66`.
+   Repaired coordinator focused8/8/full documentation166/166 and owner clock33/33
+   pass; independent corrective review found no concrete remaining finding.
+   Fresh repaired-source full host is next, then diagnostic runtime. Production
+   clock bytes stay unchanged.
    No control is weakened.
    It is not the missing desktop backend, C5 or USB acceptance.
    Obtain and verify the exact already-authorized reviewed desktop source
