@@ -119,16 +119,21 @@ pin/method/report remain unchanged.
 The [new private profile](../docs/reference-android-tun-research.md) is assigned
 after accepted Kotlin host `65cd93f`/run40316060504. Root owns the profile,
 shared traffic hooks, test manifest/build/CI/workflow and evidence integration.
-Unique packages below are assigned before parallel work; exact isolated
-owner/branch IDs are recorded when launched. No old C5/worker/report changes.
+Unique packages below were assigned before parallel work. Exact isolated owners
+and branches follow (each branch is `worktree-agent-<owner ID>`):
+T-R `a9570b11e8979ca23`, N-R `a0ed4c066ba9d56ef`,
+F-R `aaea719fb049d789d`, A-R `aa1b6c115decd3bf5`,
+read-only profile reviewer `abc2aa1f7dcde9f0d`. All implementers confirmed clean
+fast-forward to private profile `e8fbcbf`. No old C5/worker/report changes.
 
 | Package | Exclusive scope | Dependencies/status |
 | --- | --- | --- |
 | T-R traffic | new ReferenceTunTraffic/Trust/HttpResponse main and focused test files under capture-spike/traffic | frozen command3/20/21, fixed payload and scoped trust API; implementation assigned, no shared edits |
 | N-R fixture/worker | new reference-tun-fixture/worker/worker-client modules and focused tests | existing accepted reference backend/enrollment; publish private child schema to root before F-R binds; implementation assigned |
-| F-R finite validation | new reference-tun-descriptor/results/run-reference-tun-runtime modules and focused tests | first freeze descriptor/phases/facts/gate and send root/A-R; then bind N-R committed parent API; implementation assigned |
-| A-R Android | new DraftReferenceTunInteropTest/Service/ConsentActivity instrumentation files | service/consent first; no emitted phases/facts until F-R descriptor is committed/root-agreed; T-R API and N-R fixture for execution; implementation assigned |
-| Profile review | read-only new profile plus existing relevant trust/traffic/host seams | bounded independent correctness/security/API feasibility review; no edits/runtime claim |
+| F-R finite validation | new reference-tun-descriptor/results/run-reference-tun-runtime modules and focused tests | descriptor `1e9806c`+`a15a29e` agreed/integrated `09445ec`+`7bed346`, root2/2 guards pass; no ALPN fact; results/driver implementation continues against N-R parent API |
+| A-R Android | new DraftReferenceTunInteropTest/Service/ConsentActivity instrumentation files | owner `ee89303`, integrated `2d96066`; exactly three additions, descriptor/static/C5-identity checks pass; actual Gradle attempt blocked by absent JAVA_HOME/java; fresh exact-commit review assigned to retained `abc2aa1f7dcde9f0d`; no compilation/runtime claim |
+| Profile review | read-only new profile plus existing relevant trust/traffic/host seams | `abc2aa1f7dcde9f0d` complete: no concrete finding; stock Android SSLSocket.shutdownOutput support unverified and not assumed; T-R instead uses TLS EOF/close(autoClose=false), separate raw SHUT_WR/EOF; Android close_notify verification not inferred |
+| Root hook review | read-only four root-edited shared TrafficService/decoder/tests/test-manifest files | `ad33d4d10fe79824f`, branch `worktree-agent-ad33d4d10fe79824f`; pending; those four files held unchanged during review |
 
 Each uses its own branch/worktree; no subagent toolchain installation,
 publication, CI/device dispatch or changes to another package. Current source

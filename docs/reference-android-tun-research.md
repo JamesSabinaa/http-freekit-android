@@ -124,6 +124,22 @@ for actual child/pump/group ownership. Parent material replies must be defensive
 plain data, not pretend domain-object instances. Root driver consumes them as
 private data. Owner defines/records a canonical finite JSONL request/reply schema
 in this profile BEFORE the driver binds it; protocol is PRIVATE, not shared wire.
+Frozen canonical envelopes begin with
+`format:"http-freekit-reference-tun-worker",revision:1` in that exact key order.
+Requests continue `id:N,op:OP,args:{...}`; IDs are sequential1..128. Operations
+metadata/createInvitation/snapshot/close accept exactly empty args.
+waitForRegistered accepts exactly `{id:<actual invitation ID>,timeoutMillis:N}`,
+N1..10000 (parent default10000, existing helper maximum). approve/readResult/
+inspectEnrollment accept exactly `{id:<actual enrollment ID>}`. Preserve the
+underlying canonical identifier grammar. Success replies continue
+`id:N,ok:true,result:<plain material/snapshot/null>`; failures continue
+`id:N,ok:false,code:CODE,joined:boolean`. Startup events continue `event:"ready"`;
+fatal events `event:"failed",code:CODE,joined:boolean`. Finite codes are exactly
+` tun_configuration tun_input tun_unavailable tun_enrollment tun_closing
+ tun_cleanup tun_watchdog tun_output tun_protocol tun_timeout tun_process `
+(space-delimited list, no whitespace in the codes themselves).
+Reserve close after at most127 business requests, within128 total, including
+under count/queue saturation. Do not serialize request IDs as domain IDs.
 Bounds:8192 input bytes/line,16384 output bytes/line,262144 cumulative input,
 128 requests, at most two business operations outstanding plus reserved close.
 Use strict operations/keys/base64url and no raw stderr diagnostics. A360-second
@@ -142,6 +158,15 @@ Private enrollment input stays the existing format. Pass only existing actual
 webSocketPort through instrumentation arguments. New private phase prefix,
 observation fields and completion gate MUST be frozen in the new descriptor by
 the validation owner and reviewed by root before instrumentation emits them.
+The descriptor at owner `a15a29e` (integrated `7bed346`) is now agreed: prefix
+`draftReferenceTun`, Version1, sixteen exact ordered phases, exact typed
+observation map with no ALPN fact, report format `http-freekit-reference-tun-runtime`.
+The new gate is
+`no_backup/draft-enrollment-research/reference-tun-complete-v1.bin`, atomically
+published from `.reference-tun-complete-v1.pending`, exact bytes
+`FREEKIT-REFERENCE-TUN-COMPLETE-V1\n`. The committed
+`tools/transport-spike/reference-tun-descriptor.mjs` is the finite private
+emitter/parser contract. Root independently replays both descriptor tests.
 No C5 helper extraction or old-method changes are assigned.
 
 Each positive requires actual saved/reloaded nonexportable key/CA binding,
