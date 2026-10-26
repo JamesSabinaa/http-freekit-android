@@ -38,6 +38,7 @@ class StreamDuplex extends Duplex {
     this.remoteEof = false;
     this.normalClose = false;
     this.failure = null;
+    this.aborting = false;
     this.wake = null;
     this.on('error', () => {});
     this.closedEvent = observeClose(this);
@@ -61,10 +62,16 @@ class StreamDuplex extends Duplex {
   _destroy(failure, done) {
     this._read();
     if (this.normalClose) { done(failure); return; }
-    // Node TLS may destroy its carrier after both clean directional EOFs.
-    // That is not permission to abort the still-pending WS Close handshake.
-    if (!failure && !this.aborting && this.localEof && this.remoteEof) {
-      this.pump.then(() => done(this.failure), () => done(safeError('reference_stream_cleanup_failed')));
+    // Maintained TLS's JSStreamSocket.doClose() destroys its carrier after TLS
+    // shutdown, independently of the carrier's still-pending remote END_WRITE.
+    // A completed local END_WRITE permits only a bounded drain, not completion:
+    // receive()/join() still require actual remote EOF, Close1000 and its ack.
+    if (!failure && !this.aborting && this.localEof) {
+      deadline(this.pump).then(() => done(this.failure), failure => {
+        // Timeout remains a failure; abort and join the actual WS owner rather
+        // than synthesizing remote EOF or letting a destroy callback hang.
+        this.flow.ws.cancel().then(() => done(failure), () => done(failure));
+      });
       return;
     }
     this.flow.ws.cancel().then(() => done(failure), () => done(failure ?? safeError('reference_stream_cleanup_failed')));
@@ -76,6 +83,7 @@ class StreamDuplex extends Duplex {
       try {
         if (event.kind === 'binary') {
           assert.equal(this.remoteEof, false, 'No bytes after remote END_WRITE');
+          assert.equal(this.destroyed, false, 'Do not discard binary records after TLS carrier teardown');
           const bytes = event.copyBytes();
           assert(bytes.length <= 4096, 'Bounded incoming frame');
           pause = !this.push(bytes);
@@ -291,17 +299,40 @@ function noDispatch(backend) {
   assert.equal(backend.evidence().length, 0);
 }
 
-for (const mode of ['http', 'https']) test(`enrolled reference ${mode}: actual POST, independent origin and remote COMPLETE after natural half-close`, { timeout: 30000 }, async () => {
-  await environment(async f => {
-    const credential = await f.enroll(), control = await f.control(credential);
-    const carrier = await f.stream(credential, control, mode);
-    await connect(carrier, mode === 'http' ? profile.httpPort : profile.httpsPort);
-    const application = mode === 'https' ? await innerTls(f, carrier) : carrier;
-    const body = Buffer.from(Array.from({ length: profile.maxBodyBytes }, (_, i) => (i * 19 + 3) & 255));
-    await post(application, body);
-    await complete(f, credential, carrier);
-    successfulEvidence(f, mode, body);
-  });
+for (const mode of ['http', 'https']) test(`enrolled reference ${mode}: actual POST, independent origin and remote COMPLETE after natural half-close`, { timeout: 30000 }, async t => {
+  let stage = 'fixture';
+  try {
+    await environment(async f => {
+      stage = 'enrollment';
+      const credential = await f.enroll();
+      stage = 'control';
+      const control = await f.control(credential);
+      stage = 'stream';
+      const carrier = await f.stream(credential, control, mode);
+      stage = 'connect';
+      await connect(carrier, mode === 'http' ? profile.httpPort : profile.httpsPort);
+      stage = 'inner_tls';
+      const application = mode === 'https' ? await innerTls(f, carrier) : carrier;
+      const body = Buffer.from(Array.from({ length: profile.maxBodyBytes }, (_, i) => (i * 19 + 3) & 255));
+      stage = 'post';
+      await post(application, body);
+      stage = 'remote_complete';
+      await complete(f, credential, carrier);
+      if (mode === 'https') {
+        stage = 'tls_eof';
+        assert.equal(application.readableEnded, true, 'Actual inner TLS read EOF');
+        assert.equal(application.writableFinished, true, 'Actual inner TLS shutdown finished');
+      }
+      stage = 'origin_evidence';
+      successfulEvidence(f, mode, body);
+      stage = 'cleanup';
+    });
+  } catch (failure) {
+    // Fixed labels only: retain the original error without traffic, TLS provider
+    // messages, credentials, certificate fingerprints or private measurements.
+    t.diagnostic(`reference_${mode}_${stage}`);
+    throw failure;
+  }
 });
 
 test('enrolled reference HTTPS wrong interception trust has no decrypted request or upstream dial', { timeout: 30000 }, async () => {
