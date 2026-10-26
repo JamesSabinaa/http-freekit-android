@@ -54,7 +54,15 @@ maintained-TLS carrier destroy ordering; scoped correction
 `90c7df9` is integrated as `8ba2ecd` with finite stage diagnostics and stronger
 actual TLS EOF assertions. Syntax/contract checks pass; its authenticated effect
 is unverified locally because Node22 lacks required SQLite defenses. Integrate
-the checked B correction before a fresh pinned run. No protocol change, skip,
+the checked B correction before a fresh pinned run. B correction `25c4c6`,
+integrated `6b6c1ff`, now passes root's combined 50/50 local tests, including
+actual delayed raw END and unchanged-deadline branches. Root source review also
+found history retained the first two successes rather than the specified last
+two; narrow owner correction `f0429fd` is integrated as `530e14a`. Strengthened
+three-body history/order checks and the full corrected-assets/backend/contract/
+command replay pass 50/50 locally, zero skips. Both scoped repairs are now
+integrated and root-reviewed; fresh pinned host composition is still required.
+No protocol change, skip,
 SQLite-defense bypass, toolchain install, device action or C5 substitution.
 
 ## Current independent capture package

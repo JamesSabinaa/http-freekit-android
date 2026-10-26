@@ -167,7 +167,15 @@ The original goal is active and incomplete.
   END_WRITE still outstanding and owns a two-file correction/regression.
   No blind rerun or weakened gates; integrate that checked correction before
   a fresh pinned run. The first run is terminal failure; documentation/native
-  jobs pass, Android stops at reference composition.
+  jobs pass, Android stops at reference composition. B correction `25c4c6`,
+  integrated `6b6c1ff`, now passes the reproduced delayed raw-END and unchanged
+  deadline branches without synthetic EOF or premature owner release. Narrow
+  evidence-retention correction `f0429fd` is integrated `530e14a`, retaining
+  the last two actual origin rows rather than the first two. Root's full
+  corrected-assets/backend/contract/command replay passes 50/50, zero skips.
+  Both B/C repairs are integrated and root-reviewed. Publish the corrected
+  branch and require fresh exact-source pinned host success before main;
+  authenticated composition remains pending and the first run remains failed.
 - User explicitly authorized continued publication of validated Android main
   checkpoints and existing hosted validation workflows for this goal without
   asking for every checkpoint. This does not authorize paid infrastructure,

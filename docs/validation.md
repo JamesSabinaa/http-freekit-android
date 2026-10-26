@@ -162,6 +162,23 @@ stage diagnostics. Both must retain actual TLS/EOF/Close/COMPLETE and ownership
 joins. Integrate checked fixes before a new pinned run; earlier local Node22
 failures remain separate.
 
+B correction `25c4c6`, integrated as `6b6c1ff`, isolates incoming TLS with an
+additional owned maintained Duplex pair; actual pipes carry bytes/EOF and retain
+raw upload ownership after clean TLS termination. Its deterministic regression
+fails the old implementation on premature destruction, then passes both actual
+later-END and unchanged five-second deadline branches. Owner closure remains
+pending while upload EOF is withheld. Root's integrated corrected-assets/backend/
+contract/command replay passes 50/50, zero failures/cancellations/skips locally.
+C correction `90c7df9`, integrated as `8ba2ecd`, retains bounded actual stream
+closure after natural local TLS shutdown and adds finite stages plus actual TLS
+read/write EOF assertions. Neither change alone establishes authenticated
+composition; the combined fresh pinned run remains mandatory. Source review
+also found first-two rather than last-two evidence retention; narrow owner fix
+`f0429fd`, integrated as `530e14a`, preserves lifetime counters and tests three
+distinct actual bodies without printing hashes. The combined replay after this
+last correction again passes 50/50 locally, zero failures/cancellations/skips.
+No shared wire contract changes.
+
 ## Authenticated public interception CA research
 
 The [A23 contract](protocol-interception-ca.md) is checked by the compiled shared

@@ -105,10 +105,11 @@ New checkpoint CI must be inspected before claiming hosted validation of later c
    which lacks required SQLite defenses. Independent static backend review found
    no concrete defect. First pinned Node24 run 40308827831 reaches all six
    authenticated cases: HTTP and four rejection/revocation cases pass, but HTTPS
-   positive fails with a WebSocket `cancelled` error. C's carrier correction is
-   committed; B independently reproduced premature raw upload-direction closure
-   and is correcting it with a real delayed-END regression. Fresh host
-   validation remains required.
+   positive fails with a WebSocket `cancelled` error. C's carrier correction
+   `8ba2ecd` and B's reproduced delayed-END correction `6b6c1ff` are integrated;
+   last-two evidence retention is corrected as `530e14a`. Combined local
+   regression checks pass 50/50, with no skipped case. Fresh pinned host
+   composition/compilation/lint validation remains required.
    No control is weakened.
    It is not the missing desktop backend, C5 or USB acceptance.
    Obtain and verify the exact already-authorized reviewed desktop source
