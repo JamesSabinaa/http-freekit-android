@@ -44,8 +44,13 @@ The original goal is active and incomplete.
   provisional `5f2207f` passes all40 new Node cases and documentation/native jobs,
   but fails the existing capture shared-deadline regression (`1 !== 124`, line136)
   before Kotlin/lint execution. Original log/metadata:
-  `/tmp/reference-tun-host-failure.B1nnJi`. Isolated owner `aa2077817c508b4a5`
-  investigates only `tools/capture-spike/capture-workflow.test.mjs`; no blind retry.
+  `/tmp/reference-tun-host-failure.B1nnJi`. Isolated owner correction `325ef68`,
+  integrated `673b119`, deterministically separates legitimate pre-read exit1
+  and admitted-read timeout124 without changing production. Historical event
+  path remains unknown. All26 workflow cases pass; precommit full82/84 retains
+  two dirty-source CLI failures, clean same-command full84/84 then passes.
+  Independent exact-commit correction review found no concrete defect;
+  fresh pinned host validation is next, with no runtime dispatch yet.
   Independent workflow review found no concrete defect. Main remains unchanged.
   Main replay40318725140 at `751e35a` is terminal success, metadata observed only;
   exact65cd93f original artifacts remain the Kotlin acceptance evidence.

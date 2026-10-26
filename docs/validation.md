@@ -272,7 +272,16 @@ Documentation and native jobs pass. All40 new reference Node cases pass on
 Node24, including actual fixture HTTP/HTTPS and parent process/pump joins; that
 does not accept the full host checkpoint. Original failure log/metadata are
 retained in `/tmp/reference-tun-host-failure.B1nnJi`, outside trusted scripts.
-An isolated test-only owner investigates; no blind retry or runtime dispatch.
+An isolated owner reproduced a concrete test assumption defect: the actual
+clock exits1 when its shared deadline expires before UID-read admission, versus
+124 when an admitted read reaches real timeout. The historical event path was
+not recorded and is not inferred. Test-only `325ef68`, integrated `673b119`,
+forces these paths separately with exact status/order/1s read-budget/non-admission
+checks and unchanged production bytes. Focused2/2 pass; precommit full82/84
+retains two unchanged CLI dirty-source refusals, then the same unfiltered full
+capture suite passes84/84 from the clean committed tree on Node22. No skipped
+case, production change or host retry. Independent corrective review found no
+concrete defect in exact `673b119` (static review, not another test execution).
 Independent workflow integration review found no concrete defect.
 
 ## Authenticated public interception CA research
