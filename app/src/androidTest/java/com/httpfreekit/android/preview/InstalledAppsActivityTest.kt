@@ -175,10 +175,6 @@ class InstalledAppsActivityTest {
     }
 
     private fun clickMode(tag: String) {
-        // Chip descendants can be composed while vertically clipped; reset the vertical owner.
-        safeUi("Catalog source vertical reset failed", ::catalogDiagnostics) {
-            compose.onNode(hasScrollToIndexAction()).performScrollToIndex(0)
-        }
         clickTag(tag)
         safeUi("Clicked catalog source was not selected", ::catalogDiagnostics) {
             val node = tagNodes(tag).singleOrNull()
@@ -187,6 +183,13 @@ class InstalledAppsActivityTest {
     }
 
     private fun clickTag(tag: String) {
+        if (tag != FIXTURE_TAG) {
+            // Nested horizontal controls can remain composed while vertically clipped. Their
+            // scroll-to action owns only the horizontal row; position the vertical owner first.
+            safeUi("Catalog controls vertical reset failed", ::catalogDiagnostics) {
+                compose.onNode(hasScrollToIndexAction()).performScrollToIndex(0)
+            }
+        }
         safeUi("Known catalog control lookup failed", ::catalogDiagnostics) {
             compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasTestTag(tag))
         }
@@ -520,7 +523,8 @@ class InstalledAppsActivityTest {
         val observed = if (statusNode != null && statusNode.config.contains(SemanticsProperties.StateDescription))
             statusNode.config[SemanticsProperties.StateDescription] else null
         val status = observed?.takeIf { it in setOf("loading", "ready", "error", "idle") } ?: "absent"
-        "sampleSource=(${source("apps-mode-sample")}),installedSource=(${source("apps-mode-installed")}),status=$status"
+        "sampleSource=(${source("apps-mode-sample")}),installedSource=(${source("apps-mode-installed")})," +
+            "refresh=(${source("apps-refresh")}),status=$status"
     } catch (_: ComposeTimeoutException) {
         "catalogState=unavailable"
     } catch (_: AssertionError) {
