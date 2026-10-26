@@ -7,6 +7,12 @@ import { ReferenceTunError, TUN_CODES } from './reference-tun-fixture.mjs';
 import { bounded } from './companion-stream-peer-io.mjs';
 const fail = code => { throw new ReferenceTunError(code); };
 const copy = value => structuredClone(value);
+// Pure private aggregation; process exit cannot prove removal of child-owned assets.
+export function referenceTunStartupJoined(childCleanupJoined, state) {
+  return childCleanupJoined === true && state.closeObserved === true && state.processGroupJoined === true &&
+    state.stdinJoined === true && state.stdoutJoined === true && state.stderrJoined === true &&
+    state.pendingWrites === 0 && state.pendingRequests === 0 && state.forced === false;
+}
 export async function startReferenceTunWorker({ openssl = process.env.OPENSSL_BIN ?? 'openssl' } = {}) {
   if (typeof openssl !== 'string' || !openssl || openssl.length > 4096 || /[\0\r\n]/.test(openssl)) fail('tun_configuration');
   const child = spawn(process.execPath, [fileURLToPath(new URL('./reference-tun-worker.mjs', import.meta.url))], {
@@ -14,7 +20,7 @@ export async function startReferenceTunWorker({ openssl = process.env.OPENSSL_BI
   });
   let closed = false, code = null, signal = null, groupJoined = false, forced = false, failure = null, sealed = false;
   let next = 1, total = 0, bytes = Buffer.alloc(0), outputBytes = 0, stderrBytes = 0, stderr = '', readyResolve, readyReject, closeTask;
-  let stdoutJoined = false, stderrJoined = false, stdinJoined = false, pendingWrites = 0, readySeen = false;
+  let stdoutJoined = false, stderrJoined = false, stdinJoined = false, pendingWrites = 0, readySeen = false, childCleanupJoined = null;
   const ready = new Promise((resolve,reject) => { readyResolve = resolve; readyReject = reject; }); ready.catch(() => {});
   const pending = new Map(), writes = new Set();
   const rejectAll = problem => {
@@ -52,6 +58,8 @@ export async function startReferenceTunWorker({ openssl = process.env.OPENSSL_BI
         const keys = Object.keys(v).join(',');
         if (keys === 'format,revision,event' && v.event === 'ready' && !readySeen) { readySeen = true; readyResolve(); continue; }
         if (keys === 'format,revision,event,code,joined' && v.event === 'failed' && TUN_CODES.includes(v.code) && typeof v.joined === 'boolean') {
+          // Negative cleanup evidence is sticky even if a later event claims true.
+          childCleanupJoined = childCleanupJoined !== false && v.joined;
           rejectAll(v.code); continue;
         }
         if (!readySeen || !Number.isInteger(v.id) || !pending.has(v.id)) fail('tun_protocol');
@@ -130,7 +138,7 @@ export async function startReferenceTunWorker({ openssl = process.env.OPENSSL_BI
     let secondary;
     try { await close(); } catch (cleanup) { secondary = new ReferenceTunError(TUN_CODES.includes(cleanup?.code) ? cleanup.code : 'tun_cleanup',false); }
     throw new ReferenceTunError(TUN_CODES.includes(e?.code) ? e.code : 'tun_timeout',
-      closed && groupJoined && stdinJoined && stdoutJoined && stderrJoined && !forced, secondary ? [secondary] : []);
+      referenceTunStartupJoined(childCleanupJoined,processSnapshot()), secondary ? [secondary] : []);
   }
   return Object.freeze({
     metadata: () => request('metadata'), createInvitation: () => request('createInvitation'),

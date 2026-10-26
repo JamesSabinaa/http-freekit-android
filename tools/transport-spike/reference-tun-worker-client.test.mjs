@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { inspect } from 'node:util';
-import { startReferenceTunWorker } from './reference-tun-worker-client.mjs';
+import { startReferenceTunWorker, referenceTunStartupJoined } from './reference-tun-worker-client.mjs';
 import { createCryptoFixture } from './companion-enrollment-crypto-fixtures.mjs';
 import { enrollmentRequest } from './companion-enrollment-stream-client.mjs';
 const plain = v => assert.equal(Object.getPrototypeOf(v),Object.prototype);
@@ -10,6 +10,21 @@ function joined(v) {
   assert.equal(v.pendingWrites,0); assert.equal(v.pendingRequests,0); assert.equal(v.forced,false);
   assert.equal(v.failure,null); assert.equal(v.exitCode,0); assert.equal(v.signal,null);
 }
+test('pure startup aggregation preserves negative or missing child cleanup evidence independently of joined process/pumps', () => {
+  // Internal fault vector only: no claim of an actual ENOSPC, child exit or filesystem removal.
+  const state = { closeObserved:true, processGroupJoined:true, stdinJoined:true, stdoutJoined:true,
+    stderrJoined:true, pendingWrites:0, pendingRequests:0, forced:false };
+  assert.equal(referenceTunStartupJoined(false,state),false);
+  assert.equal(referenceTunStartupJoined(null,state),false);
+  assert.equal(referenceTunStartupJoined(undefined,state),false);
+  assert.equal(referenceTunStartupJoined(true,state),true);
+  for (const key of ['closeObserved','processGroupJoined','stdinJoined','stdoutJoined','stderrJoined']) {
+    assert.equal(referenceTunStartupJoined(true,{...state,[key]:false}),false,key);
+  }
+  assert.equal(referenceTunStartupJoined(true,{...state,forced:true}),false);
+  assert.equal(referenceTunStartupJoined(true,{...state,pendingWrites:1}),false);
+  assert.equal(referenceTunStartupJoined(true,{...state,pendingRequests:1}),false);
+});
 test('parent returns plain material after actual HTTPS registration and approval, then joins child/group/pumps', {timeout:35000}, async () => {
   const owner=await startReferenceTunWorker();
   try {
