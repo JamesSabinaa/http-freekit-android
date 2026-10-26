@@ -7,6 +7,15 @@ The original goal is active and incomplete.
 
 ## Current Linux resume position
 
+- Next executable package is frozen
+  [B7 local approval-bound credential persistence](approved-credential-persistence.md):
+  opt-in atomic combined public envelope, original-owned-alias evidence, shared
+  unchanged credential validator, separate no-backup namespace and explicit shared-
+  key computer Forget effects. Five unique model/identity/store/test/contract-review
+  packages are assigned via the work board; not implemented or validated yet.
+  No automatic legacy migration, research alias scan, renewal, wire promotion,
+  authenticated approval claim or protocol freeze is authorized by this local seam.
+
 - **B6 selected-app preflight runtime is accepted** at exact
   `0605472a53582818a0cde96f900a720f34fee9f5`, fresh matrix40367969116 attempt1.
   Independent original XML/cleanup/PNG replay confirms all21 exact methods once

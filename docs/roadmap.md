@@ -123,8 +123,11 @@ ignored runtime audit SHA256
 The work board tracks
 additional real PackageManager adapter test source and exact runtime report gates.
 Approval-bound combined credential persistence is the next verified foundation
-gap; it is not an excuse to declare production v1 frozen or silently reuse
-research storage. Existing service/native lifecycle is reusable, not duplicated.
+gap, now assigned as [B7 opt-in local library](approved-credential-persistence.md)
+with unique model/identity/store/test/review ownership. It is not implemented or
+validated yet and does not authenticate arbitrary caller-provided approval,
+freeze production v1 or reuse research storage. Existing service/native lifecycle
+is reusable, not duplicated.
 
 1. **Android CA retrieval acceptance — complete.** Source `fa2d845`, host run
    40220903154 and fresh API26/37 matrix 40222004218 pass independent artifact

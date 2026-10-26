@@ -62,6 +62,27 @@ Exact-source preview API26/37 matrix40363807230 failed as recorded below;
 all21 named methods and owned cleanup must pass per API. Local Java/SDK remain
 absent. No production capture or desktop/USB acceptance. Existing B5 remains intact.
 
+## B7 approval-bound local persistence implementation
+
+After accepted B6 runtime, root freezes the opt-in
+[local approval/credential envelope and store](../docs/approved-credential-persistence.md).
+This does not implement authenticated approval provenance, app wiring, renewal,
+production wire integration or freeze. Legacy records never synthesize approval;
+shared-key computer Forget effects and all public/internal seams are explicit.
+
+| Package | Exclusive files | Owner / branch / status / dependencies |
+| --- | --- | --- |
+| B7-M model/codec | NEW AuthenticatedEnrollmentApproval.kt and ApprovedEnrolledCredentialRecord.kt only | unique isolated model owner assigned next; frozen local API; no existing source/test edits |
+| B7-I identity/validator/backend | existing AndroidDeviceIdentityStore.kt, AndroidEnrolledCredentialStore.kt; NEW EnrolledCredentialValidation.kt only | unique isolated identity owner assigned next; unchanged legacy validation plus exact owned-alias public evidence; no store/model edits |
+| B7-S opt-in store | NEW AndroidApprovedEnrolledCredentialStore.kt only | unique isolated store owner assigned next; depends frozen M/I interfaces, no nested public stores |
+| B7-T independent JVM tests | NEW three named tests and optional ApprovedCredentialTestFixture.kt only | unique isolated test owner assigned next; depends frozen M/I/S interfaces; no shared/existing fixture edits |
+| B7-R contract review | read-only profile and existing security/research boundaries | unique isolated reviewer assigned next; no implementation/review delegation |
+
+Root alone owns documentation, CI/build integration, reviews, artifact/evidence
+replay and checked main promotion. Require fresh pinned full host and unchanged
+legacy regression gates. Local Java/SDK absent; no Android evidence-hook runtime
+claim without separately gated device validation.
+
 ## B6 runtime catalog scroll investigation
 
 Matrix40363807230 at exact `4ce72be` is failed, not accepted. Original artifacts
