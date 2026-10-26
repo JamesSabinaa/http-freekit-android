@@ -189,11 +189,31 @@ The separate verifier owner edits only `scripts/verify-keystore-results.py` and
 `scripts/tests/test_keystore_results.py`: retain every old exact twelve case,
 add the three exact methods above (four suites/fifteen cases), and regress
 original-twelve-only/missing/new-duplicate/new-failure/new-skip refusal without
-weakening structure/counters or old cases. Existing manual keystore workflow
-already runs all core-security instrumentation and this verifier; no workflow
-change or automatic dispatch is assigned. Synthetic verifier fixtures are not
-runtime evidence. Root requires review and fresh pinned full host before a fresh
-API26/37 matrix, then independent original XML/log/cleanup evidence inspection.
+weakening structure/counters or old cases. Existing manual keystore workflow runs
+the complete instrumentation suite and verifier; V has no workflow/dispatch scope.
+Synthetic verifier fixtures are not runtime evidence.
+
+A separate W owner exclusively edits `.github/workflows/keystore-runtime.yml`
+and adds `scripts/tests/keystore-emulator-cleanup.test.mjs`: replace its unbounded
+best-effort adb/kill/wait trap with bounded retained-PID stop/TERM/KILL/actual-wait
+cleanup, preserve original runtime exit, fail otherwise-successful runs when
+cleanup cannot be proved, and retain finite source/API-bound
+`build/reports/keystore/host-cleanup.json`. Use format
+`http-freekit-keystore-host-cleanup`, revision1, sourceCommit, api,
+runtimeExitCode, emulatorStarted, stopAttempted, stopExitCode, termAttempted,
+killAttempted, terminationObserved, joinObserved, emulatorExitCode,
+cleanupComplete and accepted. Mirror established preview cleanup without fixture
+operations. Record actual statuses, never manufacture exit0. Cleanup success needs
+observed termination and actual wait (not127); an ADB stop failure may reach actual
+owned fallback closure, but its status is retained. Acceptance needs original
+runtime0 plus complete cleanup. Bound report writing; failed/missing/hung writers
+cannot become success. Keep every existing SDK/API/boot/Gradle/verifier gate; no
+dispatch, broader teardown or paid runner. Tests execute extracted actual workflow
+shell with real owned substitute children: original0/7/124 preservation, hung stop,
+TERM-ignoring child/KILL, failed wait, failed/hung writer, no false acceptance.
+Synthetic cleanup children are not emulator evidence. Root integrates new host CI
+checks. Require review and fresh pinned full host before a fresh API26/37 matrix,
+then independent original XML/log/cleanup evidence inspection.
 
 ## Unique ownership and validation
 
