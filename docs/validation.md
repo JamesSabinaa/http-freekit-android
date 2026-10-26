@@ -210,17 +210,25 @@ reference regressions pass locally, but that is not peer enrollment acceptance.
 
 Kotlin owner `bffd873`, integrated `dc7dbc0`, supplies the six-case software-key
 CSR/factory/strict-JSSE HTTP/H1 HTTPS/refusal/revocation/Stop package. Independent
-exact-commit review found no concrete defect; actual compilation/runtime remain
-pending. Local Java/JDK/SDK is absent. Root's
+exact-commit review found no concrete defect. Local Java/JDK/SDK is absent; actual
+compilation/runtime subsequently pass on the pinned host below. Root's
 fresh noncached `testReferenceIntegration` task preserves existing desktop
 exclusions and pins, enables strict JSSE close_notify and fails on no matching
 tests. The five-suite Node workflow, exact Gradle task and original XML retention
 are guarded by 14 passing combined local contract/doc tests. The local reference
 assets/backend/contract replay passes 44/44 with zero failures/cancellations/skips.
-This checkpoint is branch-only until actual full host validation passes.
-A fresh exact-source
-pinned Node24/JDK17 run must prove positive peer traffic, all six JVM methods,
-actual COMPLETE before Stop and every cleanup join. Scoped ExperimentalWarning
+The checkpoint now passes exact-source full host validation at `65cd93f` in
+[run40316060504](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40316060504).
+Independent original XML/log/metadata audit verifies all six fresh strict-JSSE
+methods, including wrong-host absent-SNI rejection, full COMPLETE before positive
+Stop and cleanup assertions. All 23 private Node peer and six existing enrolled
+composition cases pass. Reference Node totals are 72 passed, zero failed/cancelled,
+one root-only foreign-UID filesystem skip (separately passed locally). Original
+reports contain 351 unique JVM methods in 44 XMLs, zero failures/errors/skips,
+46/46 clean-source CA receipts with all peer joins and nine zero-issue lint XMLs.
+The [private profile](reference-kotlin-interception-research.md#accepted-host-evidence)
+records the safe ignored audit/hash. This is host-only software-key composition,
+not Android/TUN/C5/physical USB or production acceptance. Scoped ExperimentalWarning
 suppression applies only to the private Node child, not TLS errors, SQLite API
 failures or any validation check.
 

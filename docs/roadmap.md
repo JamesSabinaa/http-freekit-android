@@ -20,7 +20,7 @@ and isolated research tests; those tests do not establish a finished capture app
 | Capture and proxy transport | Native packet checks and local policy/HTTP/HTTPS H1/Upgrade composition | Actual enrolled selected-UID TUN execution, production integration and physical USB |
 | Public interception CA | `fa2d845`: 46/46 source-bound CA receipts, 320 JVM host methods, nine clean lint reports and saved-credential Android retrieval on API26/37 | CA installation, target-app trust and production integration remain open |
 | Android CA runtime driver | Fresh matrix 40222004218 passes both APIs; independent original four-file replay verifies three ordered methods and all cleanup on each | A23 runtime research acceptance complete; preserve scope limits and advance to enrolled selected-app capture |
-| Reference interception | `d6ee09c`/host40311327186: all six authenticated Node HTTP/H1 HTTPS cases, real separate upstream TLS and cleanup pass; original artifacts verify 345 JVM/46 CA receipts/nine clean lints | Separately assigned Kotlin factory composition, then distinct Android selected-UID execution; not C5/desktop/USB |
+| Reference interception | `65cd93f`/host40316060504: six actual factory/strict-JSSE cases and 23 private Node peer cases pass; audited 351 JVM/46 CA receipts/nine clean lints; earlier Node-only checkpoint retained | Distinct Android selected-UID execution next; not C5/desktop/USB |
 | Desktop dependency | User authorized publication of the reviewed ten-commit branch ending `2ee70e86` | Exact desktop checkout/review patch is absent from this Linux workspace and that commit is not on GitHub; obtain and verify it before publishing or running C5 |
 
 The original completed code checkpoint is `94a47c7` (CA proof input/source
@@ -121,11 +121,14 @@ New checkpoint CI must be inspected before claiming hosted validation of later c
    no concrete defect; independent Kotlin exact-commit review also found no
    concrete defect. Local guards
    pass 14/14, reference assets/backend/contract regressions 44/44 and peer
-   configuration/CLI checks 15/15. Compilation and positive composition remain
-   unrun locally (no Java/SDK; Node22 lacks required SQLite defenses). Fresh
-   pinned Node24/JDK17 CI must precede promotion of these new packages to main.
-   Main's existing `fb4dd7a` replay40314153472 passes all three jobs, observed
-   through terminal metadata; its original artifacts were not re-audited.
+   configuration/CLI checks 15/15. The new exact-source pinned host run40316060504
+   at `65cd93f` now passes all three jobs. Independent original reports/logs
+   verify all six fresh strict-JSSE JVM cases, all 23 private Node peer cases,
+   351 unique JVM methods, 46 clean-source CA receipts and nine clean lint XMLs.
+   Reference Node totals are 72 passes/one root-only filesystem skip, zero
+   failures/cancellations. The Kotlin host checkpoint is accepted; local Java/SDK
+   remains absent. Next is separately scoped Android selected-UID reference
+   execution, not inferred Android acceptance.
    No control is weakened.
    It is not the missing desktop backend, C5 or USB acceptance.
    Obtain and verify the exact already-authorized reviewed desktop source

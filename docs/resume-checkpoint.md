@@ -7,9 +7,22 @@ The original goal is active and incomplete.
 
 ## Current Linux resume position
 
-- The previous Android public `main` checkpoint is
-  `380200facd8ce4f69861782e49768b461b6eed28`; the new accepted reference host
-  checkpoint binds exact source `d6ee09c` and run40311327186 below.
+- The previous Android public `main` checkpoint is `fb4dd7a`.
+  The latest accepted Kotlin/reference host implementation is exact source
+  `65cd93f9ff11eabd208b47af48c29f345e73853b`, run40316060504. All three jobs
+  pass; independent original-artifact/log audit verifies all six fresh strict-JSSE
+  factory cases, 23 private peer cases, 351 unique JVM methods in 44 XMLs,
+  46 clean-source CA receipts/all peer joins and nine clean lint XMLs. The
+  reference Node step has 72 passes, zero failures/cancellations and one root-only
+  filesystem skip, separately passed locally. Node24.22.1/JDK17.0.20.1+1 is
+  observed. Node-only acceptance at `d6ee09c`/run40311327186 remains separate.
+  Original evidence is `/tmp/reference-kotlin-accepted.hNBq87`; finite ignored
+  coordinator export `dist/reference-kotlin-host-audit.json` has SHA256
+  `485dfe77df32a13c80b413fe477b94cf28759049dff2c20e00f3af1c9e76a3cd`.
+  No shared wire contract changed. Next is separately named Android selected-UID
+  reference work; read-only seam research is complete, implementation unassigned.
+  Old C5/desktop source recovery, Android trust/TUN, USB and production remain open.
+  The following entries preserve the earlier source-specific history.
   B5 source `5e8d8dae990cb25092e27421723f790eadbf9965` has independently
   audited host run 40223757997: all 25 B5 cases/345 total JVM methods, 46 CA
   receipts and nine clean lint XMLs. Run 40224852000 at the evidence-only public

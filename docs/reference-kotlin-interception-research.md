@@ -1,9 +1,12 @@
 # Kotlin factory/reference interception research
 
-Status: next distinct host-only checkpoint. The preceding Node reference
-checkpoint is accepted at `d6ee09c` in run40311327186 after full-host success and
-independent original-evidence audit. This Kotlin package is assigned and under
-implementation, not compiled/runtime accepted. This is not C5, the
+Status: host-only checkpoint accepted at exact source `65cd93f9ff11eabd208b47af48c29f345e73853b`
+in [run40316060504](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40316060504).
+Independent original-artifact/log audit verifies all six fresh JVM cases, all
+23 private Node peer cases and all six existing enrolled reference cases.
+Full host validation passes 351 unique JVM methods in 44 XMLs, 46 source-bound
+CA receipts and nine clean lint XMLs. The preceding Node-only reference
+checkpoint remains separately accepted at `d6ee09c`/run40311327186. This is not C5, the
 missing reviewed desktop implementation, Android Keystore/TUN execution,
 production integration, target-app CA installation or physical USB acceptance.
 Protocol v1 remains unfrozen. Preserve all existing C5 pins, methods and reports.
@@ -145,3 +148,25 @@ A new exact-source pinned Node24/JDK17 host run must execute all six JVM cases,
 strict TLS and actual gateway/ownership facts before this checkpoint passes.
 The Node-only proof, Kotlin host proof, distinct future Android selected-UID
 research, exact desktop C5 and physical USB remain separate exit gates.
+
+## Accepted host evidence
+
+At `65cd93f`, the exact six methods run in the fresh noncached strict-JSSE task
+and all pass with zero failures/errors/skips. This establishes the controlled
+absent-SNI certificate-rejection ordering and strict close_notify behavior in
+this JVM composition, not on Android. The five-file Node reference step has
+72 passes, zero failures/cancellations and one root-only foreign-UID filesystem
+skip; that regression separately passed locally as root. All 23 peer cases pass.
+Independent reviews found no concrete defect in either new two-file package.
+
+Observed runtimes are Node24.22.1, bundled OpenSSL3.5.9 and JDK17.0.20.1+1.
+Original evidence is retained at `/tmp/reference-kotlin-accepted.hNBq87` in the
+coordinator environment. The finite ignored export is
+`dist/reference-kotlin-host-audit.json`, SHA256
+`485dfe77df32a13c80b413fe477b94cf28759049dff2c20e00f3af1c9e76a3cd`,
+with a checksum sidecar. It binds exact source/run, case names/counts and hashes
+of original log, metadata and report manifest; it contains no private origin
+measurements, keys or certificate fingerprints. Deliverables are in the retained
+coordinator worktree's `dist/`, not the canonical checkout's directory.
+No shared wire contract changed. Next is a separately scoped Android selected-UID
+reference checkpoint; old C5 and the missing reviewed desktop source stay separate.

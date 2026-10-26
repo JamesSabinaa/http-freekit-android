@@ -76,8 +76,8 @@ freezes the next host-only peer interface and these unique packages before edits
 
 | Package | Exclusive new files | Owner/status/dependencies |
 | --- | --- | --- |
-| K-N, private reference peer | `tools/transport-spike/reference-interception-peer.mjs` + `.test.mjs` | owner `a4f3a7f60cdf00b2d`, branch `worktree-agent-a4f3a7f60cdf00b2d`; committed `5f9c6b4`, integrated `a49bba5`; 15 selected config/CLI-bounds tests and 43 unchanged reference regressions pass locally; actual positive peer run fails at unavailable Node22 SQLite defenses; Node24 positive validation pending |
-| K-J, real Kotlin composition | `tools/capture-spike/transport/src/test/kotlin/com/httpfreekit/capture/transport/CaptureReferenceNodePeer.kt` + `EnrolledCaptureReferenceTest.kt` | owner `a099e4a26b9093854`, branch `worktree-agent-a099e4a26b9093854`; committed `bffd873`, integrated `dc7dbc0`, exactly two files/six cases; static scope/whitespace checks pass; Java/SDK absent, compilation/runtime UNRUN; independent reviewer `a28f8bdc6778674b3` completed read-only exact-commit review with no concrete finding; depends on frozen private peer API and pinned Node24/JDK17 execution |
+| K-N, private reference peer | `tools/transport-spike/reference-interception-peer.mjs` + `.test.mjs` | owner `a4f3a7f60cdf00b2d`, branch `worktree-agent-a4f3a7f60cdf00b2d`; committed `5f9c6b4`, integrated `a49bba5`; 15 selected config/CLI-bounds tests and 43 unchanged reference regressions pass locally; actual local positive peer run fails at unavailable Node22 SQLite defenses; all23 peer cases now pass pinned Node24 host40316060504 at `65cd93f` |
+| K-J, real Kotlin composition | `tools/capture-spike/transport/src/test/kotlin/com/httpfreekit/capture/transport/CaptureReferenceNodePeer.kt` + `EnrolledCaptureReferenceTest.kt` | owner `a099e4a26b9093854`, branch `worktree-agent-a099e4a26b9093854`; committed `bffd873`, integrated `dc7dbc0`, exactly two files/six cases; static scope/whitespace checks pass; local Java/SDK absent; all six methods now compile/run successfully in pinned host40316060504 at `65cd93f`; independent reviewer `a28f8bdc6778674b3` completed read-only exact-commit review with no concrete finding; depends on frozen private peer API and pinned Node24/JDK17 execution |
 
 Root exclusively owns profile/board, Gradle task/exclusions, host workflow,
 contract guard and evidence. Independent read-only K-N reviewer
@@ -87,13 +87,18 @@ concrete correctness/security finding and no runtime claim. Root's strict fresh
 `testReferenceIntegration`/five-suite workflow/XML-retention wiring and its guard
 pass 14 combined guard/doc tests; local assets/backend/contract replay passes
 44/44 without failures/cancellations/skips. Both packages and independent reviews
-are integrated. Publish only the research branch for a fresh exact-source full
-host gate; do not promote to main before that gate passes.
-Full host40311327186 at `d6ee09c` passes all jobs;
+are integrated. Exact-source host40316060504 at `65cd93f` now passes all three
+jobs; independent original reports/log audit verifies all six fresh strict-JSSE
+factory methods and 23 private peer cases. Reference Node totals are72 passed,
+zero failed/cancelled, one root-only filesystem skip (passed locally). All351
+unique JVM methods/44 XMLs,46 clean-source CA receipts/all peer joins and nine
+clean lint XMLs pass. Kotlin host checkpoint accepted; no Android/C5 inference.
+Root owns evidence-only promotion to main.
+Earlier full host40311327186 at `d6ee09c` passes all jobs;
 independent original evidence verifies all six reference cases, 48 reference
 passes/one root-only filesystem skip (separately passed locally), 345 JVM methods,
 46 CA receipts and nine clean lints. The Node-only checkpoint is accepted;
-Kotlin execution remains unrun. Main replay40314153472 at `fb4dd7a` is terminal
+Kotlin execution is now verified only on the pinned host above. Main replay40314153472 at `fb4dd7a` is terminal
 success in all three jobs; this metadata observation is not a new original-artifact
 audit or Kotlin execution. These next packages do not change production
 wire, old C5, Android runtime, desktop, global trust or target-app CA installation.
@@ -102,8 +107,12 @@ CI/publication action or toolchain installation is assigned to subagents.
 Read-only next Android seam research is assigned to `a8d8134c83236e991` on
 `worktree-agent-a8d8134c83236e991`: locate existing selected-UID traffic/service/
 driver/report APIs and propose separately named minimal packages, without edits
-or new Kotlin review. Actual implementation waits for the Kotlin host gate;
-command11 plaintext traffic and every old C5 pin/method/report remain unchanged.
+or new Kotlin review. Investigation complete: separate Android service/test,
+finite public-CA IPC/real TLS traffic, reference fixture/worker and distinct
+driver/report are viable seams; no core/native change justified. Implementation
+is unassigned until root freezes the new private profile and contracts after
+the accepted Kotlin gate. Command11 plaintext traffic and every old C5
+pin/method/report remain unchanged.
 
 ## Current independent capture package
 
