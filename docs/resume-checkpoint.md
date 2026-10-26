@@ -16,8 +16,10 @@ The original goal is active and incomplete.
   evidence `/tmp/reference-tun-diagnostic-host-accepted.mM1lDP`; trusted script
   `/tmp/audit-reference-tun-diagnostic-host.py`. Stable ignored host audit SHA256:
   `57c29ba1e21e075dfb399861a94753d4f15cbb23b98d2d733796d690ddb71a6f`.
-  Next: one fresh diagnostic API26/37 matrix at exact accepted source, then
-  independent original four-file replay per API. No prior API successes combine.
+  Checked evidence is published on main `439b1ed`. Fresh diagnostic matrix
+  40354503342 attempt1 is now running at exact accepted source `4cd60b8`, with a
+  bounded40-minute completion watch. Independently replay original four files
+  per API after completion; no prior API successes combine.
   Earlier failures and the following source-specific history remain retained.
 
 - Android reference host preparation is now accepted at exact
@@ -75,7 +77,8 @@ The original goal is active and incomplete.
   bytes stay unchanged. Fresh repaired-source host40351833250 at exact
   `4cd60b8a9bbdc7c04eaf516b3b05acef69d9f9ec` is now independently accepted above.
   Trusted audit: `/tmp/audit-reference-tun-diagnostic-host.py`.
-  No new runtime has yet been dispatched; accepted host now clears that gate.
+  Diagnostic matrix40354503342 is now dispatched at exact host-accepted source;
+  see the current entry above. No unchanged-source third retry of40340552254 exists.
   Finite ignored runtime audit SHA256:
   `b970f82c38e04897b5b6fedb73814203c2b85cd0419f1bd20fde197ad48d2581`.
   No third retry is dispatched. Require both APIs in one same-source attempt;

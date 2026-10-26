@@ -185,9 +185,10 @@ New checkpoint CI must be inspected before claiming hosted validation of later c
    Fresh repaired-source host40351833250 at exact `4cd60b8` now passes all jobs
    and independent original-artifact replay:375 JVM/46 CA receipts/nine clean lints,
    43 reference Node/84 capture/141 enrollment documentation cases, including all
-   three diagnostic/eight budget mutation cases. Next is one exact-source fresh
-   diagnostic matrix with both APIs in that same matrix. Production clock bytes
-   stay unchanged; earlier failed attempts stay failed.
+   three diagnostic/eight budget mutation cases. Checked evidence is published
+   on main `439b1ed`; fresh diagnostic matrix40354503342 attempt1 at exact
+   host-accepted `4cd60b8` is in progress. Require both APIs in that same matrix.
+   Production clock bytes stay unchanged; earlier failed attempts stay failed.
    No control is weakened.
    It is not the missing desktop backend, C5 or USB acceptance.
    Obtain and verify the exact already-authorized reviewed desktop source

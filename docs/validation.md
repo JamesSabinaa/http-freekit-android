@@ -394,9 +394,11 @@ documentation cases. All three diagnostic/eight clock/mutation cases pass withou
 skips. Original evidence `/tmp/reference-tun-diagnostic-host-accepted.mM1lDP`;
 trusted audit `/tmp/audit-reference-tun-diagnostic-host.py`. Latest stable ignored
 host audit SHA256 `57c29ba1e21e075dfb399861a94753d4f15cbb23b98d2d733796d690ddb71a6f`.
-Host preparation is accepted; next is a fresh exact-source API26/37 diagnostic
-matrix and independent same-matrix four-file replay per API. No previous success
-is combined; old failures remain failed. No production clock or schema changed.
+Host preparation is accepted and checked evidence published on main `439b1ed`.
+Fresh exact-source API26/37 diagnostic matrix40354503342 attempt1 at `4cd60b8`
+is in progress; independently replay original four files per API in that same
+matrix. No previous success is combined; old failures remain failed. No production
+clock or schema changed.
 
 ## Authenticated public interception CA research
 

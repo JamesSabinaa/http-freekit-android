@@ -366,7 +366,9 @@ downloads. Stable finite export `dist/reference-tun-host-audit.json`/`.sha256`
 has SHA256 `57c29ba1e21e075dfb399861a94753d4f15cbb23b98d2d733796d690ddb71a6f`.
 The original failed host and earlier runtime attempts stay failed. No shared
 wire/report schema, production deadline, gate or TLS assertion changes.
-Next is one fresh diagnostic API26/37 matrix at this exact host-accepted source;
-require both ordered methods and independent four-file replay per API in that
-same matrix. No old individual API successes are combined. This host pass is
-not Android runtime, physical USB, C5/desktop or production acceptance.
+Checked evidence is published on main `439b1ed`. Fresh diagnostic
+[matrix40354503342 attempt1](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40354503342)
+is in progress at exact host-accepted `4cd60b8`; require both ordered methods
+and independent four-file replay per API in that same matrix. No old individual
+API successes are combined. This host pass is not Android runtime, physical USB,
+C5/desktop or production acceptance.

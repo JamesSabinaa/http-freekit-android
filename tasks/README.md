@@ -201,8 +201,10 @@ all joins,nine clean lints,43 reference Node/84 capture/141 enrollment documenta
 cases, including all three diagnostic/eight budget/mutation cases. Original
 accepted evidence `/tmp/reference-tun-diagnostic-host-accepted.mM1lDP`; stable safe
 host audit SHA256 `57c29ba1e21e075dfb399861a94753d4f15cbb23b98d2d733796d690ddb71a6f`.
-Root owns checked main promotion, next exact-source diagnostic matrix and original
-four-file replay per API; no runtime acceptance before both APIs pass one matrix.
+Root published checked evidence on main `439b1ed` and dispatched fresh diagnostic
+matrix40354503342 attempt1 at exact host-accepted `4cd60b8`; it is in progress
+with a bounded40-minute watch. Root owns original four-file replay per API;
+no runtime acceptance before both APIs pass that same matrix.
 Root retains all profile/board/integration and dispatch; no report-schema, gate,
 timeout or shared-helper changes assigned.
 Input/ACK absence observations are false after HTTP, but the underlying failed
