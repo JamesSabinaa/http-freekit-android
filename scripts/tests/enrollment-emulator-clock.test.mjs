@@ -37,8 +37,6 @@ if [[ "$step" == root || "$step" == unroot ]]; then
   if [[ "$step" == unroot ]]; then transition="$TEST_RESTORE_MODE"; fi
   case "$transition" in nonzero_verified|nonzero_unverified) exit 9 ;; esac
 fi
-if [[ "$step" == root_wait && "$TEST_ROOT_MODE" == shared_deadline ]] ||
-   [[ "$step" == shell_wait && "$TEST_RESTORE_MODE" == shared_deadline ]]; then sleep 29; fi
 if [[ "$step" == root_identity || "$step" == shell_identity ]]; then
   identity_mode="$TEST_ROOT_MODE"; wanted=0; previous=2000
   if [[ "$step" == shell_identity ]]; then identity_mode="$TEST_RESTORE_MODE"; wanted=2000; previous=0; fi
@@ -59,7 +57,32 @@ fi
 printf '%s\n' "$mode" > "$TEST_STATE"
 case "$step" in root_identity) echo 0 ;; shell_identity) echo 2000 ;; auto_read) echo 0 ;; esac
 `;
-function execute(failAt = '', badHostTime = false, rootMode = '', restoreMode = '') {
+// Pin Bash's integer clock to the deadline captured during the selected wait.
+// Do not race a wall-clock sleep against its whole-second boundary. The actual
+// extracted function and timeout command stay unchanged, including read expiry.
+const sharedDeadlineClock = `
+set -T
+trap 'if [[ "$BASH_COMMAND" == "$TEST_DEADLINE_COMMAND" ]]; then
+  SECONDS=$TEST_CLOCK_NOW
+  printf "remaining=%s\\n" "$TEST_REMAINING" >> "$test_bin/deadline"
+fi' DEBUG
+TEST_WAIT_COUNT=0
+timeout() {
+  local status=0
+  command timeout "$@" || status=$?
+  printf '%s exit=%s\\n' "$*" "$status" >> "$test_bin/timeouts"
+  if [[ "$*" == '--kill-after=1s 30s adb -s emulator-5554 wait-for-device' ]]; then
+    TEST_WAIT_COUNT=$((TEST_WAIT_COUNT + 1))
+    if (( TEST_WAIT_COUNT == TEST_WAIT_NUMBER )); then
+      # Retain the existing deadline even if a fresh one is wrongly introduced.
+      TEST_CLOCK_NOW=$((\${!TEST_DEADLINE_NAME} - TEST_REMAINING))
+      SECONDS=$TEST_CLOCK_NOW
+    fi
+  fi
+  return "$status"
+}
+`;
+function execute(failAt = '', badHostTime = false, rootMode = '', restoreMode = '', remaining = 0) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'freekit-a22-clock-'));
   try {
     fs.writeFileSync(path.join(directory, 'adb'), adb, { mode: 0o700 });
@@ -67,17 +90,23 @@ function execute(failAt = '', badHostTime = false, rootMode = '', restoreMode = 
     const setup = 'set -euo pipefail\n' +
       'if command -v cygpath >/dev/null 2>&1; then test_bin="$(cygpath -u "$TEST_DIRECTORY")"; else test_bin="$TEST_DIRECTORY"; fi\n' +
       'export PATH="$test_bin:$PATH"\nexport TEST_LOG="$test_bin/order" TEST_STATE="$test_bin/state" TEST_SETTER="$test_bin/setter"\n';
-    const result = spawnSync(bash, ['-c', setup + alignment + '\nalign_enrollment_clock\nprintf "DRIVER_CAN_START\\n"\n'], {
+    const shared = rootMode === 'shared_deadline' || restoreMode === 'shared_deadline';
+    const deadlineName = rootMode === 'shared_deadline' ? 'root_deadline' : 'shell_deadline';
+    const result = spawnSync(bash, ['-c', setup + (shared ? sharedDeadlineClock : '') + alignment + '\nalign_enrollment_clock\nprintf "DRIVER_CAN_START\\n"\n'], {
       cwd: directory, encoding: 'utf8', timeout: 45000, windowsHide: true,
       env: { ...process.env, TEST_DIRECTORY: directory, TEST_FAIL_AT: failAt, TEST_BAD_HOST_TIME: badHostTime ? '1' : '0',
-        TEST_ROOT_MODE: rootMode, TEST_RESTORE_MODE: restoreMode },
+        TEST_ROOT_MODE: rootMode, TEST_RESTORE_MODE: restoreMode, TEST_REMAINING: String(remaining),
+        TEST_DEADLINE_NAME: deadlineName, TEST_DEADLINE_COMMAND: `remaining=$((${deadlineName} - SECONDS))`,
+        TEST_WAIT_NUMBER: rootMode === 'shared_deadline' ? '1' : '2' },
     });
     assert.equal(result.error, undefined);
     const observed = fs.existsSync(path.join(directory, 'order')) ? fs.readFileSync(path.join(directory, 'order'), 'utf8').trim().split('\n') : [];
     const setter = fs.existsSync(path.join(directory, 'setter')) ? fs.readFileSync(path.join(directory, 'setter'), 'utf8').trim() : null;
     assert.equal(observed.filter(step => step === 'root').length, 1, 'never retry root');
     assert.ok(observed.filter(step => step === 'unroot').length <= 1, 'never retry unroot');
-    return { status: result.status, stdout: result.stdout, stderr: result.stderr, observed, setter };
+    const lines = name => fs.existsSync(path.join(directory, name)) ? fs.readFileSync(path.join(directory, name), 'utf8').trim().split('\n') : [];
+    return { status: result.status, stdout: result.stdout, stderr: result.stderr, observed, setter,
+      deadline: lines('deadline'), timeouts: lines('timeouts') };
   } finally {
     assert.equal(path.dirname(path.resolve(directory)), path.resolve(os.tmpdir()));
     assert.match(path.basename(directory), /^freekit-a22-clock-/);
@@ -98,7 +127,7 @@ for (const step of order.filter(step => !['root', 'unroot'].includes(step))) tes
   assert.doesNotMatch(result.stdout, /DRIVER_CAN_START|alignment completed/);
 });
 for (const transition of ['root', 'unroot']) {
-  const run = mode => execute('', false, transition === 'root' ? mode : '', transition === 'unroot' ? mode : '');
+  const run = (mode, remaining = 0) => execute('', false, transition === 'root' ? mode : '', transition === 'unroot' ? mode : '', remaining);
   const identity = transition === 'root' ? 'root_identity' : 'shell_identity';
   test(`nonzero ${transition} transport status is diagnostic only after exact resulting UID verification`, () => {
     const result = run('nonzero_verified');
@@ -125,13 +154,33 @@ for (const transition of ['root', 'unroot']) {
       if (transition === 'root') assert.equal(result.setter, null);
     });
   }
-  test(`${transition} reconnect and identity read share the same thirty-second deadline`, () => {
-    const began = performance.now(), result = run('shared_deadline'), elapsed = performance.now() - began;
-    assert.equal(result.status, 124, result.stderr);
-    assert.deepEqual(result.observed, order.slice(0, order.indexOf(identity) + 1));
-    assert.ok(elapsed >= 29000 && elapsed < 34000, `elapsed ${elapsed}`);
+  for (const remaining of [0, 1]) test(remaining === 0
+    ? `${transition} reconnect exhausting the shared deadline refuses the first identity read`
+    : `${transition} reconnect and identity read share one deadline without a fresh read budget`, () => {
+    const result = run('shared_deadline', remaining), position = order.indexOf(identity);
+    assert.equal(result.status, remaining === 0 ? 1 : 124, result.stderr);
+    assert.deepEqual(result.deadline, [`remaining=${remaining}`]);
+    assert.deepEqual(result.observed, order.slice(0, position + remaining));
+    const prior = [
+      '10s adb -s emulator-5554 root',
+      '30s adb -s emulator-5554 wait-for-device',
+      ...(transition === 'root' ? [] : [
+        '10s adb -s emulator-5554 shell id -u',
+        '10s adb -s emulator-5554 shell settings put global auto_time 0',
+        '10s adb -s emulator-5554 shell settings get global auto_time',
+        `10s adb -s emulator-5554 shell /system/bin/toybox date -u ${result.setter}`,
+        '10s adb -s emulator-5554 unroot',
+        '30s adb -s emulator-5554 wait-for-device',
+      ]),
+    ].map(command => `--kill-after=1s ${command} exit=0`);
+    // An admitted five-second fake read must hit real timeout with only the
+    // remaining second. An exhausted reconnect must not admit that read at all.
+    assert.deepEqual(result.timeouts, [...prior, ...(remaining === 0 ? [] : [
+      '--kill-after=1s 1s adb -s emulator-5554 shell id -u exit=124',
+    ])]);
     assert.doesNotMatch(result.stdout, /DRIVER_CAN_START|alignment completed/);
     if (transition === 'root') assert.equal(result.setter, null);
+    else assert.match(result.setter, /^@[0-9]{10}\.[0-9]{9}$/);
   });
 }
 
