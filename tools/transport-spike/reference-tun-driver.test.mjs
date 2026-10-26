@@ -57,7 +57,8 @@ async function simulated(mode = 'complete') {
   const identity = () => ({ class: D.referenceTunClass, test: method, numtests: 1, current: 1 });
   const host = { controller, abort: () => controller.abort(), commands: [], installAttempted: false,
     dispose() { calls.push('disposed'); }, async prepare(report) { report.source = legacy.source; report.api = 26; report.clock = legacy.clock; host.installAttempted = true; },
-    async cleanupPackage() { calls.push('interop-cleanup'); return { ...legacy.cleanup, packageAbsentAfterCleanup: undefined, ownedCommandsClosed: undefined, ownedCommandGroupsClosed: undefined, failed: false }; },
+    async cleanupPackage() { calls.push('interop-cleanup'); return { forceStopCommand: legacy.cleanup.forceStopCommand,
+      uninstallCommand: legacy.cleanup.uninstallCommand, uninstallConfirmed: true, failed: false }; },
     async adb(args, timeout, extras = {}) {
       if (args.includes('instrument')) {
         method = args[args.indexOf('class') + 1].split('#')[1]; calls.push(method); callback = extras.onStdoutChunk;
@@ -77,9 +78,6 @@ async function simulated(mode = 'complete') {
       if (args.includes('sh')) return record({ output: 'REFERENCE_TUN_INTEROP_ABSENT\n' });
       calls.push(args.includes('--remove') ? 'reverse-remove' : 'reverse'); return record({});
     } };
-  // Exact host cleanup keys only, as returned by the actual shared owner.
-  host.cleanupPackage = async () => { calls.push('interop-cleanup'); return { forceStopCommand: legacy.cleanup.forceStopCommand,
-    uninstallCommand: legacy.cleanup.uninstallCommand, uninstallConfirmed: true, failed: false }; };
   const result = await runReferenceTunRuntime({ serial: 'owned-test', adb: 'unused', openssl: 'unused' }, {
     writeReports: false, quiet: true, createHost: () => host,
     createPackages: () => ({ prepare: async () => {}, snapshot: () => legacy.apkSetup, cleanup: async () => { calls.push('packages-cleanup'); if (mode === 'package-cleanup-fails') throw Error('CANARY_PRIVATE'); return { failed: false }; } }),
@@ -144,6 +142,22 @@ test('all finite host facts and process/source/clock/transfer/package cleanup ga
     r => { r.apkSetup.sameSigner = false; }, r => { r.cleanup.packageAbsentAfterCleanup = false; }, r => { r.cleanup.ownedCommandGroupsClosed = false; },
     r => { r.methods[0].invocation.actualCompleted = 0; }, r => { r.methods[0].resources.gateway.listenersClosed = false; }];
   for (const mutate of mutations) { const value = structuredClone(valid); mutate(value); assert.throws(() => verifyReferenceTunReport(value, { source: valid.source.commit, api: 26 })); }
+});
+test('strict report JSON rejects extras/duplicates/oversize and preserves finite failed-process evidence', async () => {
+  const { report } = await simulated(), bytes = Buffer.from(JSON.stringify(report));
+  assert.throws(() => decodeReferenceTunReport(Buffer.from(JSON.stringify({ ...report, invitationSecret: 'CANARY' }))));
+  assert.throws(() => decodeReferenceTunReport(Buffer.from(bytes.toString().replace('"revision":1', '"revision":1,"revision":1'))));
+  assert.throws(() => decodeReferenceTunReport(Buffer.alloc(65537)));
+  for (const signal of ['SIGHUP', 'SIGBUS', 'SIGPIPE']) {
+    const failed = structuredClone(report); failed.methods[0].resources.process.signal = signal; failed.methods[0].resources.process.exitCode = null;
+    const decoded = decodeReferenceTunReport(Buffer.from(JSON.stringify(failed))); assert.equal(decoded.methods[0].resources.process.signal, signal);
+    assert.throws(() => verifyReferenceTunReport(decoded, { source: report.source.commit, api: 26 }));
+  }
+  const api37 = structuredClone(report); api37.api = 37;
+  assert.throws(() => verifyReferenceTunReport(api37, { source: report.source.commit, api: 37 }));
+  api37.apkSetup.permissions.mode = 'owned_ci_grant';
+  for (const key of ['interopLocalNetwork', 'trafficLocalNetwork', 'interopNotification']) api37.apkSetup.permissions[key] = api37.cleanup.forceStopCommand;
+  assert.equal(verifyReferenceTunReport(api37, { source: report.source.commit, api: 37 }).methods, 2);
 });
 test('absent actual host facts remain null, never successful zero/default observations', () => {
   const value = projectReferenceTunHost(null, null, D.referenceTunMethods[0]);

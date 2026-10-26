@@ -90,7 +90,7 @@ export function validateReferenceTunProcess(value) {
   for (const key of ['closeObserved', 'processGroupJoined', 'stdoutJoined', 'stderrJoined', 'stdinJoined', 'forced']) V.boolean(value[key]);
   for (const key of ['pendingWrites', 'pendingRequests']) V.integer(value[key], 0, 128);
   if (value.exitCode !== null) V.integer(value.exitCode, 0, 255);
-  V.enumeration(value.signal, [null, 'SIGTERM', 'SIGKILL', 'SIGINT', 'SIGABRT', 'SIGSEGV']);
+  V.enumeration(value.signal, [null, 'SIGHUP', 'SIGINT', 'SIGQUIT', 'SIGILL', 'SIGTRAP', 'SIGABRT', 'SIGBUS', 'SIGFPE', 'SIGKILL', 'SIGSEGV', 'SIGPIPE', 'SIGALRM', 'SIGTERM']);
   V.enumeration(value.failure, [null, 'tun_configuration', 'tun_input', 'tun_unavailable', 'tun_enrollment', 'tun_cleanup', 'tun_watchdog', 'tun_output', 'tun_protocol', 'tun_process', 'tun_closing', 'tun_timeout']);
 }
 export function referenceTunProcessJoined(value) {
