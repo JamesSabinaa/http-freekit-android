@@ -167,6 +167,34 @@ when the key is already absent. Do not delete unrelated computer records. No
 registry authorization, automatic renewal or future network readiness follows
 from successful load.
 
+## Focused original-alias Android validation extension
+
+Root assigns two additional nonoverlapping validation packages so the new public
+owned-alias evidence method can be exercised rather than merely compiled. This
+adds no production behavior or wire contract. Add ONLY new instrumentation class
+`com.httpfreekit.security.AndroidOriginalDeviceEvidenceTest` with exactly:
+
+- `originalPublicEvidenceSurvivesReopenAndCopiesCannotMutateIt`
+- `absentAndDeletedIdentityEvidenceNeverCreatesOrReplacesAKey`
+- `evidenceRemainsBoundToTheRequestedComputer`
+
+Use real AndroidDeviceIdentityStore and originalCertificateChain, fresh owned test
+desktop IDs, real sign/verify/reopen checks and defensive public-chain comparisons.
+No alias scan/alias derivation, issued-chain substitution, shell, permissions,
+network or provider-text logging. Always delete every owned test key in finally;
+cleanup failures must not be silently ignored. These tests do not prove the full
+approved-store Android lifecycle or authenticated provenance.
+
+The separate verifier owner edits only `scripts/verify-keystore-results.py` and
+`scripts/tests/test_keystore_results.py`: retain every old exact twelve case,
+add the three exact methods above (four suites/fifteen cases), and regress
+original-twelve-only/missing/new-duplicate/new-failure/new-skip refusal without
+weakening structure/counters or old cases. Existing manual keystore workflow
+already runs all core-security instrumentation and this verifier; no workflow
+change or automatic dispatch is assigned. Synthetic verifier fixtures are not
+runtime evidence. Root requires review and fresh pinned full host before a fresh
+API26/37 matrix, then independent original XML/log/cleanup evidence inspection.
+
 ## Unique ownership and validation
 
 Root owns profile, board, docs/build/CI/integration and main promotion. Model owner

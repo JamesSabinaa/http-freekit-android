@@ -76,6 +76,8 @@ shared-key computer Forget effects and all public/internal seams are explicit.
 | B7-I identity/validator/backend | existing AndroidDeviceIdentityStore.kt, AndroidEnrolledCredentialStore.kt; NEW EnrolledCredentialValidation.kt only | `a75b25bc7fbc37cd7`, isolated same-ID worktree/branch; owner `a893faf`, integrated `12a0629`; independent exact-commit review `ae37b1f1a6303823c` found no concrete defect; host/Android execution pending |
 | B7-S opt-in store | NEW AndroidApprovedEnrolledCredentialStore.kt only | `a2b3aa67ecaf7c3da`, isolated same-ID worktree/branch; owner `febe5bb`, integrated `d944baf`; M/I dependencies composed; independent M/S review found no concrete defect; host pending |
 | B7-T independent JVM tests | NEW three named tests and optional ApprovedCredentialTestFixture.kt only | `afbb69d18d48c03bd`, isolated same-ID worktree/branch; authoring from e4087c2; depends frozen M/I/S interfaces; no shared/existing fixture edits |
+| B7-A original-alias Android tests | NEW core-security androidTest AndroidOriginalDeviceEvidenceTest.kt only | unique isolated Android test owner assigned next; three frozen methods, real owned keys, no scans/shell/network |
+| B7-V exact runtime verifier | scripts/verify-keystore-results.py and scripts/tests/test_keystore_results.py only | unique isolated verifier owner assigned next; old twelve plus new three exact methods, preserve strict gates; no workflow/dispatch |
 | B7-R contract review | read-only profile and existing security/research boundaries | `ae37b1f1a6303823c`, isolated same-ID worktree/branch; frozen e4087c2 contract review complete, no blocking concrete issue; independent I implementation review also complete |
 
 Root alone owns documentation, CI/build integration, reviews, artifact/evidence
