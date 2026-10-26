@@ -96,6 +96,24 @@ not established by this local boundary.
 
 ## Reference interception host research
 
+**Accepted Node-only checkpoint:** exact clean source `d6ee09c` passes all three
+jobs in [run40311327186](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40311327186).
+Independent original logs verify all six actual authenticated cases and the
+reference step's 48 passed/zero failed/zero cancelled/one environment skip.
+Only the foreign-UID sticky-ancestor test skips on the non-root runner; that
+actual regression passed locally as root. Original artifacts independently
+verify 345 unique JVM methods across 43 XMLs with no failures/errors/skips,
+46/46 clean-source CA receipts with peer cleanup joined and nine zero-issue lint
+XMLs. Assembly, strict lint and compilation pass in that host job, not locally.
+The finite ignored export `dist/reference-interception-host-audit.json` and
+checksum are in the retained coordinator worktree; SHA256
+`8125b19791f38d711664756edffe6ca3637b6cd288b6c248e195655b427d6a0c`.
+The failed first run below remains failed. This accepts actual Node reference
+interception/enrolled streams only, not Kotlin factory, Android, C5, desktop
+compatibility, target-app trust/CA installation, USB, H2 or production freeze.
+The [next Kotlin profile](reference-kotlin-interception-research.md) is separately
+assigned; no execution or acceptance of that package is implied.
+
 The [separate reference profile](reference-interception-research.md) is a new,
 fixed-destination host proof toward Android selected-UID execution, not C5 or
 production desktop capture. Local interface `78e953d` freezes only private

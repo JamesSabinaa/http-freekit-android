@@ -20,6 +20,7 @@ and isolated research tests; those tests do not establish a finished capture app
 | Capture and proxy transport | Native packet checks and local policy/HTTP/HTTPS H1/Upgrade composition | Actual enrolled selected-UID TUN execution, production integration and physical USB |
 | Public interception CA | `fa2d845`: 46/46 source-bound CA receipts, 320 JVM host methods, nine clean lint reports and saved-credential Android retrieval on API26/37 | CA installation, target-app trust and production integration remain open |
 | Android CA runtime driver | Fresh matrix 40222004218 passes both APIs; independent original four-file replay verifies three ordered methods and all cleanup on each | A23 runtime research acceptance complete; preserve scope limits and advance to enrolled selected-app capture |
+| Reference interception | `d6ee09c`/host40311327186: all six authenticated Node HTTP/H1 HTTPS cases, real separate upstream TLS and cleanup pass; original artifacts verify 345 JVM/46 CA receipts/nine clean lints | Separately assigned Kotlin factory composition, then distinct Android selected-UID execution; not C5/desktop/USB |
 | Desktop dependency | User authorized publication of the reviewed ten-commit branch ending `2ee70e86` | Exact desktop checkout/review patch is absent from this Linux workspace and that commit is not on GitHub; obtain and verify it before publishing or running C5 |
 
 The original completed code checkpoint is `94a47c7` (CA proof input/source
@@ -109,7 +110,13 @@ New checkpoint CI must be inspected before claiming hosted validation of later c
    `8ba2ecd` and B's reproduced delayed-END correction `6b6c1ff` are integrated;
    last-two evidence retention is corrected as `530e14a`. Combined local
    regression checks pass 50/50, with no skipped case. Fresh pinned host
-   composition/compilation/lint validation remains required.
+   composition/compilation/lint validation was required. Corrected source
+   `d6ee09c` now passes all three jobs in run40311327186; independent original
+   evidence verifies all six authenticated reference cases, 48 passed reference
+   tests/one root-only filesystem skip (separately passed locally), 345 JVM
+   methods, 46 CA receipts and nine clean lint XMLs. The Node-only host checkpoint
+   is accepted. The distinct [Kotlin factory composition](reference-kotlin-interception-research.md)
+   is assigned in two isolated new-file packages, not runtime accepted.
    No control is weakened.
    It is not the missing desktop backend, C5 or USB acceptance.
    Obtain and verify the exact already-authorized reviewed desktop source

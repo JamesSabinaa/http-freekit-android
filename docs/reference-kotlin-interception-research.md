@@ -1,8 +1,9 @@
 # Kotlin factory/reference interception research
 
-Status: next distinct host-only checkpoint, assigned after the Node reference
-composition step passes in run 40311327186 at `d6ee09c`. Full Node host acceptance
-and original evidence audit remain separately required. This is not C5, the
+Status: next distinct host-only checkpoint. The preceding Node reference
+checkpoint is accepted at `d6ee09c` in run40311327186 after full-host success and
+independent original-evidence audit. This Kotlin package is assigned and under
+implementation, not compiled/runtime accepted. This is not C5, the
 missing reviewed desktop implementation, Android Keystore/TUN execution,
 production integration, target-app CA installation or physical USB acceptance.
 Protocol v1 remains unfrozen. Preserve all existing C5 pins, methods and reports.
@@ -63,7 +64,10 @@ listener configuration). Private stdout contains only canonical JSONL envelopes
 `{format:"http-freekit-reference-interception-peer",revision:1,event,...}`.
 Ready spreads the exact ready fields; enrolled contains `approved`; snapshot and
 closed contain `snapshot`; revoked contains `revoked:true`; failed contains
-finite `code` and actual `joined`, never provider text. Commands, exact keys:
+finite `code` and actual `joined`, never provider text. The private failure-code
+allowlist is exactly `peer_configuration`, `peer_input`, `peer_unavailable`,
+`peer_enrollment`, `peer_revocation`, `peer_cleanup`, `peer_watchdog`,
+`peer_output`; unknown underlying errors never extend it. Commands, exact keys:
 
 ```json
 {"op":"enroll","csrDer":"<canonical base64url public CSR>"}
@@ -98,8 +102,14 @@ stdin/stdout/stderr pumps, actual exit and executor termination. Never print
 private JSON, CSR/identity values, certificate fingerprints or origin digests.
 
 Six actual cases: HTTP; H1 HTTPS; wrong scoped interception trust; wrong verified
-target hostname with controlled SNI; active-owner revocation with subsequent
-credential refusal; Stop with a held backend owner and joined cleanup. Each
+target hostname with explicitly absent SNI; active-owner revocation with subsequent
+credential refusal; Stop with a held backend owner and joined cleanup. The
+positive HTTPS case retains valid fixed SNI. For the wrong-host case explicitly
+set an empty SNI list so default JSSE HTTPS checks the wrong requested peer host
+against the real fixed-host certificate before the backend's post-handshake
+absent-SNI refusal. Require a certificate-exception cause and no completed
+interception handshake or application/upstream dispatch, not an arbitrary TLS
+failure; fresh pinned JVM execution must establish this ordering. Each
 uses a fresh peer/identity. Keep the small actual loopback TLS/application bridge
 inside these new files. It forwards only actual bytes and EOF with backpressure;
 no synthetic stream/COMPLETE event or direct-network fallback. HTTPS uses scoped

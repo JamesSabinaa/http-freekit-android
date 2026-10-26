@@ -76,14 +76,17 @@ freezes the next host-only peer interface and these unique packages before edits
 
 | Package | Exclusive new files | Owner/status/dependencies |
 | --- | --- | --- |
-| K-N, private reference peer | `tools/transport-spike/reference-interception-peer.mjs` + `.test.mjs` | isolated Node owner assigned after profile commit; depends on unchanged checked A/B backend and existing enrollment fixture |
-| K-J, real Kotlin composition | `tools/capture-spike/transport/src/test/kotlin/com/httpfreekit/capture/transport/CaptureReferenceNodePeer.kt` + `EnrolledCaptureReferenceTest.kt` | isolated Kotlin owner assigned after profile commit; depends on frozen private peer API and checked Node implementation for actual execution |
+| K-N, private reference peer | `tools/transport-spike/reference-interception-peer.mjs` + `.test.mjs` | owner `a4f3a7f60cdf00b2d`, branch `worktree-agent-a4f3a7f60cdf00b2d`, implementing from frozen profile `b2cecca`; depends on unchanged checked A/B backend and existing enrollment fixture |
+| K-J, real Kotlin composition | `tools/capture-spike/transport/src/test/kotlin/com/httpfreekit/capture/transport/CaptureReferenceNodePeer.kt` + `EnrolledCaptureReferenceTest.kt` | owner `a099e4a26b9093854`, branch `worktree-agent-a099e4a26b9093854`, implementing from `b2cecca`; depends on frozen private peer API and checked Node implementation for actual execution |
 
 Root exclusively owns profile/board, Gradle task/exclusions, host workflow,
-contract guard and evidence. Node step40311327186 at `d6ee09c` passes; full-host
-acceptance and original evidence audit are still required before promoting that
-checkpoint. These next packages do not change production wire, old C5, Android
-runtime, desktop, global trust or target-app CA installation. No new runtime,
+contract guard and evidence. Full host40311327186 at `d6ee09c` passes all jobs;
+independent original evidence verifies all six reference cases, 48 reference
+passes/one root-only filesystem skip (separately passed locally), 345 JVM methods,
+46 CA receipts and nine clean lints. The Node-only checkpoint is accepted;
+Kotlin execution remains unrun. These next packages do not change production
+wire, old C5, Android runtime, desktop, global trust or target-app CA installation.
+No new runtime,
 CI/publication action or toolchain installation is assigned to subagents.
 
 ## Current independent capture package

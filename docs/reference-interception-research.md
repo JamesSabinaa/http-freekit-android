@@ -1,6 +1,13 @@
 # Reference HTTP/H1 HTTPS interception research
 
-Status: assigned on 26 October 2026 after A23 acceptance. This is a new,
+Status: host-only Node checkpoint accepted at exact `d6ee09c` in
+[run 40311327186](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40311327186).
+Original logs independently verify all six authenticated cases, including actual
+HTTP and two-leg H1 HTTPS, remote COMPLETE and cleanup; original artifacts verify
+345 JVM methods, 46 existing CA receipts and nine clean lint reports. The reference
+step has 48 passed, zero failed/cancelled, one root-only filesystem skip on the
+non-root runner (that case separately passed locally as root). Initial failed
+run40308827831 remains failed. This is a new,
 reference-only host proof toward selected-UID Android research. It is **not C5**,
 not the missing reviewed desktop implementation, not production integration,
 and not physical USB acceptance. Existing C5 source pins, methods, reports and
@@ -13,6 +20,9 @@ forward actual HTTP and intercept actual H1 HTTPS into a distinct authenticated
 TLS upstream. First check the self-contained Node backend and authenticated
 reference-gateway composition. Kotlin factory composition and a separately
 named Android selected-UID runtime are later checkpoints, not implied results.
+The next [Kotlin factory/reference composition](reference-kotlin-interception-research.md)
+has its own private interface and work packages; no Kotlin factory acceptance
+follows from the Node-only result.
 
 The fixed destination is `198.18.0.2`, logical host `reference-target.invalid`,
 ports 80/443 and path `/reference/proof`. Requests are single `POST` transactions

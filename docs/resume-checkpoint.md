@@ -7,7 +7,9 @@ The original goal is active and incomplete.
 
 ## Current Linux resume position
 
-- Android public `main` is `380200facd8ce4f69861782e49768b461b6eed28`.
+- The previous Android public `main` checkpoint is
+  `380200facd8ce4f69861782e49768b461b6eed28`; the new accepted reference host
+  checkpoint binds exact source `d6ee09c` and run40311327186 below.
   B5 source `5e8d8dae990cb25092e27421723f790eadbf9965` has independently
   audited host run 40223757997: all 25 B5 cases/345 total JVM methods, 46 CA
   receipts and nine clean lint XMLs. Run 40224852000 at the evidence-only public
@@ -178,9 +180,24 @@ The original goal is active and incomplete.
   authenticated composition remains pending and the first run remains failed.
   Corrected branch source is `d6ee09c91060485adfa9815318eca486e0e39dfb` in
   [run 40311327186](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40311327186).
-  Its mandatory reference composition step passes on pinned Node24; full host
-  validation and original-log/artifact audit are still pending. Keep main at
-  the previous checked checkpoint until the complete host gate passes.
+  Full host validation now passes all three jobs. Independent original-log
+  audit verifies all six actual authenticated cases and reference totals
+  48 passed/zero failed/zero cancelled/one root-only filesystem skip (separately
+  passed locally as root). Original artifacts verify 345 unique JVM methods in
+  43 XMLs, 46/46 clean-source CA receipts with peer cleanup joined and nine
+  zero-issue lint XMLs. This accepts the Node-only reference host checkpoint,
+  not Kotlin factory/Android/C5/USB or production integration. The finite ignored
+  audit in this coordinator's `dist/reference-interception-host-audit.json` has
+  SHA256 `8125b19791f38d711664756edffe6ca3637b6cd288b6c248e195655b427d6a0c`.
+  Original evidence directory is `/tmp/reference-host-accepted.vnHidX`; downloaded
+  reports/logs are untrusted data, never executed. Next uniquely assigned
+  [Kotlin reference composition](reference-kotlin-interception-research.md):
+  K-N owner `a4f3a7f60cdf00b2d` owns only two new private peer files; K-J owner
+  `a099e4a26b9093854` owns only two new Kotlin test/helper files, each in its own
+  branch/worktree. Frozen local profile is `b2cecca`, with root-owned finite-code
+  clarification; root owns all Gradle/workflow/contract/evidence changes.
+  Local Node22 still cannot exercise Store defenses, Java/SDK remain absent,
+  and no new Kotlin runtime, Android, C5 or device action has occurred.
 - User explicitly authorized continued publication of validated Android main
   checkpoints and existing hosted validation workflows for this goal without
   asking for every checkpoint. This does not authorize paid infrastructure,
