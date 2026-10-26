@@ -38,7 +38,7 @@ export const referenceTunObservationTypes = Object.freeze(Object.fromEntries([
   ...zero.map(key => [key, 'zero']),
   ...['TrafficAttempts', 'SelectedPackageCount', 'InterceptedTcpFlows'].map(key => [key, 'one']),
   ...['ProtectAttempts', 'ProtectSuccesses', 'BindAttempts', 'BindSuccesses'].map(key => [key, 'guard']),
-  ['ResponseBodyBytes', 'responseBytes'], ['TlsUsed', 'https'], ['TlsPeerVerified', 'https'], ['TlsAlpnH1', 'alpn'],
+  ['ResponseBodyBytes', 'responseBytes'], ['TlsUsed', 'https'], ['TlsPeerVerified', 'https'],
 ]));
 export const referenceTunFailureCategories = Object.freeze([
   'none', 'assertion', 'timeout', 'cancelled', 'enrollment', 'ca', 'consent', 'capture', 'cleanup',
