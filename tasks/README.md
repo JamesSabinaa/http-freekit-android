@@ -202,9 +202,18 @@ cases, including all three diagnostic/eight budget/mutation cases. Original
 accepted evidence `/tmp/reference-tun-diagnostic-host-accepted.mM1lDP`; stable safe
 host audit SHA256 `57c29ba1e21e075dfb399861a94753d4f15cbb23b98d2d733796d690ddb71a6f`.
 Root published checked evidence on main `439b1ed` and dispatched fresh diagnostic
-matrix40354503342 attempt1 at exact host-accepted `4cd60b8`; it is in progress
-with a bounded40-minute watch. Root owns original four-file replay per API;
-no runtime acceptance before both APIs pass that same matrix.
+matrix40354503342 attempt1 at exact host-accepted `4cd60b8`. It is now independently
+accepted: original four-file replay verifies both actual ordered methods per API
+in the same matrix,16 phases/56 facts each, all cleanup/emulator exits0 and all
+four absence probes. **Reference Android TUN research complete.** Original evidence
+`/tmp/reference-tun-diagnostic-runtime.222jXm`; stable runtime audit SHA256
+`8618ea63b0d5fa1b78c20936d2744436edf79862b12b6a920f49e37cdfb59d4f`.
+No prior API successes combine; previous probe cause remains unknown and failures
+remain failed. Root owns acceptance/roadmap/main publication. Exact reviewed
+desktop source/patch remains absent and bounded GitHub lookup returns422/no
+`2ee70e86`; next desktop C5/USB work is paused on that external dependency, with
+no active watcher, substitution or physical-device action. Production wire freeze
+and app integration remain gated.
 Root retains all profile/board/integration and dispatch; no report-schema, gate,
 timeout or shared-helper changes assigned.
 Input/ACK absence observations are false after HTTP, but the underlying failed
@@ -214,9 +223,10 @@ C5 or production acceptance.
 
 Each uses its own branch/worktree; no subagent toolchain installation,
 publication, CI/device dispatch or changes to another package. Current source
-has accepted host compilation and partial actual Android runtime evidence as
-recorded above, not combined two-API acceptance. Every source-changing runtime
-checkpoint requires a fresh pinned host gate first.
+has accepted host compilation and combined same-matrix reference Android runtime
+evidence as recorded above. That research acceptance does not establish desktop
+C5, production integration or physical USB. Every future source-changing runtime
+checkpoint still requires fresh pinned host validation first.
 
 ## Current independent capture package
 

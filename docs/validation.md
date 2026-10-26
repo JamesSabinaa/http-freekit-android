@@ -333,8 +333,10 @@ clean-source CA receipts/all peer joins and nine clean lint XMLs. Both new
 instrumentation methods/APKs compile and six fresh reference JVM methods pass.
 Node24.22.1, bundled OpenSSL3.5.9 and JDK17.0.20.1+1 are observed.
 The [accepted preparation profile](reference-android-tun-research.md#accepted-host-preparation-evidence)
-records original evidence and safe `dist/reference-tun-host-audit.json` checksum
+records original evidence and historical host-audit SHA256
 `e739d02e8c305ba706a75652de45461fb14b85436fa7f428b8da005910216f22`.
+That audit is retained as `/tmp/reference-tun-host-audit-d25dc53.json`; the stable
+dist filenames now contain the latest accepted source below.
 This accepts host preparation, not Android TUN/TLS-provider behavior or USB.
 Next is the distinct fresh API26/37 runtime; preserve every earlier failed run.
 
@@ -396,9 +398,20 @@ trusted audit `/tmp/audit-reference-tun-diagnostic-host.py`. Latest stable ignor
 host audit SHA256 `57c29ba1e21e075dfb399861a94753d4f15cbb23b98d2d733796d690ddb71a6f`.
 Host preparation is accepted and checked evidence published on main `439b1ed`.
 Fresh exact-source API26/37 diagnostic matrix40354503342 attempt1 at `4cd60b8`
-is in progress; independently replay original four files per API in that same
-matrix. No previous success is combined; old failures remain failed. No production
-clock or schema changed.
+is now independently accepted. Original JSON/XML/HTML/host-cleanup replay passes
+both ordered methods per API in the same matrix,16 phases/56 facts per method,
+all actual Android/package/native/process cleanup and all four absence probes.
+Clock API26[-926,79]ms/RTT6; API37[-635,468]ms/RTT104. Both drivers/stops/emulator
+exits0, termination/join true. Original runtime evidence:
+`/tmp/reference-tun-diagnostic-runtime.222jXm`; trusted script
+`/tmp/audit-reference-tun-diagnostic-runtime.py`. Stable finite runtime audit
+SHA256 `8618ea63b0d5fa1b78c20936d2744436edf79862b12b6a920f49e37cdfb59d4f`.
+No previous individual success is combined and earlier failures remain failed;
+their missing probe cause is not retrospectively inferred. This accepts reference
+Android TUN research only, not desktop C5, general app trust/CA installation,
+ALPN negotiation, authenticated Android close_notify, physical USB, production
+integration or v1 freeze. Exact original reviewed desktop source remains absent;
+bounded GitHub lookup returns422/no `2ee70e86` commit. No recovery watcher is active.
 
 ## Authenticated public interception CA research
 

@@ -16,11 +16,23 @@ The original goal is active and incomplete.
   evidence `/tmp/reference-tun-diagnostic-host-accepted.mM1lDP`; trusted script
   `/tmp/audit-reference-tun-diagnostic-host.py`. Stable ignored host audit SHA256:
   `57c29ba1e21e075dfb399861a94753d4f15cbb23b98d2d733796d690ddb71a6f`.
-  Checked evidence is published on main `439b1ed`. Fresh diagnostic matrix
-  40354503342 attempt1 is now running at exact accepted source `4cd60b8`, with a
-  bounded40-minute completion watch. Independently replay original four files
-  per API after completion; no prior API successes combine.
-  Earlier failures and the following source-specific history remain retained.
+  Checked host evidence is published on main `439b1ed`, dispatch checkpoint
+  `968c0dd`. Fresh diagnostic matrix40354503342 attempt1 is now independently
+  accepted at exact `4cd60b8`: original four-file replay passes both actual
+  ordered HTTP/H1 HTTPS methods per API in that same matrix,16 phases/56 facts
+  each and all Android/host/emulator cleanup. All four absence probes pass;
+  both driver/stop/emulator exits0, termination/join true. Clock bounds API26
+  [-926,79]ms/RTT6, API37[-635,468]ms/RTT104. Original runtime evidence:
+  `/tmp/reference-tun-diagnostic-runtime.222jXm`; trusted audit
+  `/tmp/audit-reference-tun-diagnostic-runtime.py`. Stable runtime audit SHA256:
+  `8618ea63b0d5fa1b78c20936d2744436edf79862b12b6a920f49e37cdfb59d4f`.
+  **Reference Android TUN research is complete.** No prior successes are combined;
+  earlier missing-probe cause remains unknown, and earlier failures remain failed.
+  Next real desktop/USB work is paused on the exact reviewed desktop source:
+  original checkout/patch still absent and bounded GitHub lookup for `2ee70e86`
+  returns422/no commit. No watcher/substitute/C5/device dispatch remains active.
+  Production v1 freeze, actual app integration and physical USB stay open.
+  The following source-specific history remains retained.
 
 - Android reference host preparation is now accepted at exact
   `d25dc53459e8b88aa36007f21868750b569270c8`, host40336789126 attempt2.
@@ -29,7 +41,7 @@ The original goal is active and incomplete.
   finite capture cases,46 clean-source CA receipts/all joins and nine clean
   lint XMLs. New Android methods/APKs compile; partial runtime is recorded below.
   Original accepted evidence: `/tmp/reference-tun-host-accepted.fF0F5a`.
-  Safe coordinator `dist/reference-tun-host-audit.json` SHA256:
+  Historical `/tmp/reference-tun-host-audit-d25dc53.json` SHA256:
   `e739d02e8c305ba706a75652de45461fb14b85436fa7f428b8da005910216f22`.
   Attempt1's SDK archive failure and every earlier failure stay failed.
   Checked preparation/evidence is published on main at `7e87724`. First distinct
@@ -79,7 +91,7 @@ The original goal is active and incomplete.
   Trusted audit: `/tmp/audit-reference-tun-diagnostic-host.py`.
   Diagnostic matrix40354503342 is now dispatched at exact host-accepted source;
   see the current entry above. No unchanged-source third retry of40340552254 exists.
-  Finite ignored runtime audit SHA256:
+  Historical `/tmp/reference-tun-runtime-audit-d25dc53-attempt2.json` SHA256:
   `b970f82c38e04897b5b6fedb73814203c2b85cd0419f1bd20fde197ad48d2581`.
   No third retry is dispatched. Require both APIs in one same-source attempt;
   do not merge earlier successes. Desktop C5, USB and production stay unaccepted.

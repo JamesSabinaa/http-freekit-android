@@ -17,10 +17,10 @@ and isolated research tests; those tests do not establish a finished capture app
 | --- | --- | --- |
 | App interface | Installed-app discovery, selection, keyboard/rotation and certificate-help checks on API 26/37 | Connect the interface to real pairing, capture, recovery and diagnostics |
 | Identity and enrollment | Keystore identity, scoped TLS, approval, saved credentials, restart/recovery, revocation and expiry research | Production credential/approval binding and remaining v1 decisions |
-| Capture and proxy transport | `4cd60b8`/host40351833250: audited375 JVM/43 reference Node/46 CA receipts/nine clean lints, reviewed finite absence diagnostics | Fresh same-matrix API26/37 reference acceptance, production integration and physical USB |
+| Capture and proxy transport | `4cd60b8`: audited host40351833250 and same-matrix40354503342 API26/37 real selected-UID HTTP/H1 HTTPS TUN methods/cleanup independently verified | Exact reviewed desktop source/C5, production integration and authorized physical USB |
 | Public interception CA | `fa2d845`: 46/46 source-bound CA receipts, 320 JVM host methods, nine clean lint reports and saved-credential Android retrieval on API26/37 | CA installation, target-app trust and production integration remain open |
 | Android CA runtime driver | Fresh matrix 40222004218 passes both APIs; independent original four-file replay verifies three ordered methods and all cleanup on each | A23 runtime research acceptance complete; preserve scope limits and advance to enrolled selected-app capture |
-| Reference interception | `65cd93f`/host40316060504: six actual factory/strict-JSSE cases and 23 private Node peer cases pass; audited 351 JVM/46 CA receipts/nine clean lints; earlier Node-only checkpoint retained | Distinct Android selected-UID execution next; not C5/desktop/USB |
+| Reference interception | Accepted Node and Kotlin host composition, followed by independently verified Android selected-UID HTTP/H1 HTTPS on API26/37 at `4cd60b8` | Not C5/desktop/physical USB, general target-app trust or production freeze |
 | Desktop dependency | User authorized publication of the reviewed ten-commit branch ending `2ee70e86` | Exact desktop checkout/review patch is absent from this Linux workspace and that commit is not on GitHub; obtain and verify it before publishing or running C5 |
 
 The original completed code checkpoint is `94a47c7` (CA proof input/source
@@ -187,9 +187,13 @@ New checkpoint CI must be inspected before claiming hosted validation of later c
    43 reference Node/84 capture/141 enrollment documentation cases, including all
    three diagnostic/eight budget mutation cases. Checked evidence is published
    on main `439b1ed`; fresh diagnostic matrix40354503342 attempt1 at exact
-   host-accepted `4cd60b8` is in progress. Require both APIs in that same matrix.
-   Production clock bytes stay unchanged; earlier failed attempts stay failed.
-   No control is weakened.
+   host-accepted `4cd60b8` is now independently accepted on both APIs in that
+   same matrix. Original four-file replay verifies both actual HTTP/H1 HTTPS
+   methods per API,16 phases/56 facts each and all owned cleanup/emulator exits0.
+   All four absence probes pass. **Reference Android TUN research is complete**;
+   its earlier missing-probe cause remains unknown and failed attempts stay failed.
+   Runtime audit SHA256 `8618ea63b0d5fa1b78c20936d2744436edf79862b12b6a920f49e37cdfb59d4f`.
+   Production clock bytes stay unchanged; no control is weakened.
    It is not the missing desktop backend, C5 or USB acceptance.
    Obtain and verify the exact already-authorized reviewed desktop source
    (currently absent), then publish that branch and run the prepared factory and

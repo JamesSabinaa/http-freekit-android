@@ -1,11 +1,10 @@
 # Android reference selected-UID HTTP/H1 HTTPS research
 
-Status: latest host preparation accepted at `4cd60b8`/run40351833250 attempt1
-(including finite absence diagnostics and reviewed clock regressions); original
-preparation at `d25dc53`/run40336789126 attempt2 remains accepted.
-First runtime40340552254 attempt1 independently passes API26's two methods.
-Attempt2 independently passes API37 but fails API26 before HTTPS starts with
-`enrollment_input_failed`. Combined runtime acceptance is open.
+Status: **combined Android reference TUN research accepted** at exact `4cd60b8`,
+host40351833250 attempt1 and fresh API26/37 matrix40354503342 attempt1. Independent
+original four-file replay passes both ordered HTTP/H1 HTTPS methods on each API.
+Earlier failed attempts remain failed. This does not accept desktop C5, physical
+USB, production capture, general target-app trust, ALPN negotiation or v1 freeze.
 Prerequisite [Kotlin host checkpoint](reference-kotlin-interception-research.md)
 is accepted at `65cd93f`/run40316060504. This distinct checkpoint uses the owned
 reference backend, NOT the missing reviewed desktop implementation. Existing
@@ -279,11 +278,11 @@ API26 HTTP passes, but `enrollment_input_failed` prevents HTTPS from starting.
 First-method input/ACK absence observations are false; these do not establish the
 underlying failed command. Both emulator cleanups terminate/join/exit0; API26's
 driver exits1. Original attempt2 evidence is
-`/tmp/reference-tun-runtime-second.yHp565`. The finite ignored export is
-`dist/reference-tun-runtime-audit.json`/`.sha256`, SHA256
-`b970f82c38e04897b5b6fedb73814203c2b85cd0419f1bd20fde197ad48d2581`;
-it binds attempt2 metadata/log/four-file hashes and explicitly records combined
-acceptance=false. Investigate the input handoff before
+`/tmp/reference-tun-runtime-second.yHp565`. Its historical finite audit SHA256 is
+`b970f82c38e04897b5b6fedb73814203c2b85cd0419f1bd20fde197ad48d2581`, retained at
+`/tmp/reference-tun-runtime-audit-d25dc53-attempt2.json`; it records combined
+acceptance=false. Stable dist filenames now carry the newer accepted matrix.
+Investigate the input handoff before
 another dispatch. Both APIs must pass one same-source attempt; never combine
 API26's earlier success with API37's later success. No third retry is dispatched.
 No code, SDK version, integrity check, workflow, assertion or deadline is changed
@@ -368,7 +367,27 @@ The original failed host and earlier runtime attempts stay failed. No shared
 wire/report schema, production deadline, gate or TLS assertion changes.
 Checked evidence is published on main `439b1ed`. Fresh diagnostic
 [matrix40354503342 attempt1](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40354503342)
-is in progress at exact host-accepted `4cd60b8`; require both ordered methods
-and independent four-file replay per API in that same matrix. No old individual
-API successes are combined. This host pass is not Android runtime, physical USB,
-C5/desktop or production acceptance.
+is now independently accepted at exact host-accepted `4cd60b8`. Both ordered
+methods pass on each API in this same matrix; no old individual success is used.
+Original JSON/XML/HTML/host-cleanup replay verifies16 ordered phases and56 facts
+per method, real saved-credential enrollment/CA retrieval, separate selected UID,
+actual HTTP/H1 HTTPS TUN transactions, natural EOF/local drain, independent gateway
+COMPLETE before ACK/Stop and every package/native/process/resource cleanup gate.
+All four actual post-method absence probes report exit0/no stderr/exact marker.
+API26 clock bounds are[-926,79]ms/RTT6; API37[-635,468]ms/RTT104. Both drivers,
+emulator stops and observed emulator exits are0, with termination/join true.
+
+Original evidence: `/tmp/reference-tun-diagnostic-runtime.222jXm`. Trusted audit
+script `/tmp/audit-reference-tun-diagnostic-runtime.py` remains outside downloads.
+Stable finite `dist/reference-tun-runtime-audit.json`/`.sha256` SHA256:
+`8618ea63b0d5fa1b78c20936d2744436edf79862b12b6a920f49e37cdfb59d4f`.
+The earlier missing probe result is not recovered by this pass; its historical
+cause remains unknown and its failed attempt remains failed. This accepts only
+reference Android research, not general target trust/CA installation, ALPN,
+authenticated Android close_notify, physical USB, C5/desktop or production.
+
+The next real desktop/USB gate remains externally blocked: exact reviewed desktop
+tip `2ee70e86b17e2feb2fd2bf4842a85c66671eb4c6` and its original review patch are
+still absent locally; bounded GitHub lookup returns422/no such commit. No substitute
+publication, C5 dispatch, physical-device action or unbounded recovery watcher is
+started. Production integration still requires foundation contract freeze.
