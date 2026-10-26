@@ -162,7 +162,12 @@ class SelectedCapturePreflightStateTest {
     @Test fun newStateRetainsNeitherPlanSelectionNorRawFailure() {
         val state = finish(checking())
         assertEquals(setOf("phase", "generation", "activeRequest", "foreground", "cleared"),
-            SelectedCapturePreflightState::class.java.declaredFields.filterNot { it.isSynthetic || it.name == "Companion" }.map { it.name }.toSet())
+            SelectedCapturePreflightState::class.java.declaredFields.filterNot {
+                // Compose adds primitive static stability metadata, not retained application state.
+                it.isSynthetic || it.name == "Companion" ||
+                    (it.name == "\$stable" && java.lang.reflect.Modifier.isStatic(it.modifiers) &&
+                        it.type == Int::class.javaPrimitiveType)
+            }.map { it.name }.toSet())
         assertFalse(state.toString().contains("test.fixture"))
         assertEquals(SelectedCapturePreflightPhase.CHECKED, state.phase)
     }

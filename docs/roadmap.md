@@ -91,8 +91,13 @@ and stale-result rejection, never capture readiness. Platform owner `c4ebbce`
 independent exact-commit reviews found no concrete defect. The separate offline
 APK/checksum/metadata integrity verifier is owner `21def75` (integrated `b39d539`),
 also independently reviewed, with 24/24 focused and 102/102 total Python checks
-passing locally. Fresh pinned host compilation/JVM/lint and actual app/platform
-runtime remain pending; authored tests are not execution. The work board tracks
+passing locally. Host40360223955 at `0edf95b` passes documentation/native but fails
+one of89 app JVM cases: Compose adds a nonsynthetic static integer `$stable` field
+to the state-reflection assertion. All13 platform and17 other state cases pass.
+Root's test-only correction excludes exactly that named primitive static compiler
+metadata; production bytes and the exact retained-field assertion remain intact.
+Fresh full host/lint and actual app/platform runtime remain pending. Authored
+instrumentation tests are not execution. The work board tracks
 additional real PackageManager adapter test source and exact runtime report gates.
 Approval-bound combined credential persistence is the next verified foundation
 gap; it is not an excuse to declare production v1 frozen or silently reuse

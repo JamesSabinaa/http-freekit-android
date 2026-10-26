@@ -44,8 +44,15 @@ The existing CaptureVpnService must be reused later rather than duplicated.
 | B6 contract review | read-only frozen B6 seam + existing selection/worker semantics | `ad341250bea5e4835`, isolated same-ID branch; complete, no blocking concrete issue; implementation review pending |
 | D-I contract review | read-only frozen delivery boundary + existing producer/schema | `a9fcf468bb6dfac8a`, isolated same-ID branch; complete, no schema mismatch; root explicitly freezes clean-source-only policy, no attestation claim |
 
-Root exclusively owns profile/docs/board/CI/build integration and will assign
-independent scoped reviews after each implementation. Existing B5 remains intact.
+Root exclusively owns profile/docs/board/CI/build integration. Host40360223955
+at `0edf95b` passes documentation/native, fails one app JVM reflection assertion
+because Compose emits a nonsynthetic static integer `$stable`. Original XML at
+`/tmp/b6-preflight-host.4N5V0I` records88/89 app passes; no full host acceptance or
+emulator dispatch. Root exclusively owns the test-only correction in
+`SelectedCapturePreflightStateTest.kt`, excluding only that exact primitive static
+metadata field while retaining the five-field privacy assertion. Production code
+is unchanged. Require fresh pinned host, then separately gated runtime. Existing
+B5 remains intact.
 
 ## Reference interception host checkpoint
 

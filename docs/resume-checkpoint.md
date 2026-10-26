@@ -20,7 +20,14 @@ The original goal is active and incomplete.
   checks pass 24/24 focused and 102/102 total Python tests; docs pass 293 local
   links and nine checker regressions. Java/SDK are absent locally, so authored
   13 platform/18 state JVM and eight Activity methods are not locally executed.
-  Fresh pinned host/build/JVM/lint and actual runtime remain pending. Three actual
+  Fresh pinned host40360223955 at `0edf95b` fails the state-retention reflection
+  assertion: Compose's extra static integer `$stable` is not synthetic. Original
+  app XML confirms 88/89 app methods pass (all13 platform,17/18 state); this is not
+  full host acceptance. Documentation/native jobs pass. Root owns only the JVM
+  test correction excluding exactly that named primitive static compiler field,
+  preserving the five-field assertion and all production bytes. Original failure
+  evidence is `/tmp/b6-preflight-host.4N5V0I`; require a fresh full pinned host gate,
+  not an unchanged-source retry or emulator dispatch. Three actual
   adapter methods (owner `4248ace`, integrated `cd0b8ee`) and strict exact21-method
   preview runtime gate (owner `6c959d3`, integrated `2af62db`) are committed.
   Coordinator documentation/workflow Node checks pass 166/166; root owns docs/board
