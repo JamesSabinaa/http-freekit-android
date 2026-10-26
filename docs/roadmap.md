@@ -124,8 +124,10 @@ The work board tracks
 additional real PackageManager adapter test source and exact runtime report gates.
 Approval-bound combined credential persistence is the next verified foundation
 gap, now assigned as [B7 opt-in local library](approved-credential-persistence.md)
-with unique model/identity/store/test/review ownership. It is not implemented or
-validated yet and does not authenticate arbitrary caller-provided approval,
+with unique model/identity/store/test/review ownership. Model `fffd98e`, identity
+`12a0629` and store `d944baf` are locally composed; independent main implementation
+reviews found no concrete defect. Independent tests are authoring; fresh full
+pinned host is pending. This does not authenticate arbitrary caller-provided approval,
 freeze production v1 or reuse research storage. Existing service/native lifecycle
 is reusable, not duplicated.
 

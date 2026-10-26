@@ -72,11 +72,11 @@ shared-key computer Forget effects and all public/internal seams are explicit.
 
 | Package | Exclusive files | Owner / branch / status / dependencies |
 | --- | --- | --- |
-| B7-M model/codec | NEW AuthenticatedEnrollmentApproval.kt and ApprovedEnrolledCredentialRecord.kt only | `a972bddc9886c5f3e`, isolated same-ID worktree/branch; implementing from e4087c2; frozen local API; no existing source/test edits |
-| B7-I identity/validator/backend | existing AndroidDeviceIdentityStore.kt, AndroidEnrolledCredentialStore.kt; NEW EnrolledCredentialValidation.kt only | `a75b25bc7fbc37cd7`, isolated same-ID worktree/branch; implementing from e4087c2; unchanged legacy validation plus exact owned-alias public evidence; no store/model edits |
-| B7-S opt-in store | NEW AndroidApprovedEnrolledCredentialStore.kt only | `a2b3aa67ecaf7c3da`, isolated same-ID worktree/branch; implementing from e4087c2; depends frozen M/I interfaces, no nested public stores |
+| B7-M model/codec | NEW AuthenticatedEnrollmentApproval.kt and ApprovedEnrolledCredentialRecord.kt only | `a972bddc9886c5f3e`, isolated same-ID worktree/branch; owner `4558923`, integrated `fffd98e`; independent M/S reviewer `ae0f85115127f5681` found no concrete defect; Kotlin/build UNRUN locally |
+| B7-I identity/validator/backend | existing AndroidDeviceIdentityStore.kt, AndroidEnrolledCredentialStore.kt; NEW EnrolledCredentialValidation.kt only | `a75b25bc7fbc37cd7`, isolated same-ID worktree/branch; owner `a893faf`, integrated `12a0629`; independent exact-commit review `ae37b1f1a6303823c` found no concrete defect; host/Android execution pending |
+| B7-S opt-in store | NEW AndroidApprovedEnrolledCredentialStore.kt only | `a2b3aa67ecaf7c3da`, isolated same-ID worktree/branch; owner `febe5bb`, integrated `d944baf`; M/I dependencies composed; independent M/S review found no concrete defect; host pending |
 | B7-T independent JVM tests | NEW three named tests and optional ApprovedCredentialTestFixture.kt only | `afbb69d18d48c03bd`, isolated same-ID worktree/branch; authoring from e4087c2; depends frozen M/I/S interfaces; no shared/existing fixture edits |
-| B7-R contract review | read-only profile and existing security/research boundaries | `ae37b1f1a6303823c`, isolated same-ID worktree/branch; reviewing e4087c2 contract only; no implementation/review delegation |
+| B7-R contract review | read-only profile and existing security/research boundaries | `ae37b1f1a6303823c`, isolated same-ID worktree/branch; frozen e4087c2 contract review complete, no blocking concrete issue; independent I implementation review also complete |
 
 Root alone owns documentation, CI/build integration, reviews, artifact/evidence
 replay and checked main promotion. Require fresh pinned full host and unchanged

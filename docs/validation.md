@@ -856,8 +856,9 @@ Independent artifact audit confirmed each full class/method identity once, three
 
 ## Approval-bound credential library (B7)
 
-The [opt-in local persistence package](approved-credential-persistence.md) is
-assigned, not implemented/accepted. Existing host CI already discovers new
+The [opt-in local persistence package](approved-credential-persistence.md) main
+code is locally composed and independently reviewed, not compiled/accepted yet;
+independent tests are authoring. Existing host CI already discovers new
 core-security JVM tests and runs `:core-security:testDebugUnitTest`,
 `:core-security:assembleDebugAndroidTest` and `:core-security:lintDebug`; retain all
 existing credential/TLS/key-manager regressions. Require independent source review

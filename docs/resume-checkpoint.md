@@ -12,7 +12,12 @@ The original goal is active and incomplete.
   opt-in atomic combined public envelope, original-owned-alias evidence, shared
   unchanged credential validator, separate no-backup namespace and explicit shared-
   key computer Forget effects. Five unique model/identity/store/test/contract-review
-  packages are assigned via the work board; not implemented or validated yet.
+  packages are assigned via the work board. Main code is owner/model `4558923`
+  integrated `fffd98e`, identity `a893faf` integrated `12a0629`, store `febe5bb`
+  integrated `d944baf`. Independent frozen-contract and all main implementation
+  reviews found no concrete defect. Independent T tests are still authoring;
+  Java/SDK absent, no local Kotlin/build/JVM/lint/device claim. Fresh full pinned
+  host remains mandatory before checked code promotion.
   No automatic legacy migration, research alias scan, renewal, wire promotion,
   authenticated approval claim or protocol freeze is authorized by this local seam.
 
