@@ -16,16 +16,32 @@ change is assigned until root freezes the next package:
 
 | Owner | Exclusive investigation | Status |
 | --- | --- | --- |
-| `a9dddd4716147586c` | app capture/start lifecycle and installed-selection revalidation seam | running; no runtime-library or certificate-help sweep |
-| `a83a7160751aad00b` | remaining foundation contract decisions and independently executable library gaps | running; no production freeze declaration |
-| `a153fdacd5d869bc1` | capture runtime/core public owner APIs and research-only promotion boundaries | running; no app UI/reducer investigation |
-| `aaf0db0551c4df430` | truthful certificate-help/public-CA/setup preparation only | running; no capture-lifecycle investigation |
-| `a9947d8aa26463336` | host-side USB preflight/build/delivery tooling gaps | running; no repeated desktop recovery search or device action |
+| `a9dddd4716147586c` | app capture/start lifecycle and installed-selection revalidation seam | complete; recommends real exact-package B6 preflight |
+| `a83a7160751aad00b` | remaining foundation contract decisions and independently executable library gaps | complete; identifies combined approved-CA/credential persistence gap, no freeze declaration |
+| `a153fdacd5d869bc1` | capture runtime/core public owner APIs and research-only promotion boundaries | complete; reuse existing service later, never promote research singleton/factory by visibility alone |
+| `aaf0db0551c4df430` | truthful certificate-help/public-CA/setup preparation only | complete; offline CA preparation viable, deferred while B6 owns shared app UI |
+| `a9947d8aa26463336` | host-side USB preflight/build/delivery tooling gaps | complete; proposes independent delivered-bundle integrity check, no device action |
 
 Root retains board/profile/contracts, chooses the smallest meaningful executable
 package from verified findings, assigns unique implementation ownership and
 requires relevant tests/review/fresh host validation before checked main promotion.
 No reference pass substitutes for actual desktop/physical USB acceptance.
+
+All five explorations completed read-only. Root selected the
+[B6 real selected-app preflight](../docs/selected-app-preflight.md) plus an
+independent offline debug-delivery integrity verifier. Approval-bound credential
+persistence is a verified next foundation gap, not authorization to integrate
+research wire; offline CA import/export is deferred to avoid overlapping UI work.
+The existing CaptureVpnService must be reused later rather than duplicated.
+
+| Implementation package | Exclusive scope | Owner / status |
+| --- | --- | --- |
+| B6-P platform | new SelectedCapturePlatformAdmission/PackageManagerSelectedPackageProbe and focused app tests only | launching isolated owner; frozen local seam in B6 profile |
+| B6-U app | PreviewViewModel/MainActivity/PreviewApp/strings, new pure preflight state/tests and focused Android test source | launching isolated owner; depends on exact B6-P seam, no manifest/wire/start changes |
+| D-I delivery | new scripts/verify-debug-delivery.py and scripts/tests/test_debug_delivery.py only | launching isolated owner; no producer/device/network changes |
+
+Root exclusively owns profile/docs/board/CI/build integration and will assign
+independent scoped reviews after each implementation. Existing B5 remains intact.
 
 ## Reference interception host checkpoint
 
