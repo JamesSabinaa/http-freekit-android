@@ -138,7 +138,10 @@ New checkpoint CI must be inspected before claiming hosted validation of later c
    `9112e5c` passes11/11 tests and synthetic actual-producer replay on both APIs.
    Root finite/doc/contract checks36/36 and eight actual workflow
    shell checks pass. New host compilation/positive Node24/JVM/lint acceptance
-   must precede a fresh two-API dispatch. No Android acceptance is inferred.
+   must precede a fresh two-API dispatch. Provisional `5f2207f`/host40324585202
+   passes all40 new Node cases but fails an existing capture shared-deadline
+   regression (`1 !== 124`) before Kotlin/lint; an isolated test-only owner
+   investigates, with no blind retry. No Android acceptance is inferred.
    No control is weakened.
    It is not the missing desktop backend, C5 or USB acceptance.
    Obtain and verify the exact already-authorized reviewed desktop source

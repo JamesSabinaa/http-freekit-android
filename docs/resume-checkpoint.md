@@ -40,7 +40,13 @@ The original goal is active and incomplete.
   Bash/ShellCheck workflow blocks pass, clock gate byte-identical. Actual Node22
   fixture run17 has10 passes/seven failures (six startup tun_unavailable, one
   child warning); narrow warning correction subsequently passes actual worker
-  checks. No positive fixture retry, Java/SDK execution or new Android dispatch.
+  checks. No local positive fixture retry or new Android dispatch. Pinned host40324585202 at
+  provisional `5f2207f` passes all40 new Node cases and documentation/native jobs,
+  but fails the existing capture shared-deadline regression (`1 !== 124`, line136)
+  before Kotlin/lint execution. Original log/metadata:
+  `/tmp/reference-tun-host-failure.B1nnJi`. Isolated owner `aa2077817c508b4a5`
+  investigates only `tools/capture-spike/capture-workflow.test.mjs`; no blind retry.
+  Independent workflow review found no concrete defect. Main remains unchanged.
   Main replay40318725140 at `751e35a` is terminal success, metadata observed only;
   exact65cd93f original artifacts remain the Kotlin acceptance evidence.
   Old C5/desktop source recovery, Android trust/TUN, USB and production remain open.

@@ -265,6 +265,16 @@ existing runtime workflow. Local Java/SDK are absent; pinned full host compilati
 positive Node24 fixture execution, JVM tests and strict lint must pass before any
 new API26/37 dispatch. Unrun provider TLS/EOF behavior remains an explicit gate.
 
+Provisional source `5f2207f` fails pinned host40324585202 before Kotlin/lint:
+the existing capture clock shared-deadline test expects exit124 but observes
+exit1 at29.15s (`capture-workflow.test.mjs:136`), finite capture82pass/1fail.
+Documentation and native jobs pass. All40 new reference Node cases pass on
+Node24, including actual fixture HTTP/HTTPS and parent process/pump joins; that
+does not accept the full host checkpoint. Original failure log/metadata are
+retained in `/tmp/reference-tun-host-failure.B1nnJi`, outside trusted scripts.
+An isolated test-only owner investigates; no blind retry or runtime dispatch.
+Independent workflow integration review found no concrete defect.
+
 ## Authenticated public interception CA research
 
 The [A23 contract](protocol-interception-ca.md) is checked by the compiled shared
