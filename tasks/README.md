@@ -31,6 +31,32 @@ host validation. Local Node22 failures stay failed; Node24 host success is
 required. Android/Kotlin composition and a new reference selected-UID runtime
 are later separately scoped packages, not results of this checkpoint.
 
+## Pinned reference composition failure follow-up
+
+Run [40308827831](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40308827831)
+at exact `9d24ae2` reaches all six authenticated cases on Node24. HTTP and four
+negative/revocation cases pass; HTTPS positive fails `ResearchWebSocketError`
+`cancelled`. Reference step: 45 passed, one failed, one root-only foreign-UID
+regression skipped on the non-root runner. Android job stops before JVM/lint;
+this run is not host acceptance. Original completed-job log is retained locally
+in `/tmp/reference-host-failure.5yNfoK/android.log`; no silent rerun.
+
+Root retains workflow/evidence integration on `worktree-coord-a23-resume`;
+`main` remains `380200f`. Owner `ae85d7593109b5bee` on its retained
+`worktree-agent-ae85d7593109b5bee` exclusively owns the single C test file for
+finite diagnostics and verified carrier-lifecycle corrections, preserving actual
+TLS/END_WRITE/EOF/1000 Close/COMPLETE joins. B owner `afac179bd5fd5f2be` on its
+retained branch reproduced premature raw transport destruction after a clean
+TLS reply/EOF while actual upload END_WRITE remains outstanding. Root now
+assigns only its original two backend files for that verified correction and a
+deterministic real-TLS delayed-END red/green regression. C separately confirmed
+maintained-TLS carrier destroy ordering; scoped correction
+`90c7df9` is integrated as `8ba2ecd` with finite stage diagnostics and stronger
+actual TLS EOF assertions. Syntax/contract checks pass; its authenticated effect
+is unverified locally because Node22 lacks required SQLite defenses. Integrate
+the checked B correction before a fresh pinned run. No protocol change, skip,
+SQLite-defense bypass, toolchain install, device action or C5 substitution.
+
 ## Current independent capture package
 
 B5 local selection admission is assigned from `77129a0` after A23 acceptance.

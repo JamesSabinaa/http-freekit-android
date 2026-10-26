@@ -143,6 +143,25 @@ Node24 host validation must prove all six actual composition paths before this
 checkpoint is accepted. No Android, desktop compatibility or USB acceptance is
 established.
 
+Pinned Node24 [run 40308827831](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40308827831)
+at `9d24ae24d46ac5af701d5abc1bbf26c2d9f34288` actually reaches all six enrolled
+cases: HTTP positive and four rejection/revocation cases pass; HTTPS positive
+fails `ResearchWebSocketError` code `cancelled`. The reference step records
+45 passed, one failed, no cancellations and one skipped foreign-UID ancestry
+regression (non-root runner). All backend cases pass. The Android job stops
+before compilation/JVM/lint; neither full host nor HTTPS composition acceptance
+is established. Documentation and native jobs pass; the overall run is terminal
+failure. The completed-job original log is retained. B owner independently
+reproduced a concrete premature raw transport close: after complete response and
+clean TLS read EOF, the raw upload direction was destroyed before actual
+END_WRITE (`readableEnded=true`, `writableFinished=false`, `destroyed=true`).
+B owns only its two-file backend correction and a real delayed-END regression.
+C independently confirmed maintained Node TLS may destroy its carrier before
+remote END_WRITE and owns only its single adapter/test correction and finite
+stage diagnostics. Both must retain actual TLS/EOF/Close/COMPLETE and ownership
+joins. Integrate checked fixes before a new pinned run; earlier local Node22
+failures remain separate.
+
 ## Authenticated public interception CA research
 
 The [A23 contract](protocol-interception-ca.md) is checked by the compiled shared

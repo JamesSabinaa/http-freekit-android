@@ -120,7 +120,7 @@ The original goal is active and incomplete.
   app assembly/instrumentation compilation also pass. No new device/UI/service
   behavior is established. Exact desktop/C5, production freeze, target trust
   and physical USB gates remain unchanged.
-- The coordinator retains unfinished, unpublished reference-only host work in
+- The coordinator retains unfinished reference-only host work, not merged to main, in
   `.claude/worktrees/coord-a23-resume`, branch `worktree-coord-a23-resume`, at
   implementation `5010594` with committed workflow/evidence checkpoint
   `005fe6b`. Profile/contract
@@ -150,6 +150,24 @@ The original goal is active and incomplete.
   integrated and reviewed; run fresh pinned Node24 host CI on this branch
   before advancing checked progress to main. Composition, Android and
   USB acceptance remain unproven.
+- Reference branch `worktree-coord-a23-resume` is published at `9d24ae2`, not
+  merged to main. Pinned Node24 run 40308827831 reaches all six authenticated
+  cases: HTTP positive and four rejection/revocation cases pass; HTTPS positive
+  fails `ResearchWebSocketError`/`cancelled`. The reference step has 45 passed,
+  one failed, one root-only foreign-UID skip. Android job stops before JVM/lint;
+  do not claim host acceptance. Original job log is retained at
+  `/tmp/reference-host-failure.5yNfoK/android.log`. C owner exclusively corrects
+  its carrier lifecycle/test file; B owner exclusively corrects its reproduced
+  backend seam defect. Preserve actual TLS close, both END_WRITEs, remote EOF,
+  normal1000 Close acknowledgement, COMPLETE and cleanup. C correction
+  `90c7df9`, integrated `8ba2ecd`, joins the real pending pump after natural
+  local shutdown, rejects discarded binary records and adds finite stages plus
+  actual TLS EOF assertions. Syntax/contract checks pass, not authenticated
+  execution. B independently reproduced premature raw close with upload
+  END_WRITE still outstanding and owns a two-file correction/regression.
+  No blind rerun or weakened gates; integrate that checked correction before
+  a fresh pinned run. The first run is terminal failure; documentation/native
+  jobs pass, Android stops at reference composition.
 - User explicitly authorized continued publication of validated Android main
   checkpoints and existing hosted validation workflows for this goal without
   asking for every checkpoint. This does not authorize paid infrastructure,
