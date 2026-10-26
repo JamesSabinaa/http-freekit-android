@@ -301,6 +301,23 @@ jobs:
                   "realSecuritySettingsReturnAndRotationKeepTrustUnverified",
                   "unavailableSettingsAndCopiedDebugExamplesNeverChangeReadiness",
               )
+          } | {
+              ("com.httpfreekit.android.preview.SelectedCapturePreflightActivityTest", name) for name in (
+                  "explicitActionChecksOffMainAndNeverUpgradesPreviewReadiness",
+                  "unavailablePackageRejectsWithoutChangingSelectionOrPreview",
+                  "selectionCancellationAndIgnoredInterruptRemainSingleFlight",
+                  "actualActivityBackgroundAndReturnInvalidateWithoutAutomaticCheck",
+                  "configurationRecreationRetainsSelectionButSuppressesOldCompletion",
+                  "refreshAndModeChangesInvalidateWithoutAutomaticChecks",
+                  "previewLockAndStopSuppressPendingCheckWithoutRequestingPermissions",
+                  "clearingActualOwnerCancelsAndPermanentlySuppressesLatePublication",
+              )
+          } | {
+              ("com.httpfreekit.android.apps.PackageManagerSelectedPackageProbeTest", name) for name in (
+                  "currentCompanionIsAvailable",
+                  "missingPackageIsNotInstalled",
+                  "headlessFixtureIsAvailable",
+              )
           }
           cases = []
           totals = {field: 0 for field in ("tests", "failures", "errors", "skipped")}
@@ -328,7 +345,7 @@ jobs:
           if totals["tests"] != len(expected) or any(totals[field] for field in ("failures", "errors", "skipped")):
               raise SystemExit(f"Preview instrumentation did not execute a fully passing suite: {totals}")
           if len(cases) != len(expected) or {(case.get("classname"), case.get("name")) for case in cases} != expected:
-              raise SystemExit("The expected ten named preview/catalog/certificate tests did not execute exactly once")
+              raise SystemExit("The expected 21 named preview/catalog/certificate/preflight/probe tests did not execute exactly once")
           if any(case.find(result) is not None for case in cases for result in ("failure", "error", "skipped")):
               raise SystemExit("A preview testcase failed or was skipped")
           print(json.dumps({"api": os.environ["API_LEVEL"], **totals}, sort_keys=True))
