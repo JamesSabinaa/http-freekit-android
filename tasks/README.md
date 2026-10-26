@@ -36,8 +36,8 @@ The existing CaptureVpnService must be reused later rather than duplicated.
 
 | Implementation package | Exclusive scope | Owner / status |
 | --- | --- | --- |
-| B6-P platform | new SelectedCapturePlatformAdmission/PackageManagerSelectedPackageProbe and focused app tests only | `a0e6179fa35a7a489`, isolated same-ID branch; owner `c4ebbce`, integrated `91c1c33`; independent exact-commit reviewer `a073c44419e568629` found no concrete defect; host40361791894 passes13/13 new JVM; platform runtime pending |
-| B6-U app | PreviewViewModel/MainActivity/PreviewApp/strings, new pure preflight state/tests and focused Android test source | `ad8bda487fe4db060`, isolated same-ID branch; owner `d4bcc1c`, integrated `e711b47`; independent reviewer `a1e619c946a20d9ec` found no concrete defect; 18 JVM methods pass corrected host40361791894; eight controlled Activity methods host-compiled, execution pending |
+| B6-P platform | new SelectedCapturePlatformAdmission/PackageManagerSelectedPackageProbe and focused app tests only | `a0e6179fa35a7a489`, isolated same-ID branch; owner `c4ebbce`, integrated `91c1c33`; independent exact-commit reviewer `a073c44419e568629` found no concrete defect; host40361791894 passes13/13 new JVM; three actual platform methods pass both APIs in failed matrix40363807230 |
+| B6-U app | PreviewViewModel/MainActivity/PreviewApp/strings, new pure preflight state/tests and focused Android test source | `ad8bda487fe4db060`, isolated same-ID branch; owner `d4bcc1c`, integrated `e711b47`; independent reviewer `a1e619c946a20d9ec` found no concrete defect; 18 JVM methods pass corrected host40361791894; eight controlled Activity methods pass both APIs in failed matrix40363807230; full app runtime not accepted |
 | D-I delivery | new scripts/verify-debug-delivery.py and scripts/tests/test_debug_delivery.py only | `a20e7ee50dab04e62`, isolated branch `delivery-integrity-implementation`; owner `21def75`, integrated `b39d539`; independent reviewer `a40ee933f720b7871` found no concrete defect; coordinator24/24 focused and102/102 total Python checks pass; host40361791894 independently verifies24/24 delivery cases |
 | B6-P Android adapter tests | new apps/PackageManagerSelectedPackageProbeTest.kt instrumentation source only | `aacbf800223703963`, isolated same-ID branch; owner `4248ace`, integrated `cd0b8ee`; three fixed methods `currentCompanionIsAvailable`, `missingPackageIsNotInstalled`, `headlessFixtureIsAvailable`; actual current-user PM, no shell/state mutation |
 | B6 runtime workflow | preview-runtime.yml and new scripts/tests/preview-preflight-workflow.test.mjs only | `a31d7ebb4a4475616`, isolated same-ID branch; owner `6c959d3`, integrated `2af62db`; old ten exact methods plus eight B6-U and three adapter methods retained; coordinator and owner58/58 gate/cleanup checks pass; no cleanup/SDK/gate weakening or dispatch |
@@ -58,9 +58,31 @@ compilation,46 CA receipts/all joins,24 delivery and58 preview gate/cleanup case
 Evidence `/tmp/b6-preflight-host-accepted.0mW7EW`; trusted
 `/tmp/audit-b6-preflight-host.py`; stable ignored audit SHA256
 `512c3b50a468dba0b73d0adc6e5d7b5182269bccbfad7b42fc63e71168d9c513`.
-Exact-source preview API26/37 matrix40363807230 is dispatched, not yet accepted;
+Exact-source preview API26/37 matrix40363807230 failed as recorded below;
 all21 named methods and owned cleanup must pass per API. Local Java/SDK remain
 absent. No production capture or desktop/USB acceptance. Existing B5 remains intact.
+
+## B6 runtime catalog scroll investigation
+
+Matrix40363807230 at exact `4ce72be` is failed, not accepted. Original artifacts
+at `/tmp/b6-preflight-runtime.AuJjL6` show21 methods per API: API26 passes19/21,
+API37 passes20/21. All eight new controlled preflight and three real PackageManager
+methods pass on each API. Existing catalog refresh-after-selection fails at
+InstalledAppsActivityTest.kt:93 on both and:120 on API26, displayed/enabled gate,
+with clipped zero-bounds source chips. Both original cleanup receipts confirm
+runtime1, stop0, fixture enable/uninstall0, termination/join true, emulator exit0.
+Root assigns isolated owner `a3f0b6392e1bbdd66` (same-ID worktree branch) only
+`app/src/androidTest/java/com/httpfreekit/android/preview/InstalledAppsActivityTest.kt`
+to investigate/correct actual scroll ownership/reachability, retaining displayed,
+enabled, real touch, selection/refresh/rotation/keyboard and privacy assertions.
+No production edit, retry, skipped test or weakened gate is assigned. Root owns
+all evidence/docs/integration. Owner `4c7708c` integrated `9b6243e` moves the
+existing vertical LazyList reset into all non-fixture catalog clicks before nested
+horizontal scrolling; all displayed/enabled/touch/scenario/keyboard assertions
+remain. Finite Refresh geometry/enabled diagnostics only; production unchanged.
+Independent reviewer `a1e619c946a20d9ec` found no concrete defect; owner58/58
+workflow/cleanup checks pass. This is source-supported, not proof of the exact
+historical image cause. Fresh pinned host must precede a new full matrix.
 
 ## Reference interception host checkpoint
 

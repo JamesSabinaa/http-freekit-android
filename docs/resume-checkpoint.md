@@ -7,6 +7,29 @@ The original goal is active and incomplete.
 
 ## Current Linux resume position
 
+- B6 runtime matrix40363807230 attempt1 at exact host-accepted `4ce72be` fails:
+  original XML contains21 methods each, API26 passes19/21 and API37 passes20/21.
+  All eight new controlled preflight and three actual PackageManager methods pass
+  on both. Existing catalog Refresh reachability fails at line93 on both and
+  line120 on API26; clipped zero-bounds controls are observed, exact cause under
+  investigation. Both original cleanup receipts confirm runtime1, stop0, fixture
+  enable/uninstall0, termination/join true and emulator exit0. This is not full
+  app acceptance; never combine partial passes across future retries. Evidence
+  `/tmp/b6-preflight-runtime.AuJjL6`; trusted failure replay
+  `/tmp/audit-b6-preflight-runtime-failure.py`; stable ignored failure audit SHA256
+  `a4983b89313d3820f52197a1d1842a4dc3831667f5274a9a6c16695ce1a281eb`.
+  Isolated owner `a3f0b6392e1bbdd66` investigates only
+  `InstalledAppsActivityTest.kt` scroll ownership/reachability; no production
+  changes or weakened displayed/enabled/touch/keyboard assertions assigned.
+  Owner `4c7708c` is integrated `9b6243e`: existing vertical LazyList reset moves
+  from mode-chip helper to all non-fixture catalog controls before nested
+  horizontal scrolling, retaining displayed/enabled/touch and all old scenarios.
+  Only fixed Refresh geometry/enabled facts are added to finite diagnostics.
+  Production bytes stay unchanged. Source-supported scroll-owner gap is corrected;
+  exact historical emulator cause remains unproven. Owner58/58 workflow/cleanup
+  checks pass; independent exact-commit review found no concrete defect. Fresh
+  full host acceptance must precede a new full runtime matrix.
+
 - B6/D-I host acceptance is complete at exact
   `4ce72be6fb3906a6128359152a30488c9ec96c04`, run40361791894 attempt1. All three
   jobs pass; independent original-artifact/log replay confirms406 JVM methods/
@@ -18,10 +41,10 @@ The original goal is active and incomplete.
   `/tmp/audit-b6-preflight-host.py`. Stable ignored audit
   `dist/selected-app-preflight-host-audit.json` SHA256:
   `512c3b50a468dba0b73d0adc6e5d7b5182269bccbfad7b42fc63e71168d9c513`.
-  Fresh API26/37 preview matrix40363807230 is dispatched at the exact host-accepted
-  source; it must run all21 named tests and owned cleanup on each. Runtime
-  acceptance remains pending. Coordinator remote branch stays at that exact
-  source while documentation/checked progress is promoted to main. No production
+  Fresh API26/37 preview matrix40363807230 was dispatched at the exact accepted
+  source and failed as recorded above; runtime acceptance remains open.
+  The coordinator remote branch was pinned at that exact source during dispatch;
+  checked progress was promoted to main `4084f9d`. No production
   capture, future-package availability, desktop C5, physical USB or freeze claim.
 
 - Android implementation continues independently of the external desktop/USB

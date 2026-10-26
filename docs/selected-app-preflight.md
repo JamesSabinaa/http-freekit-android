@@ -10,7 +10,16 @@ platform/all18 state cases, nine clean lints, app/instrumentation compilation,
 `$stable`; test-only `4ce72be` fixes that without production changes. Independent
 corrective review found no issue. API26/37
 [matrix40363807230](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40363807230)
-is dispatched at the exact host-accepted source; execution/acceptance is pending.
+fails: API26 passes19/21 and API37 passes20/21. All eight controlled B6 and three
+actual PackageManager methods pass on both; old catalog Refresh touch reachability
+fails at line93 on both and line120 on API26. Both original cleanup receipts join/
+exit0 with fixture enable/uninstall0, but runtime exits1. This is not full app
+acceptance. Test-only owner `4c7708c` (integrated `9b6243e`) extends the existing
+vertical LazyList reset to all non-fixture catalog controls before nested horizontal
+scrolling, preserving all old assertions/scenarios; finite Refresh geometry is
+added. Production bytes stay unchanged. The exact historical image cause remains
+unproven. Independent exact-commit review found no concrete defect. Require fresh
+host before a new matrix, never skip old tests.
 Platform owner `c4ebbce` is integrated `91c1c33`; app owner `d4bcc1c` is integrated
 `e711b47`. Independent exact-commit reviews found no concrete defect. Thirteen
 platform and eighteen pure state JVM methods plus eight controlled Activity

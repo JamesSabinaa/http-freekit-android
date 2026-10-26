@@ -102,8 +102,14 @@ Independent original-artifact replay confirms406 JVM methods/49 XMLs, all31 new
 preflight cases, nine clean lints, app/instrumentation compilation,46 CA receipts/
 all joins,24 delivery and58 preview-gate/cleanup checks. Fresh exact-source
 [API26/37 matrix40363807230](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40363807230)
-is dispatched, not accepted yet; all21 exact methods/owned cleanup must pass on
-each API. The work board tracks
+fails the old catalog Refresh reachability checks: API26 passes19/21 and API37
+passes20/21. All eight new controlled B6 and three actual PackageManager methods
+pass on both, and both original owned cleanup receipts join/exit0. Full app runtime
+acceptance remains open. Test-only owner `4c7708c`, integrated `9b6243e`, extends
+existing vertical-owner positioning to filter/refresh controls while preserving
+all displayed/enabled/touch/keyboard assertions. Independent exact-commit review
+found no concrete defect. Source supports the scroll-owner gap, not a proven
+historical image cause. Fresh host must precede a new full matrix. The work board tracks
 additional real PackageManager adapter test source and exact runtime report gates.
 Approval-bound combined credential persistence is the next verified foundation
 gap; it is not an excuse to declare production v1 frozen or silently reuse
