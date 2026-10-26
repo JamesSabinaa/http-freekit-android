@@ -59,7 +59,9 @@ The original goal is active and incomplete.
   and rejects four60-second mutations. Coordinator focused8/8 and full integrated
   Node documentation166/166 pass, owner clock33/33 passes; independent reviewer
   `a9cc5f4400d6f29c6` found no concrete remaining finding (static). Production clock
-  bytes stay unchanged. Fresh full host validation of repaired source is next.
+  bytes stay unchanged. Fresh repaired-source host40351833250 at exact
+  `4cd60b8a9bbdc7c04eaf516b3b05acef69d9f9ec` is running with a bounded40-minute
+  completion watch. Trusted pending audit: `/tmp/audit-reference-tun-diagnostic-host.py`.
   No new runtime is dispatched before corrected full host acceptance.
   Finite ignored runtime audit SHA256:
   `b970f82c38e04897b5b6fedb73814203c2b85cd0419f1bd20fde197ad48d2581`.

@@ -195,7 +195,8 @@ acceptance. Follow-up `5085cb5`, integrated `4663e66`, adds the independent anch
 focused8/8 and full integrated documentation166/166 pass, owner clock33/33 passes.
 Isolated read-only follow-up reviewer `a9cc5f4400d6f29c6`, branch
 `worktree-agent-a9cc5f4400d6f29c6`, found no concrete remaining finding. Fresh full
-pinned host validation of repaired source remains next. Root owns integration.
+pinned host40351833250 at exact `4cd60b8` is running with bounded completion watch;
+root owns original-artifact audit/integration. No runtime dispatch before acceptance.
 Root retains all profile/board/integration and dispatch; no report-schema, gate,
 timeout or shared-helper changes assigned.
 Input/ACK absence observations are false after HTTP, but the underlying failed
