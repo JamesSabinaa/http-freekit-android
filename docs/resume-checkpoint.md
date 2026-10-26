@@ -30,8 +30,15 @@ The original goal is active and incomplete.
   first input/ACK absence observations are false. These observations do not yet
   establish the underlying command failure. Both emulator cleanups join/exit0;
   API26 driver exits1. Original attempt2 evidence:
-  `/tmp/reference-tun-runtime-second.yHp565`. Read-only isolated investigator
-  `adc997e4a087e82cb` traces the input handoff; root retains evidence/integration.
+  `/tmp/reference-tun-runtime-second.yHp565`. Read-only investigator
+  `adc997e4a087e82cb` localizes failure to the final combined absence probe,
+  not transfer or traffic; command cause remains unknown. Its removed empty
+  worktree was not bypassed. New isolated owner `ae26c242ad0d419bb` implements
+  only driver/driver-test finite diagnostics and deterministic failure regressions
+  under [the frozen package](reference-android-tun-research.md#post-method-absence-diagnostic-follow-up).
+  Revision1 reports/gates/deadlines stay unchanged; root retains integration.
+  Finite ignored runtime audit SHA256:
+  `b970f82c38e04897b5b6fedb73814203c2b85cd0419f1bd20fde197ad48d2581`.
   No third retry is dispatched. Require both APIs in one same-source attempt;
   do not merge earlier successes. Desktop C5, USB and production stay unaccepted.
 - The previous Android public `main` checkpoint is `751e35a`.
