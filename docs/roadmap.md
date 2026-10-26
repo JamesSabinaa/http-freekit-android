@@ -147,8 +147,9 @@ New checkpoint CI must be inspected before claiming hosted validation of later c
    new Node cases; retained partial artifacts verify374 JVM methods/46 CA receipts,
    but strict lint fails two API annotation errors. Correction `ddd5a7f` adds
    truthful SDK guards/RequiresApi bridges and direct JVM ALPN coverage; root
-   source review found no concrete defect. Root wires compile-only annotations;
-   fresh full host gate remains required. Historical runs remain failed. No Android acceptance is inferred.
+   source review found no concrete defect. `37ba80e`/host40332128274 then fails
+   earlier app lint on outdated annotation1.9.1; root corrects to stable1.11.0
+   without suppression. Fresh full host gate remains required. Historical runs remain failed. No Android acceptance is inferred.
    No control is weakened.
    It is not the missing desktop backend, C5 or USB acceptance.
    Obtain and verify the exact already-authorized reviewed desktop source

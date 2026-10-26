@@ -302,6 +302,14 @@ no annotation library runtime dependency, lint suppression or budget change.
 Available contract5/5, catalog/static/link checks pass; local Java remains absent.
 Fresh pinned compilation/JVM/lint validation is required before runtime dispatch.
 
+Source `37ba80e`/host40332128274 passes documentation/native and all40 new
+Node/84 finite capture cases, but fails earlier in `:app:lintDebug` because the
+new catalog pin1.9.1 is older than stable1.11.0 (`GradleDependency`). This run
+does not validate the later traffic annotation/lint change. Original log/metadata
+are in `/tmp/reference-tun-host-api-failure.nc6zD0`. Root updates only the
+compile/test-only annotation pin to1.11.0; no lint baseline or suppression.
+A fresh full host gate remains required.
+
 ## Authenticated public interception CA research
 
 The [A23 contract](protocol-interception-ca.md) is checked by the compiled shared

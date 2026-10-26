@@ -59,8 +59,12 @@ The original goal is active and incomplete.
   `/tmp/reference-tun-host-corrected-failure.lE2erY`. Traffic correction
   `63f134f`, integrated `ddd5a7f`, uses real SDK guards/RequiresApi bridges with
   direct JVM ALPN coverage; root source review found no concrete defect.
-  Root owns pinned annotation1.9.1 compileOnly/testCompileOnly dependency wiring
-  and evidence docs. Fresh pinned compilation/JVM/lint validation is next.
+  Root owns compileOnly/testCompileOnly annotation dependency wiring and evidence
+  docs. Host40332128274 at `37ba80e` fails earlier app lint because1.9.1 is older
+  than stable1.11.0; original log/metadata:
+  `/tmp/reference-tun-host-api-failure.nc6zD0`. Documentation/native and40 new
+  Node/84 finite capture cases pass, not full host acceptance. Root corrects
+  only the annotation pin to1.11.0; fresh full host validation remains next.
   No lint suppression, weaker SDK guard, blind rerun or Android dispatch.
   Independent workflow review found no concrete defect. Main remains unchanged.
   Main replay40318725140 at `751e35a` is terminal success, metadata observed only;
