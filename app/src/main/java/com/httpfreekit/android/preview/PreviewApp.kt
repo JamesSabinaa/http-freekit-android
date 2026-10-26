@@ -93,7 +93,9 @@ private val DarkColors = darkColorScheme(
 @Composable
 fun PreviewApp(state: PreviewState, apps: AppSelectionState, onAction: (PreviewAction) -> Unit,
     onAppsAction: (AppSelectionAction) -> Unit, onInvitation: (String) -> Unit,
-    onOpenSecuritySettings: () -> Boolean, onCopyConfiguration: (String) -> Unit) {
+    onOpenSecuritySettings: () -> Boolean, onCopyConfiguration: (String) -> Unit,
+    preflight: SelectedCapturePreflightState = SelectedCapturePreflightState(),
+    onCheckSelectedApps: () -> Unit = {}) {
     var page by rememberSaveable { mutableStateOf(PreviewPage.HOME.name) }
     var addingComputer by remember { mutableStateOf(false) }
     var forgettingComputer by remember { mutableStateOf<PreviewComputer?>(null) }
@@ -165,6 +167,9 @@ fun PreviewApp(state: PreviewState, apps: AppSelectionState, onAction: (PreviewA
                             if (state.canStop) Text(stringResource(R.string.apps_locked), color = MaterialTheme.colorScheme.error)
                         }
                         item { AppCatalogControls(apps, state.canStop, onAppsAction) }
+                        if (apps.mode == AppCatalogMode.INSTALLED) item {
+                            SelectedCapturePreflightCard(preflight, apps, state.canStop, onCheckSelectedApps)
+                        }
                         if (apps.mode == AppCatalogMode.SAMPLE) {
                             items(PreviewApps, key = { "sample:${it.id}" }) { app ->
                                 AppChoice(app, app.id in apps.selectedIds, !state.canStop) {
@@ -440,6 +445,27 @@ private fun AppCatalogControls(apps: AppSelectionState, locked: Boolean, onActio
             }, modifier = Modifier.testTag("apps-catalog-status").semantics { stateDescription = status },
                 style = MaterialTheme.typography.bodySmall,
                 color = if (apps.failed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun SelectedCapturePreflightCard(preflight: SelectedCapturePreflightState, apps: AppSelectionState,
+    locked: Boolean, onCheck: () -> Unit) {
+    OutlinedCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(stringResource(R.string.selected_check_title), style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(when (preflight.phase) {
+                SelectedCapturePreflightPhase.IDLE -> R.string.selected_check_idle
+                SelectedCapturePreflightPhase.CHECKING -> R.string.selected_check_checking
+                SelectedCapturePreflightPhase.CHECKED -> R.string.selected_check_checked
+                SelectedCapturePreflightPhase.REJECTED -> R.string.selected_check_rejected
+            }), modifier = Modifier.testTag("selected-check-status").semantics {
+                stateDescription = preflight.phase.name.lowercase(Locale.ROOT)
+            })
+            Text(stringResource(R.string.selected_check_no_capture), modifier = Modifier.testTag("selected-check-no-capture"))
+            OutlinedButton(onClick = onCheck, enabled = preflight.canCheck(apps, locked),
+                modifier = Modifier.testTag("selected-check-action")) { Text(stringResource(R.string.selected_check_action)) }
         }
     }
 }

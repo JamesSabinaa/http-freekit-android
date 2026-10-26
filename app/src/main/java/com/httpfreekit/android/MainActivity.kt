@@ -13,9 +13,11 @@ import androidx.lifecycle.ViewModelProvider
 import com.httpfreekit.android.preview.PreviewApp
 import com.httpfreekit.android.preview.PreviewViewModel
 import com.httpfreekit.android.apps.PackageManagerInstalledAppCatalog
+import com.httpfreekit.android.apps.PackageManagerSelectedPackageProbe
 import androidx.lifecycle.ViewModel
 
 class MainActivity : ComponentActivity() {
+    private lateinit var preview: PreviewViewModel
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -23,18 +25,29 @@ class MainActivity : ComponentActivity() {
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 require(modelClass.isAssignableFrom(PreviewViewModel::class.java))
                 @Suppress("UNCHECKED_CAST")
-                return PreviewViewModel(PackageManagerInstalledAppCatalog(applicationContext)) as T
+                return PreviewViewModel(PackageManagerInstalledAppCatalog(applicationContext),
+                    applicationContext.packageName, PackageManagerSelectedPackageProbe(applicationContext)) as T
             }
         }
-        val preview = ViewModelProvider(this, factory)[PreviewViewModel::class.java]
+        preview = ViewModelProvider(this, factory)[PreviewViewModel::class.java]
         setContent {
             PreviewApp(preview.state, preview.apps, preview::dispatch, preview::dispatchApps, preview::reviewInvitation,
                 onOpenSecuritySettings = ::openSecuritySettings,
                 onCopyConfiguration = { text ->
                     checkNotNull(getSystemService(ClipboardManager::class.java)).setPrimaryClip(
                         ClipData.newPlainText(getString(R.string.certificate_example_clip_label), text))
-                })
+                }, preflight = preview.preflight, onCheckSelectedApps = preview::checkSelectedApps)
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        preview.onActivityStarted()
+    }
+
+    override fun onStop() {
+        preview.onActivityStopped()
+        super.onStop()
     }
 
     private fun openSecuritySettings(): Boolean = try {

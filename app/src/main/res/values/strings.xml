@@ -94,6 +94,13 @@
     <string name="apps_not_loaded">Choose Installed apps to load this profile’s apps.</string>
     <string name="apps_empty">No enabled apps found in this profile.</string>
     <string name="apps_no_matches">No apps match your search and filter.</string>
+    <string name="selected_check_title">Selected-app availability</string>
+    <string name="selected_check_action">Check selected apps</string>
+    <string name="selected_check_idle">Not checked. Check the whole selection against this profile’s current apps.</string>
+    <string name="selected_check_checking">Checking selected apps…</string>
+    <string name="selected_check_checked">Selected apps were available when checked. This observation is not authorization to start capture.</string>
+    <string name="selected_check_rejected">Selection could not be checked. Review your selection or refresh the app list, then try again.</string>
+    <string name="selected_check_no_capture">Capture unavailable · Not started. No permissions, connection or HTTPS trust are verified by this check.</string>
     <string name="apps_locked">Stop the preview before changing the selected apps.</string>
     <string name="sample_browser">Example browser</string>
     <string name="sample_browser_body">Explore selected HTTP and supported HTTPS traffic.</string>
