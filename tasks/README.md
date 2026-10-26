@@ -171,7 +171,17 @@ coordinator25/25 finite Node and11/11 Python checks pass without skips. Missing
 command/group joins honestly add cleanup failure; no gate was weakened. Isolated
 read-only reviewer `a706195aa04dae520`, branch `worktree-agent-a706195aa04dae520`,
 checks exact owner commit; static review complete, no concrete correctness/privacy
-finding. Fresh full pinned host40345446373 at exact `ca0b3cc` is in progress.
+finding. Fresh full pinned host40345446373 at exact `ca0b3cc` fails existing
+unroot clock test (`1 !== 124`,29.05s), documentation134/135 passes. Android/native
+pass; original artifact replay independently verifies375 JVM/47 XMLs,46 clean-source
+CA receipts/all joins,nine clean lints,43 reference Node/84 capture cases. This is
+not full host acceptance. Original evidence:
+`/tmp/reference-tun-diagnostic-host-failure.4wRCL3`. Exclusive isolated owner
+`a803517d6e5f5746a`, branch `worktree-agent-a803517d6e5f5746a`, owns only
+`scripts/tests/enrollment-emulator-clock.test.mjs` for deterministic root/unroot
+shared-deadline path regressions, preserving production clock bytes/read admission/
+real timeout and exact assertions. No blanket1/124, skipped checks, production edits
+or blind retry. Root owns evidence/integration and independent review assignment.
 Root retains all profile/board/integration and dispatch; no report-schema, gate,
 timeout or shared-helper changes assigned.
 Input/ACK absence observations are false after HTTP, but the underlying failed

@@ -311,6 +311,15 @@ Coordinator replay passes25/25 descriptor/results/driver/workflow checks and11/1
 independent Python verifier tests, with no skips. Actual diagnostic logging,
 quiet/no-probe branches and hostile raw canary privacy checks pass. Independent
 exact-commit reviewer `a706195aa04dae520` found no concrete correctness/privacy
-defect (static only). Fresh full pinned host40345446373 at exact `ca0b3cc` is in
-progress; no new Android runtime is dispatched yet. Historical failure cause
-remains unknown. Host acceptance must precede a diagnostic matrix.
+defect (static only). Fresh full pinned host40345446373 at exact `ca0b3cc`
+fails documentation's existing unroot shared-clock regression
+(`enrollment-emulator-clock.test.mjs:130`, actual1/expected124 at29.05s),134/135
+Node documentation cases passed. Android/native jobs succeed; original artifact
+replay independently verifies375 JVM methods/47 XMLs,46 clean-source CA receipts/
+all joins, nine clean lints and43 reference Node/84 capture cases. This is partial
+evidence, not full host acceptance. Original evidence:
+`/tmp/reference-tun-diagnostic-host-failure.4wRCL3`. Isolated owner
+`a803517d6e5f5746a` owns only the clock test for deterministic path regressions;
+no production clock/workflow change or blanket acceptance of exit1/124. No new
+runtime is dispatched. Historical probe cause remains unknown; corrected full
+host acceptance must precede a diagnostic matrix.

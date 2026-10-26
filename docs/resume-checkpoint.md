@@ -40,8 +40,15 @@ The original goal is active and incomplete.
   Owner `09d2564`, integrated `14a29e5`, now passes coordinator25/25 finite Node
   checks and11/11 independent Python verifier tests without skips. Read-only
   exact-commit reviewer `a706195aa04dae520` found no concrete defect (static).
-  Fresh pinned host40345446373 at exact `ca0b3cc` is in progress with a bounded
-  40-minute completion watch. No new runtime is dispatched before host acceptance.
+  Fresh pinned host40345446373 at exact `ca0b3cc` fails documentation's existing
+  unroot clock deadline test (actual1/expected124 at29.05s,134/135 cases passed).
+  Android/native jobs pass; independent retained artifacts verify375 JVM/47 XML,
+  46 clean-source CA receipts/all joins,nine clean lints,43 reference Node/84 capture
+  cases. This is not full host acceptance. Original evidence:
+  `/tmp/reference-tun-diagnostic-host-failure.4wRCL3`. Isolated owner
+  `a803517d6e5f5746a` corrects only `scripts/tests/enrollment-emulator-clock.test.mjs`
+  with deterministic path regressions, not production changes or blanket1/124.
+  No new runtime is dispatched before corrected full host acceptance.
   Finite ignored runtime audit SHA256:
   `b970f82c38e04897b5b6fedb73814203c2b85cd0419f1bd20fde197ad48d2581`.
   No third retry is dispatched. Require both APIs in one same-source attempt;

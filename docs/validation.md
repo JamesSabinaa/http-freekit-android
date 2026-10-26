@@ -363,8 +363,16 @@ failed probes preserve passed HTTP and zero-start HTTPS; missing close/group fac
 also honestly produce cleanup failure. Actual log success/failure/quiet/no-probe
 branches and hostile raw privacy canaries pass. Exact-commit independent static
 review found no concrete defect. Fresh full pinned host40345446373 at exact
-`ca0b3cc` is in progress before a diagnostic matrix.
-Historical command cause is still unknown; no speculative timing fix is applied.
+`ca0b3cc` fails documentation's existing unroot clock deadline regression
+(`scripts/tests/enrollment-emulator-clock.test.mjs:130`,1 versus124 at29.05s;
+134/135 cases pass). Android/native jobs pass; independent retained artifacts
+verify375 unique JVM/47 XMLs,46 source-bound CA receipts/all joins,nine clean
+lints,43 new reference Node and84 capture cases. These are partial checks, not
+full host acceptance. Original evidence `/tmp/reference-tun-diagnostic-host-failure.4wRCL3`.
+An isolated test-only correction must retain the production shared clock budget,
+strict read admission and actual timeout assertions; no blanket1/124 or retry.
+Historical probe cause is still unknown; no speculative timing fix is applied.
+Require corrected full host acceptance before a diagnostic matrix.
 
 ## Authenticated public interception CA research
 
