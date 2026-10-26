@@ -7,6 +7,23 @@ The original goal is active and incomplete.
 
 ## Current Linux resume position
 
+- **B6 selected-app preflight runtime is accepted** at exact
+  `0605472a53582818a0cde96f900a720f34fee9f5`, fresh matrix40367969116 attempt1.
+  Independent original XML/cleanup/PNG replay confirms all21 exact methods once
+  each on API26/37 in the same matrix, zero failures/errors/skips, all eight
+  controlled preflight and three real PackageManager cases, plus all ten old
+  preview/catalog/help cases. Both fixture enable/uninstall0, runtime/stop/emulator
+  exit0, termination/join true, accepted cleanup. Sample/help PNGs are1080x1920;
+  no installed inventory screenshot. Original evidence
+  `/tmp/b6-preflight-runtime-accepted.nE1G5r`; trusted
+  `/tmp/audit-b6-preflight-runtime.py`. Stable ignored runtime audit SHA256:
+  `f697d86ecba373549678d67872b8e0b077d64de221e27589fba6b653b366707d`.
+  The earlier failed matrix stays failed; later success does not prove its exact
+  cause. This accepts past package observations/stale-result suppression only,
+  not production pairing/capture, CA trust, desktop C5, physical USB or freeze.
+  Next independent foundation gap is approval-bound credential persistence; exact
+  reviewed desktop source and physical-device opportunity remain external gates.
+
 - Reviewed test-only scroll correction is host accepted at exact
   `0605472a53582818a0cde96f900a720f34fee9f5`, host40365851244 attempt1. Independent
   original reports/log replay confirms406 JVM/49 XMLs/all31 preflight methods,
@@ -16,8 +33,8 @@ The original goal is active and incomplete.
   trusted `/tmp/audit-b6-scroll-host.py` reuses the unchanged previous audit checks.
   Stable ignored `dist/selected-app-preflight-scroll-host-audit.json` SHA256:
   `a8c72a59ef929a37f5cf89a0b8c806701f49066f726180ae152feb515edffe91`.
-  Fresh full API26/37 matrix40367969116 is dispatched at that exact accepted
-  source; runtime acceptance is pending, all21 methods/cleanup must pass on each.
+  Fresh full API26/37 matrix40367969116 at that exact accepted source now passes
+  all21 methods/cleanup on each and independent replay, as recorded above.
   Earlier failed matrix40363807230 remains failed; exact historical cause stays
   unproven. No production bytes, shared contract or runtime assertion weakened.
 

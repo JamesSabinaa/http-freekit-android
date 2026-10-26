@@ -4,7 +4,15 @@ Status: latest corrected source `0605472` is host accepted in
 [run40365851244](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40365851244),
 with independent406-JVM/nine-clean-lint replay. Fresh exact-source
 [matrix40367969116](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40367969116)
-is dispatched, not accepted yet. Earlier host acceptance at exact `4ce72be` in
+is now accepted by independent original XML/cleanup/PNG replay: all21 exact
+methods once each per API26/37, zero failures/errors/skips, runtime/stop/emulator
+exit0, fixture enable/uninstall0 and observed termination/join. Eight controlled
+preflight and three real PackageManager methods plus all ten old methods pass in
+that same matrix. Stable ignored runtime audit SHA256
+`f697d86ecba373549678d67872b8e0b077d64de221e27589fba6b653b366707d`.
+This accepts scoped past observations/lifecycle suppression, not capture readiness,
+CA trust, future package state, desktop C5, physical USB or freeze.
+Earlier host acceptance at exact `4ce72be` in
 [run40361791894](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40361791894)
 remains valid, but its runtime failed below. Not production capture or wire integration.
 Independent original reports/logs verify 406 JVM methods/49 XMLs, including all13

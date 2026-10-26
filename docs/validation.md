@@ -856,6 +856,19 @@ Independent artifact audit confirmed each full class/method identity once, three
 
 ## Preview runtime evidence
 
+Latest [B6 selected-app preflight](selected-app-preflight.md) checkpoint is accepted
+at exact `0605472`, host40365851244 and fresh runtime40367969116 attempt1. Independent
+original XML/cleanup/PNG replay confirms all21 named methods once per API26/37,
+zero failures/errors/skips, fixture enable/uninstall0, runtime/stop/emulator exit0
+and observed termination/join. This includes all ten old preview/catalog/help
+methods, eight controlled preflight lifecycle/cancellation methods and three actual
+current-user PackageManager observations. The old failed matrix40363807230 stays
+failed; source-supported vertical-owner positioning is corrected without proving
+the historical image cause. Scoped preflight observation is accepted, not capture
+readiness, CA installation, future-package availability, C5 or physical USB.
+Stable ignored audit `dist/selected-app-preflight-runtime-audit.json` SHA256
+`f697d86ecba373549678d67872b8e0b077d64de221e27589fba6b653b366707d`.
+
 The separate [preview runtime workflow and evidence](android-preview-runtime.md) cover the actual sample-only `MainActivity` UI, simulated consent, Stop, and rotation. Run 40095827316 at `89e5914` passed all four named tests on each API; both original sample PNGs were visually inspected and show readable dark system-bar icons on the light background without header/card overlap. It supersedes the earlier API 37 status-bar contrast finding. These results do not establish real Android permissions, VPN service behavior, or capture.
 
 The manual preview workflow now also prepares four installed-catalog cases on each API 26/37 emulator. It builds and installs the unrelated, headless `com.httpfreekit.fixture.installedapps` debug APK, verifies its fixed label/package, no-code/no-permission/no-component profile, and checks the merged app APK for `QUERY_ALL_PACKAGES`. The fixture's release variant is nondebuggable; host CI assembles both variants and runs strict lint for each, retaining only lint reports.

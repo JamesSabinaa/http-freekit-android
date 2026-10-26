@@ -88,8 +88,16 @@ methods, nine clean lints,46 CA receipts/all joins, app/instrumentation compilat
 and all retained host gates. Original `/tmp/b6-scroll-host.O38XS9`; trusted
 `/tmp/audit-b6-scroll-host.py`; stable ignored audit SHA256
 `a8c72a59ef929a37f5cf89a0b8c806701f49066f726180ae152feb515edffe91`.
-Fresh exact-source full matrix40367969116 is dispatched, not yet accepted;
-all21 methods/owned cleanup remain mandatory on both APIs.
+Fresh exact-source full matrix40367969116 attempt1 passes, independently replayed:
+all21 exact methods once on each API26/37, zero failures/errors/skips, fixture
+enable/uninstall0, runtime/stop/emulator exit0, actual termination/join. Original
+`/tmp/b6-preflight-runtime-accepted.nE1G5r`; trusted
+`/tmp/audit-b6-preflight-runtime.py`; stable ignored runtime audit SHA256
+`f697d86ecba373549678d67872b8e0b077d64de221e27589fba6b653b366707d`.
+B6 scoped app observation/lifecycle runtime is COMPLETE. Earlier failed matrix
+stays failed; future availability, production pairing/capture, C5/USB and freeze
+are not established. Next independent foundation package is combined approval-bound
+credential persistence; root scopes it separately without research wire promotion.
 
 ## Reference interception host checkpoint
 

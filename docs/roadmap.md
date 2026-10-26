@@ -15,7 +15,7 @@ and isolated research tests; those tests do not establish a finished capture app
 
 | Area | Verified progress | Remaining work |
 | --- | --- | --- |
-| App interface | Installed-app discovery, selection, keyboard/rotation and certificate-help checks on API 26/37 | Connect the interface to real pairing, capture, recovery and diagnostics |
+| App interface | Installed-app selector, certificate-help and B6 real selected-package preflight accepted on API26/37; all21 exact methods/cleanup at `0605472`/matrix40367969116 | Connect the interface to real pairing, capture, recovery and diagnostics |
 | Identity and enrollment | Keystore identity, scoped TLS, approval, saved credentials, restart/recovery, revocation and expiry research | Production credential/approval binding and remaining v1 decisions |
 | Capture and proxy transport | `4cd60b8`: audited host40351833250 and same-matrix40354503342 API26/37 real selected-UID HTTP/H1 HTTPS TUN methods/cleanup independently verified | Exact reviewed desktop source/C5, production integration and authorized physical USB |
 | Public interception CA | `fa2d845`: 46/46 source-bound CA receipts, 320 JVM host methods, nine clean lint reports and saved-credential Android retrieval on API26/37 | CA installation, target-app trust and production integration remain open |
@@ -114,7 +114,12 @@ historical image cause. Corrected `0605472` now passes
 independently replayed406 JVM/nine clean lints/all31 new methods and all retained
 host gates. Fresh same-source
 [matrix40367969116](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40367969116)
-is dispatched, not yet accepted; all21 methods/cleanup must pass on each API.
+is now accepted by independent original XML/cleanup/PNG replay: all21 exact
+methods once per API in the same matrix, zero failures/errors/skips and complete
+owned cleanup. B6 is complete within its scoped observation/lifecycle boundary;
+it does not establish production capture, future package state or USB. Stable
+ignored runtime audit SHA256
+`f697d86ecba373549678d67872b8e0b077d64de221e27589fba6b653b366707d`.
 The work board tracks
 additional real PackageManager adapter test source and exact runtime report gates.
 Approval-bound combined credential persistence is the next verified foundation
