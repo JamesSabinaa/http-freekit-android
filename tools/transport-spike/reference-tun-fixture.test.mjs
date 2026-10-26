@@ -185,10 +185,10 @@ for (const mode of ['http', 'https']) test(`reference TUN module actual HTTPS re
     });
     assert.equal(response.status, 200); assert.equal(response.material.type, 'pair_registered');
     const registration = (await waiting).material();
-    assert.equal(registration.enrollmentId, response.material.enrollmentId);
+    assert(registration.enrollmentId === response.material.enrollmentId,'Actual registered identity agrees');
     const approved = (await owner.approve(registration.enrollmentId)).material();
     assert.deepEqual(approved.capabilities, capabilities);
-    assert.deepEqual(owner.readResult(registration.enrollmentId).material(), approved);
+    assert(JSON.stringify(owner.readResult(registration.enrollmentId).material()) === JSON.stringify(approved),'Saved actual approval agrees');
     const credential = { approved, enrollmentId: approved.enrollmentId,
       key: crypto.device.privateKey.export({ type: 'pkcs8', format: 'pem' }),
       cert: new X509Certificate(Buffer.from(approved.clientCertificateDer, 'base64url')).toString() };
@@ -206,7 +206,7 @@ for (const mode of ['http', 'https']) test(`reference TUN module actual HTTPS re
     assert.equal(fetched.status,200);
     const ca = fetched.bytes.toString('base64url');
     assert(fetched.bytes.length > 0 && fetched.bytes.length <= 4096);
-    assert.equal(createHash('sha256').update(Buffer.from(ca,'base64url')).digest('base64url'), approved.interceptionCaCertificateSha256);
+    assert(createHash('sha256').update(Buffer.from(ca,'base64url')).digest('base64url') === approved.interceptionCaCertificateSha256,'Authenticated CA matches approved binding');
     control = await originControl(owner,credential,capabilities);
     const flow = await originStream(owner,credential,control,'reference-tun-test',mode === 'http' ? HTTP_ORIGIN_PROXY_MODE : null);
     carrier = new StreamDuplex(flow);
@@ -221,8 +221,8 @@ for (const mode of ['http', 'https']) test(`reference TUN module actual HTTPS re
     assert.equal(state.stream.gatewayEofEmitted,true); assert.equal(state.stream.streamLease,false);
     assert.equal(state.stream.chargedBytes,0); assert.equal(state.evidence.length,1);
     assert.equal(state.evidence[0].requestBytes,4096); assert.equal(state.evidence[0].responseBytes,81);
-    assert.equal(state.evidence[0].requestSha256,digest(body));
-    assert.equal(state.evidence[0].responseSha256,digest(expectedResponse(body)));
+    assert(state.evidence[0].requestSha256 === digest(body),'Private actual origin request comparison');
+    assert(state.evidence[0].responseSha256 === digest(expectedResponse(body)),'Private actual origin response comparison');
     state.evidence.length = 0; assert.equal(owner.snapshot().evidence.length,1);
   } catch (error) { primary = error; }
   finally {

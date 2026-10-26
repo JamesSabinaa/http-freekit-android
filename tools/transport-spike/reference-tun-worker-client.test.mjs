@@ -15,7 +15,7 @@ test('parent returns plain material after actual HTTPS registration and approval
   try {
     const metadata=await owner.metadata(), invitation=await owner.createInvitation(); plain(metadata); plain(invitation);
     assert.equal(metadata.material,undefined); assert.equal(invitation.material,undefined);
-    const original=metadata.desktopId; metadata.desktopId='mutated'; assert.equal((await owner.metadata()).desktopId,original);
+    const original=metadata.desktopId; metadata.desktopId='mutated'; assert((await owner.metadata()).desktopId === original,'Defensive parent metadata');
     assert(!inspect(owner).includes(original)); assert(!JSON.stringify(owner).includes(original));
     const facade={metadata:()=>({material:()=>({...metadata,desktopId:original})})};
     const wait=owner.waitForRegistered(invitation.invitationId); const crypto=createCryptoFixture();
@@ -23,9 +23,9 @@ test('parent returns plain material after actual HTTPS registration and approval
       invitationId:invitation.invitationId,invitationSecret:invitation.invitationSecret,csrDer:crypto.csr().toString('base64url'),
       deviceName:'Reference parent host test',capabilities:['tcp-http-origin-connect','tcp-https-connect']});
     assert.equal(response.status,200); const registered=await wait; plain(registered);
-    assert.equal(registered.enrollmentId,response.material.enrollmentId);
+    assert(registered.enrollmentId === response.material.enrollmentId,'Actual registered identity agrees');
     const approved=await owner.approve(registered.enrollmentId); plain(approved); assert.equal(approved.type,'pair_approved');
-    assert.deepEqual(await owner.readResult(registered.enrollmentId),approved);
+    assert(JSON.stringify(await owner.readResult(registered.enrollmentId)) === JSON.stringify(approved),'Saved actual approval agrees');
     assert.equal((await owner.snapshot()).stream,null);
     assert.equal((await owner.inspectEnrollment(registered.enrollmentId)).probe,null);
   } finally { assert.equal((await owner.close()).privateDirectoryRemoved,true); joined(owner.processSnapshot()); }
