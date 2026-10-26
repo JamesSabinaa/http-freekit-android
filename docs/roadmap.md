@@ -96,8 +96,14 @@ one of89 app JVM cases: Compose adds a nonsynthetic static integer `$stable` fie
 to the state-reflection assertion. All13 platform and17 other state cases pass.
 Root's test-only correction excludes exactly that named primitive static compiler
 metadata; production bytes and the exact retained-field assertion remain intact.
-Fresh full host/lint and actual app/platform runtime remain pending. Authored
-instrumentation tests are not execution. The work board tracks
+Fresh corrected source `4ce72be` passes
+[host40361791894](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40361791894).
+Independent original-artifact replay confirms406 JVM methods/49 XMLs, all31 new
+preflight cases, nine clean lints, app/instrumentation compilation,46 CA receipts/
+all joins,24 delivery and58 preview-gate/cleanup checks. Fresh exact-source
+[API26/37 matrix40363807230](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40363807230)
+is dispatched, not accepted yet; all21 exact methods/owned cleanup must pass on
+each API. The work board tracks
 additional real PackageManager adapter test source and exact runtime report gates.
 Approval-bound combined credential persistence is the next verified foundation
 gap; it is not an excuse to declare production v1 frozen or silently reuse

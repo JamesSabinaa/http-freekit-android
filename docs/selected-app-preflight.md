@@ -1,11 +1,21 @@
 # Selected-app platform preflight (B6)
 
-Status: implemented locally after reference Android TUN acceptance at `4cd60b8`,
-not yet host/runtime accepted; not production capture or wire integration.
+Status: host accepted at exact `4ce72be` in
+[run40361791894](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40361791894),
+not yet runtime accepted; not production capture or wire integration.
+Independent original reports/logs verify 406 JVM methods/49 XMLs, including all13
+platform/all18 state cases, nine clean lints, app/instrumentation compilation,
+46 clean-source CA receipts/all joins and24/24 delivery checks. The prior
+`0edf95b` host fails only the reflection assertion on Compose's static integer
+`$stable`; test-only `4ce72be` fixes that without production changes. Independent
+corrective review found no issue. API26/37
+[matrix40363807230](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40363807230)
+is dispatched at the exact host-accepted source; execution/acceptance is pending.
 Platform owner `c4ebbce` is integrated `91c1c33`; app owner `d4bcc1c` is integrated
 `e711b47`. Independent exact-commit reviews found no concrete defect. Thirteen
 platform and eighteen pure state JVM methods plus eight controlled Activity
-methods are authored, not locally executed (Java/SDK absent). Three additional
+methods are authored and host-compiled; the JVM methods execute and pass in the
+pinned host, not locally (Java/SDK absent). Three additional
 actual PackageManager adapter methods (owner `4248ace`, integrated `cd0b8ee`) and
 the exact 21-method preview workflow gate (owner `6c959d3`, integrated `2af62db`)
 are committed. This package adds real

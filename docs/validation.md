@@ -1096,7 +1096,9 @@ Start with reproducible debug APKs and ADB installation. Export deliverables to 
 The independent receiving-side debug bundle gate is implemented as owner
 `21def75`, integrated `b39d539`, with 24/24 focused and 102/102 total Python checks
 passing locally. Independent exact-commit implementation review found no concrete
-defect; full host integration remains pending. On a safe-descriptor POSIX host,
+defect. Pinned host40361791894 at exact `4ce72be` passes; independent original
+reports/log replay verifies the24 delivery cases and full406-JVM/nine-clean-lint
+host gates. This is not a real APK bundle verification. On a safe-descriptor POSIX host,
 run it outside any untrusted download folder, supplying the separately known
 expected Android commit:
 

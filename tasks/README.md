@@ -36,9 +36,9 @@ The existing CaptureVpnService must be reused later rather than duplicated.
 
 | Implementation package | Exclusive scope | Owner / status |
 | --- | --- | --- |
-| B6-P platform | new SelectedCapturePlatformAdmission/PackageManagerSelectedPackageProbe and focused app tests only | `a0e6179fa35a7a489`, isolated same-ID branch; owner `c4ebbce`, integrated `91c1c33`; independent exact-commit reviewer `a073c44419e568629` found no concrete defect; JVM/platform execution pending |
-| B6-U app | PreviewViewModel/MainActivity/PreviewApp/strings, new pure preflight state/tests and focused Android test source | `ad8bda487fe4db060`, isolated same-ID branch; owner `d4bcc1c`, integrated `e711b47`; independent reviewer `a1e619c946a20d9ec` found no concrete defect; 18 JVM/eight controlled Activity methods authored, not executed |
-| D-I delivery | new scripts/verify-debug-delivery.py and scripts/tests/test_debug_delivery.py only | `a20e7ee50dab04e62`, isolated branch `delivery-integrity-implementation`; owner `21def75`, integrated `b39d539`; independent reviewer `a40ee933f720b7871` found no concrete defect; coordinator24/24 focused and102/102 total Python checks pass; fresh host pending |
+| B6-P platform | new SelectedCapturePlatformAdmission/PackageManagerSelectedPackageProbe and focused app tests only | `a0e6179fa35a7a489`, isolated same-ID branch; owner `c4ebbce`, integrated `91c1c33`; independent exact-commit reviewer `a073c44419e568629` found no concrete defect; host40361791894 passes13/13 new JVM; platform runtime pending |
+| B6-U app | PreviewViewModel/MainActivity/PreviewApp/strings, new pure preflight state/tests and focused Android test source | `ad8bda487fe4db060`, isolated same-ID branch; owner `d4bcc1c`, integrated `e711b47`; independent reviewer `a1e619c946a20d9ec` found no concrete defect; 18 JVM methods pass corrected host40361791894; eight controlled Activity methods host-compiled, execution pending |
+| D-I delivery | new scripts/verify-debug-delivery.py and scripts/tests/test_debug_delivery.py only | `a20e7ee50dab04e62`, isolated branch `delivery-integrity-implementation`; owner `21def75`, integrated `b39d539`; independent reviewer `a40ee933f720b7871` found no concrete defect; coordinator24/24 focused and102/102 total Python checks pass; host40361791894 independently verifies24/24 delivery cases |
 | B6-P Android adapter tests | new apps/PackageManagerSelectedPackageProbeTest.kt instrumentation source only | `aacbf800223703963`, isolated same-ID branch; owner `4248ace`, integrated `cd0b8ee`; three fixed methods `currentCompanionIsAvailable`, `missingPackageIsNotInstalled`, `headlessFixtureIsAvailable`; actual current-user PM, no shell/state mutation |
 | B6 runtime workflow | preview-runtime.yml and new scripts/tests/preview-preflight-workflow.test.mjs only | `a31d7ebb4a4475616`, isolated same-ID branch; owner `6c959d3`, integrated `2af62db`; old ten exact methods plus eight B6-U and three adapter methods retained; coordinator and owner58/58 gate/cleanup checks pass; no cleanup/SDK/gate weakening or dispatch |
 | B6 contract review | read-only frozen B6 seam + existing selection/worker semantics | `ad341250bea5e4835`, isolated same-ID branch; complete, no blocking concrete issue; implementation review pending |
@@ -51,8 +51,16 @@ because Compose emits a nonsynthetic static integer `$stable`. Original XML at
 emulator dispatch. Root exclusively owns the test-only correction in
 `SelectedCapturePreflightStateTest.kt`, excluding only that exact primitive static
 metadata field while retaining the five-field privacy assertion. Production code
-is unchanged. Require fresh pinned host, then separately gated runtime. Existing
-B5 remains intact.
+is unchanged. Independent corrective review found no issue. Fresh corrected
+`4ce72be` passes host40361791894 attempt1; independent original reports/log replay
+verifies406 JVM/49 XMLs/all31 new methods, nine clean lints, app/instrumentation
+compilation,46 CA receipts/all joins,24 delivery and58 preview gate/cleanup cases.
+Evidence `/tmp/b6-preflight-host-accepted.0mW7EW`; trusted
+`/tmp/audit-b6-preflight-host.py`; stable ignored audit SHA256
+`512c3b50a468dba0b73d0adc6e5d7b5182269bccbfad7b42fc63e71168d9c513`.
+Exact-source preview API26/37 matrix40363807230 is dispatched, not yet accepted;
+all21 named methods and owned cleanup must pass per API. Local Java/SDK remain
+absent. No production capture or desktop/USB acceptance. Existing B5 remains intact.
 
 ## Reference interception host checkpoint
 

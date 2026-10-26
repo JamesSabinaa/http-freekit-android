@@ -7,6 +7,23 @@ The original goal is active and incomplete.
 
 ## Current Linux resume position
 
+- B6/D-I host acceptance is complete at exact
+  `4ce72be6fb3906a6128359152a30488c9ec96c04`, run40361791894 attempt1. All three
+  jobs pass; independent original-artifact/log replay confirms406 JVM methods/
+  49 XMLs including all13 platform/all18 state methods, nine clean lints,
+  app/instrumentation compilation,46 clean-source CA receipts/all joins,24 delivery
+  Python cases,58 preview gate/cleanup,141 enrollment documentation,43 reference
+  Node and84 capture cases. Independent corrective review found no issue.
+  Original evidence `/tmp/b6-preflight-host-accepted.0mW7EW`; trusted replay
+  `/tmp/audit-b6-preflight-host.py`. Stable ignored audit
+  `dist/selected-app-preflight-host-audit.json` SHA256:
+  `512c3b50a468dba0b73d0adc6e5d7b5182269bccbfad7b42fc63e71168d9c513`.
+  Fresh API26/37 preview matrix40363807230 is dispatched at the exact host-accepted
+  source; it must run all21 named tests and owned cleanup on each. Runtime
+  acceptance remains pending. Coordinator remote branch stays at that exact
+  source while documentation/checked progress is promoted to main. No production
+  capture, future-package availability, desktop C5, physical USB or freeze claim.
+
 - Android implementation continues independently of the external desktop/USB
   blocker. Frozen [B6 selected-app preflight](selected-app-preflight.md) at main
   `c71df54` assigns exact-package/current-user platform checks to isolated
@@ -26,8 +43,8 @@ The original goal is active and incomplete.
   full host acceptance. Documentation/native jobs pass. Root owns only the JVM
   test correction excluding exactly that named primitive static compiler field,
   preserving the five-field assertion and all production bytes. Original failure
-  evidence is `/tmp/b6-preflight-host.4N5V0I`; require a fresh full pinned host gate,
-  not an unchanged-source retry or emulator dispatch. Three actual
+  evidence is `/tmp/b6-preflight-host.4N5V0I`; fresh corrected host is now accepted
+  as recorded above. This was not an unchanged-source retry. Three actual
   adapter methods (owner `4248ace`, integrated `cd0b8ee`) and strict exact21-method
   preview runtime gate (owner `6c959d3`, integrated `2af62db`) are committed.
   Coordinator documentation/workflow Node checks pass 166/166; root owns docs/board
