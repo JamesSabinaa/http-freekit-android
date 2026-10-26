@@ -34,6 +34,10 @@ jobs:
         run: python3 -m unittest discover -s scripts/tests -p 'test_keystore_results.py'
       - name: Test bounded preview emulator cleanup and exact preflight report gate
         run: node --test scripts/tests/preview-emulator-cleanup.test.mjs scripts/tests/preview-preflight-workflow.test.mjs
+      - name: Test bounded Keystore emulator cleanup
+        run: |
+          test -f scripts/tests/keystore-emulator-cleanup.test.mjs
+          node --test scripts/tests/keystore-emulator-cleanup.test.mjs
       - name: Validate draft protocol corpus and guard regressions
         run: |
           python3 -m unittest discover -s scripts/tests -p 'test_protocol_corpus.py'

@@ -15,9 +15,26 @@ The original goal is active and incomplete.
   packages are assigned via the work board. Main code is owner/model `4558923`
   integrated `fffd98e`, identity `a893faf` integrated `12a0629`, store `febe5bb`
   integrated `d944baf`. Independent frozen-contract and all main implementation
-  reviews found no concrete defect. Independent T tests are still authoring;
-  Java/SDK absent, no local Kotlin/build/JVM/lint/device claim. Fresh full pinned
-  host remains mandatory before checked code promotion.
+  reviews found no concrete defect. T owner `4184e1a` is integrated `26c2004`
+  (46 authored JVM methods; fresh independent static review found no concrete
+  defect). Android tests `eb6ef7c`/`b86a470` add three original-owned-key cases;
+  verifier `ad4e155`/`1d2dd18` requires all15/four suites, independently reviewed,
+  coordinator19/19 synthetic checks pass. Cleanup `d585032`/`a36fe7f` adds bounded
+  retained-PID stop/TERM/KILL/wait and finite receipt; coordinator83/83 combined
+  cleanup/gate checks pass, independent W review found no concrete defect. Java/SDK
+  absent, no local
+  Kotlin/build/JVM/lint/device claim. Fresh full pinned host remains mandatory
+  before checked code promotion; no B7 host/emulator dispatch yet. The combined
+  commit/push command was denied by the permission gate as Data Exfiltration before
+  execution. Local validation remains available; do not bypass the publication
+  denial or claim the remote coordinator contains B7. Hosted validation awaits
+  permitted publication.
+  A full Python run failed105/106 on D-I's immediate same-size timestamp assumption
+  (475/1000 bounded probe writes retained both timestamps). Root's test-only fix
+  forces observable mtime change while keeping inode/size;24/24 focused and106/106
+  total now pass. Disabling identity rechecks in memory makes the regression fail.
+  Production verifier unchanged; docs explicitly disclaim atomic snapshot/concurrent
+  writer guarantees. Independent D-I correction review found no concrete defect.
   No automatic legacy migration, research alias scan, renewal, wire promotion,
   authenticated approval claim or protocol freeze is authorized by this local seam.
 

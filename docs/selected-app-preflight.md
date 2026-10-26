@@ -121,8 +121,11 @@ matching expected source commit; the producer may export dirty builds, but this
 gate refuses them. This is validation of self-reported metadata, not source or
 signing attestation. Keep other current producer schema/values; null
 compatibleDesktopCommit stays unavailable.
-Use safe no-follow reads and before/after file identity checks. Tests use opaque
-bytes, not purported valid APKs. Success means bundle integrity only, not APK
+Use safe no-follow reads and before/after file identity checks. These are
+best-effort observations, not an atomic snapshot: concurrent same-size writes can
+retain identical timestamps and evade stat rechecks. Verify received files with
+no concurrent writers; subsequent changes invalidate the observation. Tests use
+opaque bytes, not purported valid APKs. Success means bundle integrity only, not APK
 signing, embedded manifest/version, provenance attestation, desktop compatibility,
 USB or device acceptance. Root alone integrates usage/CI; producer changes are
 not assigned in this package.

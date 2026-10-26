@@ -4,8 +4,14 @@ Status: main code is implemented locally after accepted [B6](selected-app-prefli
 not host/runtime validated. Model/codec owner `4558923` is integrated `fffd98e`;
 identity/validator owner `a893faf` is integrated `12a0629`; store owner `febe5bb` is
 integrated `d944baf`. Independent contract and all M/I/S implementation reviews found
-no concrete defect; independent test authoring is active. Local Java/SDK are
-absent: no compilation/JVM/lint/runtime claim.
+no concrete defect. Independent test owner `4184e1a` is integrated `26c2004`
+(46 JVM methods authored); Android owner `eb6ef7c` is integrated `b86a470`
+(three original-owned-key methods authored). Exact verifier `ad4e155` is integrated
+`1d2dd18`, independently reviewed, with coordinator19/19 synthetic checks passing.
+Bounded cleanup `d585032` is integrated `a36fe7f`; coordinator83/83 combined new
+Keystore/unchanged preview cleanup/gate tests pass. Independent T/W reviews found
+no concrete defect. No hosted B7 validation or emulator run has been dispatched. Local Java/SDK
+are absent: no compilation/JVM/lint/runtime claim.
 This is an opt-in core-security library increment, not app wiring,
 authenticated enrollment implementation, production wire integration or v1 freeze.
 [Protocol](protocol.md) remains canonical and draft. Existing generic credential

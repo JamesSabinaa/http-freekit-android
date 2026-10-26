@@ -13,6 +13,15 @@ Production pairing and capture in the main app remain pending. Much of the
 authentication, transport and capture foundation exists as executable libraries
 and isolated research tests; those tests do not establish a finished capture app.
 
+B7 opt-in approval persistence is composed locally: M/I/S,46 new JVM methods,
+three real-owned-key instrumentation methods, strict15-case verifier and bounded
+Keystore cleanup. Independent main/T/A/V/W reviews found no concrete defect.
+Local Python106/106 and combined cleanup/gate83/83 pass, after
+preserving and correcting the delivery test's timestamp assumption. Production
+verifier is unchanged; file-stat rechecks are best-effort, not an atomic snapshot.
+Fresh pinned host validation must precede an exact-source API26/37 Keystore matrix
+and checked main promotion. No B7 JVM/Android execution is claimed yet.
+
 | Area | Verified progress | Remaining work |
 | --- | --- | --- |
 | App interface | Installed-app selector, certificate-help and B6 real selected-package preflight accepted on API26/37; all21 exact methods/cleanup at `0605472`/matrix40367969116 | Connect the interface to real pairing, capture, recovery and diagnostics |
@@ -126,8 +135,8 @@ Approval-bound combined credential persistence is the next verified foundation
 gap, now assigned as [B7 opt-in local library](approved-credential-persistence.md)
 with unique model/identity/store/test/review ownership. Model `fffd98e`, identity
 `12a0629` and store `d944baf` are locally composed; independent main implementation
-reviews found no concrete defect. Independent tests are authoring; fresh full
-pinned host is pending. This does not authenticate arbitrary caller-provided approval,
+reviews found no concrete defect. Independent tests are authored and reviewed;
+fresh full pinned host is pending. This does not authenticate arbitrary caller-provided approval,
 freeze production v1 or reuse research storage. Existing service/native lifecycle
 is reusable, not duplicated.
 

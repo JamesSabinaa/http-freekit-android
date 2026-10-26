@@ -75,16 +75,34 @@ shared-key computer Forget effects and all public/internal seams are explicit.
 | B7-M model/codec | NEW AuthenticatedEnrollmentApproval.kt and ApprovedEnrolledCredentialRecord.kt only | `a972bddc9886c5f3e`, isolated same-ID worktree/branch; owner `4558923`, integrated `fffd98e`; independent M/S reviewer `ae0f85115127f5681` found no concrete defect; Kotlin/build UNRUN locally |
 | B7-I identity/validator/backend | existing AndroidDeviceIdentityStore.kt, AndroidEnrolledCredentialStore.kt; NEW EnrolledCredentialValidation.kt only | `a75b25bc7fbc37cd7`, isolated same-ID worktree/branch; owner `a893faf`, integrated `12a0629`; independent exact-commit review `ae37b1f1a6303823c` found no concrete defect; host/Android execution pending |
 | B7-S opt-in store | NEW AndroidApprovedEnrolledCredentialStore.kt only | `a2b3aa67ecaf7c3da`, isolated same-ID worktree/branch; owner `febe5bb`, integrated `d944baf`; M/I dependencies composed; independent M/S review found no concrete defect; host pending |
-| B7-T independent JVM tests | NEW three named tests and optional ApprovedCredentialTestFixture.kt only | `afbb69d18d48c03bd`, isolated same-ID worktree/branch; authoring from e4087c2; depends frozen M/I/S interfaces; no shared/existing fixture edits |
-| B7-A original-alias Android tests | NEW core-security androidTest AndroidOriginalDeviceEvidenceTest.kt only | `aeb629e931ce0a774`, isolated same-ID worktree/branch; implementing from ef3b2b5; three frozen methods, real owned keys, no scans/shell/network |
-| B7-V exact runtime verifier | scripts/verify-keystore-results.py and scripts/tests/test_keystore_results.py only | `a201e8a8c75e4d6f7`, isolated same-ID worktree/branch; implementing from ef3b2b5; old twelve plus new three exact methods, preserve strict gates; no workflow/dispatch |
-| B7-W bounded runtime cleanup | keystore-runtime.yml and NEW scripts/tests/keystore-emulator-cleanup.test.mjs only | unique isolated workflow owner assigned next; source/API-bound finite cleanup receipt, actual retained-PID joins, strict existing gates; no dispatch |
+| B7-T independent JVM tests | NEW three named tests and ApprovedCredentialTestFixture.kt only | `afbb69d18d48c03bd`, isolated same-ID worktree/branch; owner `4184e1a`, integrated `26c2004`;46 authored JVM methods, not executed; fresh isolated reviewer `a123e738a4f44b96c` found no concrete defect (prior review blocked before reading removed worktree) |
+| B7-A original-alias Android tests | NEW core-security androidTest AndroidOriginalDeviceEvidenceTest.kt only | `aeb629e931ce0a774`, isolated same-ID worktree/branch; owner `eb6ef7c`, integrated `b86a470`; three real owned-key methods authored, runtime UNRUN; independent A/V review found no concrete defect |
+| B7-V exact runtime verifier | scripts/verify-keystore-results.py and scripts/tests/test_keystore_results.py only | `a201e8a8c75e4d6f7`, isolated same-ID worktree/branch; owner `ad4e155`, integrated `1d2dd18`; all fifteen exact methods/four suites required; coordinator19/19 focused synthetic tests pass; independent A/V review found no concrete defect |
+| B7-W bounded runtime cleanup | keystore-runtime.yml and NEW scripts/tests/keystore-emulator-cleanup.test.mjs only | `a0a661bbeb1925bc3`, isolated same-ID worktree/branch; owner `d585032`, integrated `a36fe7f`;25 new substitute-child tests, coordinator83/83 combined Keystore/preview cleanup/gate checks pass; independent fresh reviewer `a5106476be1592460` found no concrete defect after prior reviewer was blocked before reading targets; no emulator claim |
 | B7-R contract review | read-only profile and existing security/research boundaries | `ae37b1f1a6303823c`, isolated same-ID worktree/branch; frozen e4087c2 contract review complete, no blocking concrete issue; independent I implementation review also complete |
 
 Root alone owns documentation, CI/build integration, reviews, artifact/evidence
 replay and checked main promotion. Require fresh pinned full host and unchanged
 legacy regression gates. Local Java/SDK absent; no Android evidence-hook runtime
 claim without separately gated device validation.
+
+Root also owns the narrow D-I same-size race-test correction in
+`scripts/tests/test_debug_delivery.py` plus its documentation, on
+`worktree-coord-a23-resume`. Initial full Python run failed105/106: an immediate
+same-size rewrite retained both timestamps; a bounded probe reproduced475/1000.
+The test now forces an observable mtime change while retaining device/inode/size;
+production verifier is unchanged. Coordinator24/24 focused and106/106 total Python
+checks pass. An in-memory mutation disabling `Inputs.check` makes this regression
+fail its rejection assertion. Stat rechecks are explicitly best-effort, not an
+atomic snapshot or protection from all concurrent writers. Independent reviewer
+`aa60934d4759305c0` found no concrete defect. Additional documentation/enrollment
+Node checks pass150/150;300 local links/59 Markdown files pass. Root's CI change
+requires the new cleanup test;
+fresh pinned host and exact-source original-alias API26/37 runtime remain pending.
+The combined local commit/push command was denied before execution as Data
+Exfiltration. Root preserves work locally; no publication retry/bypass or hosted
+dispatch. Remote coordinator remains at accepted B6 source until publication is
+permitted; B7 must not be represented as hosted or promoted.
 
 ## B6 runtime catalog scroll investigation
 

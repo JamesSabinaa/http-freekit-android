@@ -857,8 +857,15 @@ Independent artifact audit confirmed each full class/method identity once, three
 ## Approval-bound credential library (B7)
 
 The [opt-in local persistence package](approved-credential-persistence.md) main
-code is locally composed and independently reviewed, not compiled/accepted yet;
-independent tests are authoring. Existing host CI already discovers new
+code is locally composed and independently reviewed, not compiled/accepted yet.
+All46 independent JVM methods are authored and reviewed. Three original-owned-key
+Android methods are authored; the exact verifier now requires fifteen methods/four
+suites, retaining the old twelve. Coordinator19/19 verifier regressions and83/83
+combined Keystore/preview cleanup/gate checks pass. The new Keystore cleanup emits
+bounded source/API-bound actual stop/termination/wait evidence and preserves
+runtime failures; substitute children are not emulator proof. Fresh full pinned
+host is pending, then a same-source API26/37 Keystore matrix with independent
+original XML/cleanup replay. Existing host CI already discovers new
 core-security JVM tests and runs `:core-security:testDebugUnitTest`,
 `:core-security:assembleDebugAndroidTest` and `:core-security:lintDebug`; retain all
 existing credential/TLS/key-manager regressions. Require independent source review
@@ -1138,7 +1145,14 @@ python3 -I scripts/verify-debug-delivery.py --source <expected-40-hex-commit>
 Defaults read the three stable debug dist files; `--apk`, `--checksum` and
 `--metadata` accept explicit bounded paths. The gate strictly checks the producer
 schema, self-reported clean source, exact filename/checksum/metadata agreement and
-actual streamed APK byte hash, including safe no-follow/race checks. Windows or
+actual streamed APK byte hash, including safe no-follow/identity rechecks. These
+are best-effort observations, not an atomic snapshot or a guarantee against
+concurrent writers: immediate same-size rewrites can retain identical timestamps.
+Verify received files with no concurrent writers; later changes invalidate the
+observation. The original same-size race test exposed this on the local filesystem
+(475/1000 immediate writes retained both timestamps); its test-only repair forces
+an observable mtime change without sleeps/retries, keeping inode/size fixed and
+the actual rejection assertion. Windows or
 other hosts lacking the required descriptor operations fail closed. The producer
 can export dirty builds, but this receiving policy refuses them. Tiny opaque test
 fixtures verify bundle handling only; no real APK has yet been verified by this

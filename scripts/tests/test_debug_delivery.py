@@ -317,7 +317,15 @@ class DeliveryTest(unittest.TestCase):
         real_check = V.Inputs.check
 
         def change(inputs):
-            self.apk.write_bytes(b'z' * self.apk.stat().st_size)
+            before = self.apk.stat()
+            self.apk.write_bytes(b'z' * before.st_size)
+            # Immediate writes can share both timestamps on coarse filesystems.
+            # Make this an observable identity change, without sleeps or retries.
+            os.utime(self.apk, ns=(before.st_atime_ns, before.st_mtime_ns + 2_000_000_000))
+            after = self.apk.stat()
+            self.assertEqual((before.st_dev, before.st_ino, before.st_size),
+                             (after.st_dev, after.st_ino, after.st_size))
+            self.assertNotEqual(before.st_mtime_ns, after.st_mtime_ns)
             real_check(inputs)
 
         with mock.patch.object(V.Inputs, 'check', change):
