@@ -39,6 +39,7 @@ tasks.withType<Test>().configureEach {
     if (name != "testDesktopIntegration") exclude("**/EnrolledCaptureDesktopTest*.class")
     if (name != "testDesktopHttpsIntegration") exclude("**/EnrolledCaptureHttpsDesktopTest*.class")
     if (name != "testDesktopPolicyIntegration") exclude("**/EnrolledCapturePolicyDesktopTest*.class")
+    if (name != "testReferenceIntegration") exclude("**/EnrolledCaptureReferenceTest*.class")
 }
 
 val verifyDesktopHttpsIntegrationInput = tasks.register("verifyDesktopHttpsIntegrationInput") {
@@ -89,4 +90,21 @@ tasks.register<Test>("testDesktopPolicyIntegration") {
     outputs.doNotCacheIf("Requires fresh policy and external desktop execution") { true }
     systemProperty("com.sun.net.ssl.requireCloseNotify", "true")
     filter { includeTestsMatching("com.httpfreekit.capture.transport.EnrolledCapturePolicyDesktopTest") }
+}
+
+tasks.register<Test>("testReferenceIntegration") {
+    val unit = tasks.named<Test>("testDebugUnitTest").get()
+    dependsOn(unit.testClassesDirs, unit.classpath)
+    testClassesDirs = unit.testClassesDirs
+    classpath = unit.classpath
+    javaLauncher.set(unit.javaLauncher)
+    workingDir = rootProject.projectDir
+    useJUnit()
+    outputs.upToDateWhen { false }
+    outputs.doNotCacheIf("Requires fresh reference gateway and actual TLS execution") { true }
+    systemProperty("com.sun.net.ssl.requireCloseNotify", "true")
+    filter {
+        includeTestsMatching("com.httpfreekit.capture.transport.EnrolledCaptureReferenceTest")
+        isFailOnNoMatchingTests = true
+    }
 }

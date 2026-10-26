@@ -138,6 +138,7 @@ jobs:
           tools/transport-spike/reference-interception-assets.test.mjs
           tools/transport-spike/reference-interception-backend.test.mjs
           tools/transport-spike/reference-interception-enrollment.test.mjs
+          tools/transport-spike/reference-interception-peer.test.mjs
       - name: Test the authenticated draft-stream peer and owned cleanup
         run: node --test tools/transport-spike/companion-stream-peer*.test.mjs
       - name: Test finite capture receivers, execution gates and owned cleanup
@@ -168,7 +169,7 @@ jobs:
           :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug
           :transport-interop:testDebugUnitTest :transport-interop:assembleDebugAndroidTest :transport-interop:lintDebug
           :core-capture:testDebugUnitTest :core-capture:lintDebug
-          :capture-transport-research:testDebugUnitTest :capture-transport-research:assembleDebug :capture-transport-research:lintDebug
+          :capture-transport-research:testDebugUnitTest :capture-transport-research:testReferenceIntegration :capture-transport-research:assembleDebug :capture-transport-research:lintDebug
           :capture-runtime:testDebugUnitTest :capture-runtime:assembleDebug :capture-runtime:assembleDebugAndroidTest :capture-runtime:lintDebug
           :capture-traffic:testDebugUnitTest :capture-traffic:assembleDebug :capture-traffic:lintDebug
           :installed-app-fixture:assembleDebug :installed-app-fixture:assembleRelease
@@ -225,6 +226,7 @@ jobs:
             core-capture/build/reports/lint-results-debug.*
             tools/capture-spike/transport/build/reports/tests/
             tools/capture-spike/transport/build/test-results/testDebugUnitTest/
+            tools/capture-spike/transport/build/test-results/testReferenceIntegration/
             tools/capture-spike/transport/build/reports/lint-results-debug.*
             tools/capture-spike/runtime/build/reports/lint-results-debug.*
             tools/capture-spike/runtime/build/reports/tests/

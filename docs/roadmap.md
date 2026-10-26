@@ -116,7 +116,16 @@ New checkpoint CI must be inspected before claiming hosted validation of later c
    tests/one root-only filesystem skip (separately passed locally), 345 JVM
    methods, 46 CA receipts and nine clean lint XMLs. The Node-only host checkpoint
    is accepted. The distinct [Kotlin factory composition](reference-kotlin-interception-research.md)
-   is assigned in two isolated new-file packages, not runtime accepted.
+   has committed Node peer `5f9c6b4` (integrated `a49bba5`) and six-case Kotlin
+   package `bffd873` (integrated `dc7dbc0`). Independent Node peer review found
+   no concrete defect; independent Kotlin exact-commit review also found no
+   concrete defect. Local guards
+   pass 14/14, reference assets/backend/contract regressions 44/44 and peer
+   configuration/CLI checks 15/15. Compilation and positive composition remain
+   unrun locally (no Java/SDK; Node22 lacks required SQLite defenses). Fresh
+   pinned Node24/JDK17 CI must precede promotion of these new packages to main.
+   Main's existing `fb4dd7a` replay40314153472 passes all three jobs, observed
+   through terminal metadata; its original artifacts were not re-audited.
    No control is weakened.
    It is not the missing desktop backend, C5 or USB acceptance.
    Obtain and verify the exact already-authorized reviewed desktop source

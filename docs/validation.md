@@ -197,6 +197,33 @@ distinct actual bodies without printing hashes. The combined replay after this
 last correction again passes 50/50 locally, zero failures/cancellations/skips.
 No shared wire contract changes.
 
+## Kotlin factory/reference host research
+
+The [next private profile](reference-kotlin-interception-research.md) scopes a
+separate real Kotlin factory/Node reference composition, not Android or desktop
+C5. Node peer owner `5f9c6b4` is integrated as `a49bba5`; its actual positive
+local run fails during gateway startup on Node22, which lacks both required
+SQLite defenses. No positive test is skipped and no defense is bypassed.
+Owner selected configuration/CLI bounds checks pass 15/15; root independently
+replays those exact 15 checks with zero failures/cancellations/skips. Existing
+reference regressions pass locally, but that is not peer enrollment acceptance.
+
+Kotlin owner `bffd873`, integrated `dc7dbc0`, supplies the six-case software-key
+CSR/factory/strict-JSSE HTTP/H1 HTTPS/refusal/revocation/Stop package. Independent
+exact-commit review found no concrete defect; actual compilation/runtime remain
+pending. Local Java/JDK/SDK is absent. Root's
+fresh noncached `testReferenceIntegration` task preserves existing desktop
+exclusions and pins, enables strict JSSE close_notify and fails on no matching
+tests. The five-suite Node workflow, exact Gradle task and original XML retention
+are guarded by 14 passing combined local contract/doc tests. The local reference
+assets/backend/contract replay passes 44/44 with zero failures/cancellations/skips.
+This checkpoint is branch-only until actual full host validation passes.
+A fresh exact-source
+pinned Node24/JDK17 run must prove positive peer traffic, all six JVM methods,
+actual COMPLETE before Stop and every cleanup join. Scoped ExperimentalWarning
+suppression applies only to the private Node child, not TLS errors, SQLite API
+failures or any validation check.
+
 ## Authenticated public interception CA research
 
 The [A23 contract](protocol-interception-ca.md) is checked by the compiled shared

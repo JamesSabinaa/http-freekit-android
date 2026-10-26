@@ -24,15 +24,41 @@ test('actual origin response binds bounded bytes and returns independent buffers
   for (const bad of [null, 'body', {}, Buffer.alloc(4097)]) assert.throws(() => referenceInterceptionResponse(bad), ReferenceInterceptionError);
 });
 
-test('host workflow requires all four reference suites without a desktop fallback or suppressed failure', () => {
+test('host workflow requires all five reference suites without a desktop fallback or suppressed failure', () => {
   const workflow = fs.readFileSync(new URL('../../.github/workflows/android.yml', import.meta.url), 'utf8');
   const block = /      - name: Test fixed reference HTTP and HTTPS interception composition\n([\s\S]*?)(?=      - name:)/.exec(workflow)?.[1];
   assert.ok(block);
   const command = block.replace(/\s+/g, ' ').trim();
   assert.equal(command, 'run: >- node --test tools/transport-spike/reference-interception-contract.test.mjs ' +
     'tools/transport-spike/reference-interception-assets.test.mjs tools/transport-spike/reference-interception-backend.test.mjs ' +
-    'tools/transport-spike/reference-interception-enrollment.test.mjs');
+    'tools/transport-spike/reference-interception-enrollment.test.mjs tools/transport-spike/reference-interception-peer.test.mjs');
   assert.doesNotMatch(block, /continue-on-error|desktop|\|\||--test-skip|--test-name-pattern/);
+});
+
+test('reference JVM task is isolated, fresh and strict without changing desktop prerequisites', () => {
+  const build = fs.readFileSync(new URL('../capture-spike/transport/build.gradle.kts', import.meta.url), 'utf8');
+  const task = /tasks\.register<Test>\("testReferenceIntegration"\) \{([\s\S]*)\}\s*$/.exec(build)?.[1];
+  assert.ok(task);
+  for (const line of [
+    'dependsOn(unit.testClassesDirs, unit.classpath)',
+    'testClassesDirs = unit.testClassesDirs', 'classpath = unit.classpath',
+    'javaLauncher.set(unit.javaLauncher)', 'workingDir = rootProject.projectDir', 'useJUnit()',
+    'outputs.upToDateWhen { false }',
+    'outputs.doNotCacheIf("Requires fresh reference gateway and actual TLS execution") { true }',
+    'systemProperty("com.sun.net.ssl.requireCloseNotify", "true")',
+    'includeTestsMatching("com.httpfreekit.capture.transport.EnrolledCaptureReferenceTest")',
+    'isFailOnNoMatchingTests = true',
+  ]) assert.ok(task.includes(line));
+  assert.doesNotMatch(task, /verifyDesktop|FREEKIT_DESKTOP|ignoreFailures|onlyIf/);
+  for (const [name, testClass] of [['testDesktopIntegration', 'EnrolledCaptureDesktopTest'],
+    ['testDesktopHttpsIntegration', 'EnrolledCaptureHttpsDesktopTest'],
+    ['testDesktopPolicyIntegration', 'EnrolledCapturePolicyDesktopTest'],
+    ['testReferenceIntegration', 'EnrolledCaptureReferenceTest']]) {
+    assert.ok(build.includes(`if (name != "${name}") exclude("**/${testClass}*.class")`));
+  }
+  const workflow = fs.readFileSync(new URL('../../.github/workflows/android.yml', import.meta.url), 'utf8');
+  assert.ok(workflow.includes(':capture-transport-research:testReferenceIntegration'));
+  assert.ok(workflow.includes('tools/capture-spike/transport/build/test-results/testReferenceIntegration/'));
 });
 
 test('finite errors never serialize supplied provider or path details or invent a join', () => {
