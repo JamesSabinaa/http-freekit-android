@@ -7,7 +7,20 @@ The original goal is active and incomplete.
 
 ## Current Linux resume position
 
-- The current Android public `main` checkpoint is `751e35a`.
+- Android reference host preparation is now accepted at exact
+  `d25dc53459e8b88aa36007f21868750b569270c8`, host40336789126 attempt2.
+  Independent original-report/log audit verifies375 JVM methods/47 XMLs,
+  all22 new traffic and two shared-decoder methods,40 new reference Node/84
+  finite capture cases,46 clean-source CA receipts/all joins and nine clean
+  lint XMLs. New Android methods/APKs compile; runtime remains unrun.
+  Original accepted evidence: `/tmp/reference-tun-host-accepted.fF0F5a`.
+  Safe coordinator `dist/reference-tun-host-audit.json` SHA256:
+  `e739d02e8c305ba706a75652de45461fb14b85436fa7f428b8da005910216f22`.
+  Attempt1's SDK archive failure and every earlier failure stay failed.
+  Publish this checked preparation/evidence to main, then dispatch the distinct
+  fresh API26/37 two-method reference runtime and independently replay all four
+  original files per API. No Android/TUN/desktop C5/USB acceptance is inferred.
+- The previous Android public `main` checkpoint is `751e35a`.
   The latest accepted Kotlin/reference host implementation is exact source
   `65cd93f9ff11eabd208b47af48c29f345e73853b`, run40316060504. All three jobs
   pass; independent original-artifact/log audit verifies all six fresh strict-JSSE
@@ -69,7 +82,11 @@ The original goal is active and incomplete.
   `UseSdkSuppress` on the JVM-only test's `RequiresApi`. Original evidence:
   `/tmp/reference-tun-host-stable-failure.8oVfDR`. Root owns removal of that single
   test annotation; no SdkSuppress/skip/assertion/production change. Fresh full
-  host validation remains next.
+  host validation remains next. `d25dc53`/host40336789126 attempt1 then stops
+  before tests on NDK archive extraction (`Error reading Zip content from a
+  SeekableByteChannel`); original evidence `/tmp/reference-tun-host-jvm-failure.kvYm99`.
+  One recorded fresh-runner failed-job retry is attempt2 at unchanged exact source,
+  in progress. No SDK/integrity/workflow/assertion change; attempt1 stays failed.
   No lint suppression, weaker SDK guard, blind rerun or Android dispatch.
   Independent workflow review found no concrete defect. Main remains unchanged.
   Main replay40318725140 at `751e35a` is terminal success, metadata observed only;

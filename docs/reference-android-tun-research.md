@@ -1,6 +1,7 @@
 # Android reference selected-UID HTTP/H1 HTTPS research
 
-Status: preparation only; no new Android execution or capture acceptance.
+Status: host preparation accepted at `d25dc53`/run40336789126 attempt2;
+Android runtime and capture acceptance remain unrun.
 Prerequisite [Kotlin host checkpoint](reference-kotlin-interception-research.md)
 is accepted at `65cd93f`/run40316060504. This distinct checkpoint uses the owned
 reference backend, NOT the missing reviewed desktop implementation. Existing
@@ -222,3 +223,30 @@ No subagent is assigned toolchain installs, CI/device dispatch or publication.
    corrections, not blind reruns, higher deadlines or weakened EOF assertions.
 4. No host/emulator result is physical USB, production app capture, C5/desktop,
    user/system CA installation or protocol v1 freeze. Those remain later gates.
+
+## Accepted host preparation evidence
+
+Exact source `d25dc53459e8b88aa36007f21868750b569270c8` passes all three jobs
+in [host40336789126 attempt2](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40336789126/attempts/2).
+Independent original-report/log replay verifies375 unique passing JVM methods
+in47 XMLs, including22 reference traffic methods and two new shared-decoder
+methods; all40 new reference Node cases and84 finite capture cases pass without
+failure/cancellation/skip. All46 clean-source CA receipts/peer joins and nine
+zero-issue lint XMLs pass. Both new instrumentation methods/APKs compile; the
+six fresh strict-JSSE reference factory cases also pass. Observed runtimes are
+Node24.22.1, bundled OpenSSL3.5.9 and JDK17.0.20.1+1.
+
+Attempt1 stopped before tests on NDK archive extraction; its original failure
+remains retained. One recorded fresh-runner retry used unchanged source/checks.
+Earlier clock/annotation/dependency/test-annotation failures also remain failed.
+The finite audit and checksum are exported directly in ignored
+`dist/reference-tun-host-audit.json`/`.sha256`; audit SHA256 is
+`e739d02e8c305ba706a75652de45461fb14b85436fa7f428b8da005910216f22`.
+It binds exact source/run/attempt and original log/metadata/report-manifest hashes,
+without identity, keys, CA values or traffic digests. Original accepted evidence
+is retained at `/tmp/reference-tun-host-accepted.fF0F5a` outside trusted scripts.
+
+This accepts host preparation only. Next is one separately named fresh API26/37
+matrix with both exact ordered methods and independent four-file replay per API.
+No Android TUN, Android TLS-provider closure, target-app trust, desktop C5,
+physical USB, production integration or v1 freeze is inferred from this host pass.

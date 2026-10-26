@@ -319,6 +319,25 @@ only that test annotation; it does not add `SdkSuppress`, a skip, a lint suppres
 or an assertion change. Production `RequiresApi` annotations/real SDK guards and
 all test bodies stay intact. Local Java remains absent; require fresh full host.
 
+Source `d25dc53`/host40336789126 attempt1 stops before tests during NDK setup:
+`Error reading Zip content from a SeekableByteChannel`. Documentation/native
+pass, but no Android-job code check starts. Original log/metadata/attempt1 receipt
+are retained in `/tmp/reference-tun-host-jvm-failure.kvYm99`. One explicitly
+recorded failed-job retry on a fresh runner is attempt2 at the exact unchanged
+source; no SDK version, integrity check, workflow or assertion is changed.
+Attempt1 remains failed. Attempt2 subsequently passes all three jobs at exact
+`d25dc53459e8b88aa36007f21868750b569270c8`. Independent original-report/log
+replay verifies375 unique passing JVM methods/47 XMLs (all22 new traffic and two
+shared-decoder methods),40 new reference Node/84 finite capture cases,46
+clean-source CA receipts/all peer joins and nine clean lint XMLs. Both new
+instrumentation methods/APKs compile and six fresh reference JVM methods pass.
+Node24.22.1, bundled OpenSSL3.5.9 and JDK17.0.20.1+1 are observed.
+The [accepted preparation profile](reference-android-tun-research.md#accepted-host-preparation-evidence)
+records original evidence and safe `dist/reference-tun-host-audit.json` checksum
+`e739d02e8c305ba706a75652de45461fb14b85436fa7f428b8da005910216f22`.
+This accepts host preparation, not Android TUN/TLS-provider behavior or USB.
+Next is the distinct fresh API26/37 runtime; preserve every earlier failed run.
+
 ## Authenticated public interception CA research
 
 The [A23 contract](protocol-interception-ca.md) is checked by the compiled shared

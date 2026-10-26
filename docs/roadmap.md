@@ -17,7 +17,7 @@ and isolated research tests; those tests do not establish a finished capture app
 | --- | --- | --- |
 | App interface | Installed-app discovery, selection, keyboard/rotation and certificate-help checks on API 26/37 | Connect the interface to real pairing, capture, recovery and diagnostics |
 | Identity and enrollment | Keystore identity, scoped TLS, approval, saved credentials, restart/recovery, revocation and expiry research | Production credential/approval binding and remaining v1 decisions |
-| Capture and proxy transport | Native packet checks and local policy/HTTP/HTTPS H1/Upgrade composition | Actual enrolled selected-UID TUN execution, production integration and physical USB |
+| Capture and proxy transport | `d25dc53`/host40336789126 attempt2: reference Android preparation compiles,375 JVM/40 new Node/46 CA receipts/nine clean lints independently audited | Actual enrolled selected-UID TUN execution, production integration and physical USB |
 | Public interception CA | `fa2d845`: 46/46 source-bound CA receipts, 320 JVM host methods, nine clean lint reports and saved-credential Android retrieval on API26/37 | CA installation, target-app trust and production integration remain open |
 | Android CA runtime driver | Fresh matrix 40222004218 passes both APIs; independent original four-file replay verifies three ordered methods and all cleanup on each | A23 runtime research acceptance complete; preserve scope limits and advance to enrolled selected-app capture |
 | Reference interception | `65cd93f`/host40316060504: six actual factory/strict-JSSE cases and 23 private Node peer cases pass; audited 351 JVM/46 CA receipts/nine clean lints; earlier Node-only checkpoint retained | Distinct Android selected-UID execution next; not C5/desktop/USB |
@@ -152,7 +152,14 @@ New checkpoint CI must be inspected before claiming hosted validation of later c
    without suppression. `3827a5f`/host40334229107 verifies375 passing JVM methods,
    but fails `UseSdkSuppress` on the JVM-only test annotation; root removes only
    that unnecessary annotation, without skip/assertion/production changes.
-   Fresh full host gate remains required. Historical runs remain failed. No Android acceptance is inferred.
+   Fresh `d25dc53`/host40336789126 attempt1 stops before tests on NDK ZIP
+   extraction; one recorded failed-job retry on a fresh runner is attempt2 at
+   unchanged source. **Attempt2 passes all three jobs.** Independent original
+   evidence verifies375 JVM methods/47 XMLs,22 new traffic/two decoder methods,
+   40 new reference Node/84 capture cases,46 CA receipts/all joins and nine clean
+   lint XMLs. Host preparation is accepted at exact `d25dc53`; publish checked
+   preparation to main and run the distinct fresh API26/37 two-method proof.
+   Historical runs/attempt1 remain failed. No Android acceptance is inferred.
    No control is weakened.
    It is not the missing desktop backend, C5 or USB acceptance.
    Obtain and verify the exact already-authorized reviewed desktop source

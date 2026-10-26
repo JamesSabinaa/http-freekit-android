@@ -138,12 +138,23 @@ fast-forward to private profile `e8fbcbf`. No old C5/worker/report changes.
 | Workflow-R integration review | read-only exact `5f2207f` new runtime workflow/guard and additive host wiring | `ad465d088d20fb835`, branch `worktree-agent-ad465d088d20fb835`; complete, no concrete defect; no emulator dispatch; coordinator retains all source/evidence edits |
 | C1 clock regression follow-up | only `tools/capture-spike/capture-workflow.test.mjs` | `aa2077817c508b4a5`, branch `fix/capture-shared-deadline-test`; exact failed-source test/workflow blob parity verified after rebasing stale local main onto `751e35a`; original assertion reproduced red (`1 !== 124`) on forced deadline exhaustion before read; correction `325ef68`, integrated `673b119`, separates no-read exit1 from admitted-read timeout124; focused2/2 and all26 workflow cases pass, precommit full82/84 retains two unchanged CLI dirty-source refusals, clean same-command full84/84 passes; no production deadline weakening or blind retry |
 | Deadline-R review | read-only exact `673b119` test correction and production clock context | `a6ab624181541d344`, branch `worktree-agent-a6ab624181541d344`; complete, no concrete finding in exact `673b119`; static review only, no duplicate full-suite execution or source edits |
-| T-R API annotation follow-up | original Trust/Traffic main/test files authorized; selected fix only Trust + two focused tests; root owns build/catalog | original owner `a9570b11e8979ca23` resumed on its isolated branch after host40328901621 at `6e1a68c` fails two `UseRequiresApi` errors at lines78/81; retained partial evidence independently verifies374 JVM methods/47 XMLs,21 new traffic methods and46 CA receipts/all joins; seven retained lint XMLs include two errors, not acceptance; real Build+retained sdk guards/RequiresApi bridge and direct JVM ALPN coverage committed `63f134f`, integrated `ddd5a7f`; root source review found no concrete defect; root compileOnly/testCompileOnly pin1.9.1 fails `GradleDependency` earlier in app lint at `37ba80e`/host40332128274; root updates pin to stable1.11.0; `3827a5f`/host40334229107 verifies375 JVM passes but fails sole retained `UseSdkSuppress`; root exclusively removes the single unnecessary RequiresApi from JVM-only Test (no skip, suppression, assertion or production change); fresh full pinned host gate required |
+| T-R API annotation follow-up | original Trust/Traffic main/test files authorized; selected fix only Trust + two focused tests; root owns build/catalog | original owner `a9570b11e8979ca23` resumed on its isolated branch after host40328901621 at `6e1a68c` fails two `UseRequiresApi` errors at lines78/81; retained partial evidence independently verifies374 JVM methods/47 XMLs,21 new traffic methods and46 CA receipts/all joins; seven retained lint XMLs include two errors, not acceptance; real Build+retained sdk guards/RequiresApi bridge and direct JVM ALPN coverage committed `63f134f`, integrated `ddd5a7f`; root source review found no concrete defect; root compileOnly/testCompileOnly pin1.9.1 fails `GradleDependency` earlier in app lint at `37ba80e`/host40332128274; root updates pin to stable1.11.0; `3827a5f`/host40334229107 verifies375 JVM passes but fails sole retained `UseSdkSuppress`; root exclusively removes the single unnecessary RequiresApi from JVM-only Test as `d25dc53` (no skip, suppression, assertion or production change); host40336789126 attempt1 stops before tests on NDK ZIP extraction; original evidence retained, one recorded fresh-runner failed-job retry attempt2 at unchanged source in progress; full host gate required |
+
+One recorded fresh-runner retry, host40336789126 attempt2 at exact `d25dc53`,
+now passes all three jobs. Independent original-report/log replay verifies375
+unique JVM methods/47 XMLs, all22 traffic/two new decoder methods,40 new reference
+Node/84 capture cases,46 clean-source CA receipts/all joins and nine clean lint
+XMLs. New instrumentation/APKs compile; host preparation accepted. Safe audit
+SHA256 `e739d02e8c305ba706a75652de45461fb14b85436fa7f428b8da005910216f22`;
+original accepted evidence `/tmp/reference-tun-host-accepted.fF0F5a`.
+Attempt1 and every earlier failed source remain failed. Root owns checked main
+promotion and then one distinct fresh API26/37 reference runtime; no Android,
+physical USB, desktop C5 or production acceptance is inferred.
 
 Each uses its own branch/worktree; no subagent toolchain installation,
 publication, CI/device dispatch or changes to another package. Current source
-contains the new research implementation but no new Android compilation or runtime evidence. Meaningful
-pinned host compilation/tests/lint and review precede any fresh API26/37 matrix.
+contains the new research implementation and accepted host compilation, not
+Android runtime evidence. The checked host gate must precede the fresh matrix.
 
 ## Current independent capture package
 
