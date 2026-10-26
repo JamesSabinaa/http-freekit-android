@@ -181,7 +181,12 @@ not full host acceptance. Original evidence:
 `scripts/tests/enrollment-emulator-clock.test.mjs` for deterministic root/unroot
 shared-deadline path regressions, preserving production clock bytes/read admission/
 real timeout and exact assertions. No blanket1/124, skipped checks, production edits
-or blind retry. Root owns evidence/integration and independent review assignment.
+or blind retry. Owner `6dcf765`, integrated `38409e5`, reproduces both old path
+assertions red and separates exact no-read1 from admitted-read real timeout124.
+Owner clock29/29 and full Node documentation162/162 pass; coordinator focused4/4
+and reference finite25/25 pass. Isolated read-only reviewer `a108c4e4931c4593f`,
+branch `worktree-agent-a108c4e4931c4593f`, checks exact one-file correction;
+fresh full pinned host validation remains next. Root owns evidence/integration.
 Root retains all profile/board/integration and dispatch; no report-schema, gate,
 timeout or shared-helper changes assigned.
 Input/ACK absence observations are false after HTTP, but the underlying failed

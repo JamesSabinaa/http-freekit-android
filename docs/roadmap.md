@@ -173,8 +173,11 @@ New checkpoint CI must be inspected before claiming hosted validation of later c
    host40345446373 at exact `ca0b3cc` fails existing enrollment unroot clock test
    (`1 !== 124`,29.05s); documentation134/135 pass. Android/native pass and original
    evidence verifies375 JVM/46 CA receipts/nine clean lints/43 reference Node cases,
-   but the full host gate stays failed. A narrow test-only deterministic correction
-   is assigned; no diagnostic matrix before corrected full host acceptance.
+   but the full host gate stays failed. Test-only owner `6dcf765`, integrated
+   `38409e5`, reproduces old assertions red and separates both deadline paths;
+   owner clock29/29/full Node documentation162/162 and coordinator focused4/4 /
+   finite reference25/25 pass. Independent review and fresh full host remain next;
+   no diagnostic matrix before acceptance. Production clock bytes stay unchanged.
    No control is weakened.
    It is not the missing desktop backend, C5 or USB acceptance.
    Obtain and verify the exact already-authorized reviewed desktop source

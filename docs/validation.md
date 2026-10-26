@@ -372,7 +372,13 @@ full host acceptance. Original evidence `/tmp/reference-tun-diagnostic-host-fail
 An isolated test-only correction must retain the production shared clock budget,
 strict read admission and actual timeout assertions; no blanket1/124 or retry.
 Historical probe cause is still unknown; no speculative timing fix is applied.
-Require corrected full host acceptance before a diagnostic matrix.
+Require corrected full host acceptance before a diagnostic matrix. Test-only
+owner `6dcf765`, integrated `38409e5`, deterministically reproduces both old
+root/unroot assertions red, then checks exact no-read exit1 and admitted-read
+real timeout124 separately. Production clock/workflow bytes are unchanged.
+Owner clock29/29/full Node documentation162/162 pass; coordinator focused4/4
+and finite reference25/25 pass without skips. Independent exact-commit review
+and fresh full pinned host validation remain next.
 
 ## Authenticated public interception CA research
 

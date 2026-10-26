@@ -323,3 +323,11 @@ evidence, not full host acceptance. Original evidence:
 no production clock/workflow change or blanket acceptance of exit1/124. No new
 runtime is dispatched. Historical probe cause remains unknown; corrected full
 host acceptance must precede a diagnostic matrix.
+
+Test-only owner `6dcf765`, integrated `38409e5`, deterministically reproduces the
+old root/unroot assertions failing1 versus124, then separates exhausted-before-
+read exit1 from admitted-read actual timeout124. Production workflow/clock bytes
+stay unchanged; no historical path is inferred. Owner full clock29/29 and full
+Node documentation162/162 pass; coordinator focused4/4 and finite reference25/25
+pass without skips. Independent read-only exact-commit reviewer
+`a108c4e4931c4593f` is assigned; fresh full pinned host validation is next.

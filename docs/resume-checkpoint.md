@@ -48,6 +48,10 @@ The original goal is active and incomplete.
   `/tmp/reference-tun-diagnostic-host-failure.4wRCL3`. Isolated owner
   `a803517d6e5f5746a` corrects only `scripts/tests/enrollment-emulator-clock.test.mjs`
   with deterministic path regressions, not production changes or blanket1/124.
+  Owner `6dcf765`, integrated `38409e5`, reproduces both old assertions red and
+  passes clock29/29/full Node documentation162/162; coordinator focused4/4 and
+  finite reference25/25 pass. Independent exact-commit review `a108c4e4931c4593f`
+  and fresh full host validation are next. Production clock bytes remain unchanged.
   No new runtime is dispatched before corrected full host acceptance.
   Finite ignored runtime audit SHA256:
   `b970f82c38e04897b5b6fedb73814203c2b85cd0419f1bd20fde197ad48d2581`.
