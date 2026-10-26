@@ -275,7 +275,32 @@ API26 HTTP passes, but `enrollment_input_failed` prevents HTTPS from starting.
 First-method input/ACK absence observations are false; these do not establish the
 underlying failed command. Both emulator cleanups terminate/join/exit0; API26's
 driver exits1. Original attempt2 evidence is
-`/tmp/reference-tun-runtime-second.yHp565`. Investigate the input handoff before
+`/tmp/reference-tun-runtime-second.yHp565`. The finite ignored export is
+`dist/reference-tun-runtime-audit.json`/`.sha256`, SHA256
+`b970f82c38e04897b5b6fedb73814203c2b85cd0419f1bd20fde197ad48d2581`;
+it binds attempt2 metadata/log/four-file hashes and explicitly records combined
+acceptance=false. Investigate the input handoff before
 another dispatch. Both APIs must pass one same-source attempt; never combine
 API26's earlier success with API37's later success. No third retry is dispatched.
-No code, SDK version, integrity check, workflow, assertion or deadline is changed.
+No code, SDK version, integrity check, workflow, assertion or deadline is changed
+in these two attempts.
+
+## Post-method absence diagnostic follow-up
+
+Source inspection localizes attempt2 API26 to the final combined absence probe,
+after the HTTP invocation and host tasks passed. Both absence booleans copy one
+conjunction, not two independent file observations. The command checks input,
+final gate and pending gate; no retained result identifies which check failed.
+No publication race or retained file is established.
+
+The next exclusive driver package adds only bounded diagnostics and deterministic
+regressions in `run-reference-tun-runtime.mjs`/`reference-tun-driver.test.mjs`.
+Keep revision1 reports, all three-path absence checks, exact success marker,
+zero-stderr requirement, command/group closure, deadlines and failure behavior
+unchanged. Emit one fixed-prefix `Reference TUN absence probe: ` log line per
+actual probe when not quiet, containing only the existing finite command
+observation plus boolean `stderrPresent` and `markerMatched`. Do not emit raw
+stdout/stderr, serials, paths, input, CA, identity or traffic. No new report field
+or shared wire contract is introduced. Failure cases must preserve passed HTTP,
+zero-start HTTPS and all independent cleanup. Fresh pinned host validation and
+independent review precede a separately recorded diagnostic matrix.

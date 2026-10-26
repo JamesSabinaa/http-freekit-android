@@ -159,7 +159,15 @@ emulator cleanups join/exit0. Original attempt2 evidence:
 `/tmp/reference-tun-runtime-second.yHp565`. Root owns evidence/integration;
 read-only investigator `adc997e4a087e82cb` on isolated branch
 `worktree-agent-adc997e4a087e82cb` exclusively traces the driver/input/ADB handoff
-and proposes a narrow regression; no implementation edits or dispatch assigned.
+and proposes a narrow regression; investigation is complete with no causal race
+or retained file proved. Its empty worktree was removed on completion; resumed
+implementation stopped before edits rather than using the coordinator checkout.
+New isolated owner `ae26c242ad0d419bb`, branch
+`worktree-agent-ae26c242ad0d419bb`, is assigned only
+`run-reference-tun-runtime.mjs` and `reference-tun-driver.test.mjs` to implement
+the [frozen finite absence diagnostic](../docs/reference-android-tun-research.md#post-method-absence-diagnostic-follow-up)
+and deterministic failure regressions. Root retains all profile/board/integration
+and dispatch; no report-schema, gate, timeout or shared-helper changes assigned.
 Input/ACK absence observations are false after HTTP, but the underlying failed
 command is not yet established. No third retry is dispatched. Require both APIs
 in one same-source attempt; no merging earlier success. No physical USB, desktop
@@ -167,8 +175,9 @@ C5 or production acceptance.
 
 Each uses its own branch/worktree; no subagent toolchain installation,
 publication, CI/device dispatch or changes to another package. Current source
-contains the new research implementation and accepted host compilation, not
-Android runtime evidence. The checked host gate must precede the fresh matrix.
+has accepted host compilation and partial actual Android runtime evidence as
+recorded above, not combined two-API acceptance. Every source-changing runtime
+checkpoint requires a fresh pinned host gate first.
 
 ## Current independent capture package
 
