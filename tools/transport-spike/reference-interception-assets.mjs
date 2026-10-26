@@ -11,13 +11,18 @@ const fail = (code = 'assets_unavailable', joined = true) => { throw new Referen
 
 function privateDirectory(directory) {
   if (typeof directory !== 'string' || !path.isAbsolute(directory) || path.resolve(directory) !== directory || fs.realpathSync(directory) !== directory) fail('configuration');
+  if (typeof process.geteuid !== 'function') fail('configuration');
+  const uid = process.geteuid();
   for (let current = directory;; current = path.dirname(current)) {
     const stat = fs.lstatSync(current);
-    if (!stat.isDirectory() || stat.isSymbolicLink()) fail('configuration');
+    // A trusted owner must control every path component. Writable shared
+    // ancestors are safe only with sticky deletion protection (e.g. /tmp).
+    if (!stat.isDirectory() || stat.isSymbolicLink() || ![0, uid].includes(stat.uid) ||
+        (stat.mode & 0o022) && !(stat.mode & 0o1000)) fail('configuration');
     if (path.dirname(current) === current) break;
   }
   const stat = fs.statSync(directory);
-  if ((stat.mode & 0o777) !== 0o700 || typeof process.getuid !== 'function' || stat.uid !== process.getuid() || fs.readdirSync(directory).length) fail('configuration');
+  if ((stat.mode & 0o777) !== 0o700 || stat.uid !== uid || fs.readdirSync(directory).length) fail('configuration');
 }
 
 // Strict, bounded DER tree, including extension payloads. Reject BER lengths,
@@ -144,7 +149,7 @@ export async function createReferenceInterceptionAssets({ directory, openssl = '
   const write = (name, bytes = '') => fs.writeFileSync(path.join(directory, name), bytes, { flag: 'wx', mode: 0o600 });
   const read = name => {
     const filename = path.join(directory, name), stat = fs.lstatSync(filename);
-    if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 1 || stat.uid !== process.getuid() || (stat.mode & 0o777) !== 0o600 || stat.size < 1 || stat.size > 8192) fail();
+    if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 1 || stat.uid !== process.geteuid() || (stat.mode & 0o777) !== 0o600 || stat.size < 1 || stat.size > 8192) fail();
     return fs.readFileSync(filename);
   };
   const command = async args => {
@@ -180,9 +185,14 @@ export async function createReferenceInterceptionAssets({ directory, openssl = '
       } catch (error) { for (const buffer of buffers) buffer.fill(0); throw error; }
       finally { caKey?.fill(0); }
     }
-    const originCa = new X509Certificate(material.get('origin').der), interceptionCa = new X509Certificate(material.get('interception').der);
-    if (originCa.publicKey.export({ type: 'spki', format: 'der' }).equals(interceptionCa.publicKey.export({ type: 'spki', format: 'der' })) ||
-        material.get('origin').key.equals(material.get('interception').key)) fail();
+    const identities = [];
+    for (const value of material.values()) {
+      for (const encoded of [value.der, value.cert]) {
+        const spki = new X509Certificate(encoded).publicKey.export({ type: 'spki', format: 'der' });
+        if (identities.some(previous => previous.equals(spki))) fail();
+        identities.push(spki);
+      }
+    }
     return new Assets(material, counts);
   } catch (error) {
     for (const value of material.values()) for (const buffer of Object.values(value)) buffer.fill(0);

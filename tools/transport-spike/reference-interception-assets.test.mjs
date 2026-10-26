@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import tls from 'node:tls';
 import { once } from 'node:events';
-import { X509Certificate, createPrivateKey } from 'node:crypto';
+import { X509Certificate, createPrivateKey, createPublicKey } from 'node:crypto';
 import { inspect } from 'node:util';
 import { createReferenceInterceptionAssets } from './reference-interception-assets.mjs';
 import { ReferenceInterceptionError, referenceInterceptionProfile as profile } from './reference-interception-contract.mjs';
@@ -132,6 +132,67 @@ test('invalid directories and executable configuration start no commands and nev
     for (const openssl of ['', null, {}, 'CANARY\nprivate']) await assert.rejects(createReferenceInterceptionAssets({ directory: empty, openssl }), error => finite(error, 'configuration'));
     assert.deepEqual(fs.readdirSync(empty), []); assert.equal(fs.readFileSync(path.join(nonempty, 'CANARY'), 'utf8'), 'keep');
   } finally { fs.rmSync(root, { recursive: true }); }
+});
+
+test('unsafe writable or foreign-owned sticky ancestors are rejected before any provider invocation', async t => {
+  for (const { mode, foreign } of [{ mode: 0o777 }, { mode: 0o770 }, { mode: 0o1777, foreign: true }]) {
+    await t.test(mode.toString(8), { skip: foreign && process.geteuid?.() !== 0 }, async () => {
+      const root = directory(), parent = path.join(root, 'parent'), work = path.join(parent, 'nested', 'work');
+      fs.mkdirSync(work, { recursive: true, mode: 0o700 }); fs.chmodSync(parent, mode);
+      if (foreign) fs.chownSync(parent, 65534, 65534);
+      const marker = path.join(root, 'invoked'), provider = path.join(root, 'provider');
+      fs.writeFileSync(provider, `#!${process.execPath}\nrequire('node:fs').writeFileSync(${JSON.stringify(marker)},'invoked');require('node:child_process').execFileSync('openssl',process.argv.slice(2),{stdio:'ignore'});`, { mode: 0o700 });
+      let assets, failure, joined = false;
+      try {
+        try { assets = await createReferenceInterceptionAssets({ directory: work, openssl: provider }); }
+        catch (error) { failure = error; joined = error.joined === true; }
+        if (assets) { await assets.close(); joined = true; }
+        assert.equal(fs.existsSync(marker), false, 'unsafe ancestor must fail before provider starts');
+        assert.deepEqual(fs.readdirSync(work), []);
+        finite(failure, 'configuration');
+      } finally { if (joined) fs.rmSync(root, { recursive: true }); }
+    });
+  }
+});
+
+test('all four CA and leaf identities must be cryptographically distinct even across PEM encodings', async t => {
+  const names = ['interception-ca-key.pem', 'interception-key.pem', 'origin-ca-key.pem', 'origin-key.pem'];
+  for (let first = 0; first < names.length; first++) for (let second = first + 1; second < names.length; second++) {
+    await t.test(`${first}-${second}`, async () => {
+      const root = directory(), work = path.join(root, 'work'), provider = path.join(root, 'provider'), pids = path.join(root, 'pids');
+      fs.mkdirSync(work, { mode: 0o700 });
+      fs.writeFileSync(provider, `#!${process.execPath}
+const fs=require('node:fs'),{execFileSync}=require('node:child_process'),{createPrivateKey}=require('node:crypto');
+fs.appendFileSync(${JSON.stringify(pids)},String(process.pid)+'\\n');
+const args=process.argv.slice(2),source=${JSON.stringify(names[first])},target=${JSON.stringify(names[second])};
+const duplicate=args[0]==='req' && args[args.indexOf('-keyout')+1]===target;
+if(duplicate) {
+  for(const flag of ['-newkey','-pkeyopt','-keyout']) { const at=args.indexOf(flag); if(at!==-1) args.splice(at,2); }
+  args.push('-key',source);
+}
+if(args[0]==='verify') process.exit(0); // A malicious provider can lie about verification.
+try { execFileSync('openssl',args,{stdio:'ignore'}); } catch { process.exit(1); }
+if(duplicate) fs.writeFileSync(target,createPrivateKey(fs.readFileSync(source)).export({format:'pem',type:'sec1'}));
+`, { mode: 0o700 });
+      let assets, failure, joined = false;
+      try {
+        try { assets = await createReferenceInterceptionAssets({ directory: work, openssl: provider }); }
+        catch (error) { failure = error; joined = error.joined === true; }
+        if (assets) { await assets.close(); joined = true; }
+        const actualPids = fs.readFileSync(pids, 'utf8').trim().split('\n').map(Number);
+        assert.equal(actualPids.length, 8, 'all provider commands succeeded before identity rejection');
+        for (const pid of actualPids) {
+          assert.throws(() => process.kill(pid, 0), { code: 'ESRCH' });
+          assert.throws(() => process.kill(-pid, 0), { code: 'ESRCH' });
+        }
+        assert.equal(fs.readFileSync(path.join(work, names[first])).equals(fs.readFileSync(path.join(work, names[second]))), false);
+        const source = createPublicKey(createPrivateKey(fs.readFileSync(path.join(work, names[first]))));
+        const target = createPublicKey(createPrivateKey(fs.readFileSync(path.join(work, names[second]))));
+        assert.equal(source.export({ format: 'der', type: 'spki' }).equals(target.export({ format: 'der', type: 'spki' })), true);
+        finite(failure, 'assets_unavailable');
+      } finally { if (joined) fs.rmSync(root, { recursive: true }); }
+    });
+  }
 });
 
 async function failingProvider(t, script) {
