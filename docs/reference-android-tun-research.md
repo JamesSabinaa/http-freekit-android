@@ -1,8 +1,9 @@
 # Android reference selected-UID HTTP/H1 HTTPS research
 
 Status: host preparation accepted at `d25dc53`/run40336789126 attempt2;
-first runtime40340552254 attempt1 independently passes API26's two methods;
-API37 stops before boot on SDK extraction. Combined runtime acceptance is open.
+first runtime40340552254 attempt1 independently passes API26's two methods.
+Attempt2 independently passes API37 but fails API26 before HTTPS starts with
+`enrollment_input_failed`. Combined runtime acceptance is open.
 Prerequisite [Kotlin host checkpoint](reference-kotlin-interception-research.md)
 is accepted at `65cd93f`/run40316060504. This distinct checkpoint uses the owned
 reference backend, NOT the missing reviewed desktop implementation. Existing
@@ -267,7 +268,14 @@ API37 stops before boot/methods while preparing NDK28.2.13676358:
 `Error reading Zip content from a SeekableByteChannel`. It has no runtime result.
 Original first-attempt reports/logs/metadata are retained in
 `/tmp/reference-tun-runtime-first.iyEdE1`, outside trusted scripts. Attempt1 remains
-failed overall. One recorded full fresh-runner matrix retry is attempt2 at the
-unchanged exact source, in progress; both APIs must pass that same attempt.
-Do not combine API26's earlier success with later individual methods/APIs.
+failed overall. The one recorded full fresh-runner retry, attempt2 at unchanged
+source, also fails overall: API37 independently passes all four original files
+and both actual methods (job121637778332, verifier start lower bound1793025588).
+API26 HTTP passes, but `enrollment_input_failed` prevents HTTPS from starting.
+First-method input/ACK absence observations are false; these do not establish the
+underlying failed command. Both emulator cleanups terminate/join/exit0; API26's
+driver exits1. Original attempt2 evidence is
+`/tmp/reference-tun-runtime-second.yHp565`. Investigate the input handoff before
+another dispatch. Both APIs must pass one same-source attempt; never combine
+API26's earlier success with API37's later success. No third retry is dispatched.
 No code, SDK version, integrity check, workflow, assertion or deadline is changed.

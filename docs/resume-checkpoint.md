@@ -23,9 +23,17 @@ The original goal is active and incomplete.
   clock[-887,118]ms/RTT6, every cleanup/emulator stop/join/exit0). API37 stops
   before boot/methods on NDK ZIP extraction. Original evidence:
   `/tmp/reference-tun-runtime-first.iyEdE1`. Attempt1 remains failed overall.
-  One recorded full fresh-runner matrix retry is attempt2 at unchanged source,
-  in progress. Require both APIs in that attempt; do not merge earlier success.
-  Desktop C5, physical USB and production remain unaccepted.
+  The one recorded full fresh-runner retry, attempt2 at unchanged source, is
+  terminal failure. API37's original four files independently pass the trusted
+  verifier (job121637778332, start lower bound1793025588). API26 HTTP passes,
+  but `enrollment_input_failed` prevents the HTTPS method from starting; its
+  first input/ACK absence observations are false. These observations do not yet
+  establish the underlying command failure. Both emulator cleanups join/exit0;
+  API26 driver exits1. Original attempt2 evidence:
+  `/tmp/reference-tun-runtime-second.yHp565`. Read-only isolated investigator
+  `adc997e4a087e82cb` traces the input handoff; root retains evidence/integration.
+  No third retry is dispatched. Require both APIs in one same-source attempt;
+  do not merge earlier successes. Desktop C5, USB and production stay unaccepted.
 - The previous Android public `main` checkpoint is `751e35a`.
   The latest accepted Kotlin/reference host implementation is exact source
   `65cd93f9ff11eabd208b47af48c29f345e73853b`, run40316060504. All three jobs

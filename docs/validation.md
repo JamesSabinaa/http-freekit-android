@@ -344,8 +344,16 @@ clock[-887,118]ms/RTT6, natural gateway COMPLETE before ACK/Stop, all package/
 process/native/TUN cleanup and emulator stop/termination/join/exit0. API37 stops
 before boot on the NDK ZIP extraction error and has no method evidence. Original
 files/logs/metadata are in `/tmp/reference-tun-runtime-first.iyEdE1`.
-One recorded full fresh-runner attempt2 at unchanged source is in progress;
-require both APIs in that attempt, do not combine prior API26 success.
+The one recorded full fresh-runner attempt2 at unchanged source is terminal
+failure. API37 job121637778332 independently passes original JSON/XML/HTML/host
+cleanup replay with trusted verifier start lower bound1793025588; both actual
+methods and owned cleanup pass. API26 HTTP passes, but `enrollment_input_failed`
+prevents HTTPS from starting. Input/ACK absence observations after HTTP are false;
+the underlying failed command is not yet established. Both host cleanup reports
+confirm stop0/termination/join/emulator exit0; API26 driver exits1. Original
+attempt2 files/metadata/log are in `/tmp/reference-tun-runtime-second.yHp565`.
+No third retry is dispatched. Investigate the handoff, then require both APIs in
+one fresh same-source attempt; never combine prior individual successes.
 
 ## Authenticated public interception CA research
 

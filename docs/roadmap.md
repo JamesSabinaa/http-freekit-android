@@ -161,9 +161,12 @@ New checkpoint CI must be inspected before claiming hosted validation of later c
    evidence on main `7e87724`. First runtime40340552254 attempt1 at exact
    host-accepted `d25dc53` independently passes both API26 methods/all four
    artifacts and cleanup; API37 stops before boot on NDK ZIP extraction. One
-   recorded full fresh-runner attempt2 is in progress at unchanged source;
-   require both APIs in that same attempt, without combining earlier success.
-   Historical failures remain failed; combined Android acceptance remains open.
+   recorded full fresh-runner attempt2 is terminal failure at unchanged source.
+   API37 independently passes all four original artifacts/two methods; API26
+   HTTP passes but `enrollment_input_failed` prevents HTTPS from starting.
+   Both emulator cleanups join/exit0. Investigate the input handoff before any
+   further dispatch; require both APIs in one same-source attempt, never combined
+   across retries. Historical failures remain failed; combined acceptance is open.
    No control is weakened.
    It is not the missing desktop backend, C5 or USB acceptance.
    Obtain and verify the exact already-authorized reviewed desktop source

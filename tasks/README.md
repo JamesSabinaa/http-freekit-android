@@ -152,9 +152,18 @@ main promotion `7e87724` and dispatched first reference runtime40340552254 at
 exact host-accepted `d25dc53`. Attempt1 independently passes both actual API26
 methods/all four artifacts/every cleanup; API37 stops before boot on NDK ZIP
 extraction. Original evidence `/tmp/reference-tun-runtime-first.iyEdE1`. One
-recorded full fresh-runner attempt2 at unchanged source is in progress; require
-both APIs in that attempt, no merging earlier success. Root owns original
-artifact replay/evidence. No physical USB, desktop C5 or production acceptance.
+recorded full fresh-runner attempt2 at unchanged source is terminal failure.
+API37 independently passes both actual methods/all four original files; API26
+HTTP passes but `enrollment_input_failed` prevents HTTPS from starting. Both
+emulator cleanups join/exit0. Original attempt2 evidence:
+`/tmp/reference-tun-runtime-second.yHp565`. Root owns evidence/integration;
+read-only investigator `adc997e4a087e82cb` on isolated branch
+`worktree-agent-adc997e4a087e82cb` exclusively traces the driver/input/ADB handoff
+and proposes a narrow regression; no implementation edits or dispatch assigned.
+Input/ACK absence observations are false after HTTP, but the underlying failed
+command is not yet established. No third retry is dispatched. Require both APIs
+in one same-source attempt; no merging earlier success. No physical USB, desktop
+C5 or production acceptance.
 
 Each uses its own branch/worktree; no subagent toolchain installation,
 publication, CI/device dispatch or changes to another package. Current source
