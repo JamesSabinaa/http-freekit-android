@@ -102,8 +102,9 @@ New checkpoint CI must be inspected before claiming hosted validation of later c
    assets and the actual backend pass 48 combined local tests, including both
    verified TLS legs and hostile trust/hostname refusal. Authenticated composition
    does not yet pass: all six local cases stop at gateway startup on Node22,
-   which lacks required SQLite defenses. Independent backend review and fresh
-   pinned Node24 host validation remain pending; no control is weakened.
+   which lacks required SQLite defenses. Independent static backend review found
+   no concrete defect; fresh pinned Node24 host validation remains pending.
+   No control is weakened.
    It is not the missing desktop backend, C5 or USB acceptance.
    Obtain and verify the exact already-authorized reviewed desktop source
    (currently absent), then publish that branch and run the prepared factory and

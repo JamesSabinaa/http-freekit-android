@@ -122,7 +122,8 @@ The original goal is active and incomplete.
   and physical USB gates remain unchanged.
 - The coordinator retains unfinished, unpublished reference-only host work in
   `.claude/worktrees/coord-a23-resume`, branch `worktree-coord-a23-resume`, at
-  `5010594` plus root workflow/test/evidence-document edits. Profile/contract
+  implementation `5010594` with committed workflow/evidence checkpoint
+  `005fe6b`. Profile/contract
   `78e953d`, TLS assets `5902b3d`/correction `3392510`, composition tests
   `b9b9b61` and backend `5010594` are not on public main. This distinct
   [reference interception proof](reference-interception-research.md) is not C5,
@@ -137,7 +138,8 @@ The original goal is active and incomplete.
   contract/command replay now passes 48/48 with no skips, including actual wrong
   upstream hostname rejection with a trusted matching-SAN control. The separate
   foreign-UID asset regression actually passes locally as root; it requires root
-  and explicitly skips on non-root hosts. Backend independent review is pending.
+  and explicitly skips on non-root hosts. Independent static backend review
+  found no concrete defect; runtime acceptance remains pending.
   Composition `4671261` (integrated `b9b9b61`) initially could not import absent
   dependencies. After exact A/B commits arrived, one actual six-case local run
   fails 0 pass/6 fail/0 cancelled/0 skipped at `pairing_unavailable` startup,
@@ -145,8 +147,8 @@ The original goal is active and incomplete.
   A bounded in-memory probe proves Node22 lacks both required SQLite defensive
   APIs, not the first prior exception. No bypass or toolchain install occurred.
   Original enrollment verifier regressions pass 131/131. All new files are now
-  integrated; finish backend review and run fresh pinned Node24 host CI on this
-  branch before advancing checked progress to main. Composition, Android and
+  integrated and reviewed; run fresh pinned Node24 host CI on this branch
+  before advancing checked progress to main. Composition, Android and
   USB acceptance remain unproven.
 - User explicitly authorized continued publication of validated Android main
   checkpoints and existing hosted validation workflows for this goal without

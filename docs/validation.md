@@ -126,8 +126,9 @@ outgoing wrong CA/hostname refusal, the trusted matching-SAN control, admission,
 parser bounds, lifetime owner/evidence bounds and actual abort/deadline joins.
 Backend's initial real run failed (3 passed, 3 failed, 4 cancelled, 1 skipped).
 A second run had eight passes and three hostile-TLS timeouts. Owner `3fcf765`,
-integrated as `5010594`, fixes those failures; independent backend review is
-pending. Composition `4671261`, integrated as `b9b9b61`, initially had dependency
+integrated as `5010594`, fixes those failures. Independent static backend
+review found no concrete defect; it is not a runtime or clean TLS closure proof.
+Composition `4671261`, integrated as `b9b9b61`, initially had dependency
 import failures before any case executed. After exact dependencies arrived,
 one actual local run has 0 passed/6 failed/0 cancelled/0 skipped: every case
 fails gateway startup with `pairing_unavailable`, before enrollment/traffic.
