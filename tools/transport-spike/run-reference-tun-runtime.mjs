@@ -62,6 +62,10 @@ export async function publishReferenceTunAcknowledgment(host) {
 const absentScript = `set -eu
 ${[INPUT, gate.path, gate.pendingPath].map(file => `test ! -e ${file}\ntest ! -L ${file}`).join('\n')}
 echo REFERENCE_TUN_INPUT_AND_GATE_ABSENT`;
+export function referenceTunAbsenceDiagnostic(result) {
+  return { ...commandObservation(result), stderrPresent: result.stderrBytes > 0,
+    markerMatched: result.output.trim() === 'REFERENCE_TUN_INPUT_AND_GATE_ABSENT' };
+}
 const packageAbsenceScript = `set -eu
 packages="$(pm list packages ${enrollmentPackage})"
 test -z "$packages"
@@ -150,6 +154,7 @@ async function runMethod(host, method, item, options, dependencies, problem) {
     } finally { liveInvocation = false; item.invocation = parser.finish(commandResult); }
     ensure(item.invocation.state === 'passed'); ensure(await registrationTask); ensure(await approvalTask); ensure(await completionTask);
     const absent = await host.adb(['shell', '-T', 'run-as', enrollmentPackage, 'sh', '-c', quote(absentScript)]);
+    if (dependencies.quiet !== true) console.log('Reference TUN absence probe: ' + JSON.stringify(referenceTunAbsenceDiagnostic(absent)));
     const filesAbsent = passed(absent) && absent.stderrBytes === 0 && absent.output.trim() === 'REFERENCE_TUN_INPUT_AND_GATE_ABSENT';
     item.input.inputAbsentAfterMethod = filesAbsent; item.ack.absentAfterMethod = filesAbsent; ensure(filesAbsent, 'enrollment_input_failed');
   } catch (error) { problem(referenceTunProblems.includes(error?.message) ? error.message : stage); }

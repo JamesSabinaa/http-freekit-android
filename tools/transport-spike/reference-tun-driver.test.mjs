@@ -4,7 +4,7 @@ import { createHash, X509Certificate } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { runReferenceTunRuntime, parseReferenceTunArguments, referenceTunGateScript, publishReferenceTunAcknowledgment } from './run-reference-tun-runtime.mjs';
+import { runReferenceTunRuntime, parseReferenceTunArguments, referenceTunGateScript, publishReferenceTunAcknowledgment, referenceTunAbsenceDiagnostic } from './run-reference-tun-runtime.mjs';
 import { runDraftCommand } from './draft-stream-command.mjs';
 import { createCryptoFixture, fixedSubject, seq, tlv } from './companion-enrollment-crypto-fixtures.mjs';
 import { report as legacyFixture } from './enrolled-tun-test-fixtures.mjs';
@@ -50,7 +50,7 @@ function observation(method) {
   return bundle(Object.fromEntries(Object.entries(D.referenceTunObservationTypes).map(([key, type]) => [D.referenceTunPrefix + key,
     String(type === 'true' ? true : type === 'false' ? false : type === 'https' ? method === D.referenceTunMethods[1] : ({ version: 1, one: 1, zero: 0, guard: 2, responseBytes: 81 })[type])])), 3);
 }
-async function simulated(mode = 'complete') {
+async function simulated(mode = 'complete', { absenceResult = {}, quiet = true } = {}) {
   const calls = [], legacy = legacyFixture(), controller = new AbortController(); let callback, method, releaseRegistration, ownerCount = 0;
   const record = extra => { const result = { ...command(), ...extra }; host.commands.push(result); return result; };
   const emit = text => callback(Buffer.from(text));
@@ -74,12 +74,20 @@ async function simulated(mode = 'complete') {
         assert(calls.includes('receipt-' + ownerCount)); return record({});
       }
       if (extras.stdinBytes) return record({ inputBytes: extras.stdinBytes.length, inputFinished: true, inputClosed: true });
-      if (args.includes('run-as')) return record({ output: 'REFERENCE_TUN_INPUT_AND_GATE_ABSENT\n' });
+      if (args.includes('run-as')) {
+        calls.push('absence-probe');
+        const script = args.at(-1);
+        for (const file of ['no_backup/draft-enrollment-research/input-v1.bin', D.referenceTunAcknowledgment.path, D.referenceTunAcknowledgment.pendingPath]) {
+          assert(script.includes('test ! -e ' + file + '\n'));
+          assert(script.includes('test ! -L ' + file + '\n'));
+        }
+        return record({ output: 'REFERENCE_TUN_INPUT_AND_GATE_ABSENT\n', ...absenceResult });
+      }
       if (args.includes('sh')) return record({ output: 'REFERENCE_TUN_INTEROP_ABSENT\n' });
       calls.push(args.includes('--remove') ? 'reverse-remove' : 'reverse'); return record({});
     } };
   const result = await runReferenceTunRuntime({ serial: 'owned-test', adb: 'unused', openssl: 'unused' }, {
-    writeReports: false, quiet: true, createHost: () => host,
+    writeReports: false, quiet, createHost: () => host,
     createPackages: () => ({ prepare: async () => {}, snapshot: () => legacy.apkSetup, cleanup: async () => { calls.push('packages-cleanup'); if (mode === 'package-cleanup-fails') throw Error('CANARY_PRIVATE'); return { failed: false }; } }),
     async createWorker() {
       const ordinal = ++ownerCount; calls.push('worker-' + ordinal);
@@ -112,6 +120,84 @@ test('two ordered standalone cases require fresh parent owners and independent C
   assert.equal(result.calls.filter(call => call === 'reverse-remove').length, 6);
   assert.equal(decodeReferenceTunReport(Buffer.from(JSON.stringify(result.report))).format, D.referenceTunReportFormat);
   assert.match(referenceTunRuntimeXml(result.report), /tests="2"/); assert.doesNotMatch(referenceTunRuntimeHtml(result.report), /requestSha256|invitationSecret|clientCertificateDer/);
+});
+test('absence diagnostic exposes exactly finite command facts and two booleans, never raw material', () => {
+  const hostile = { ...command(), output: 'CANARY_RAW_STDOUT /private/input secret CA identity traffic',
+    stderr: 'CANARY_RAW_STDERR serial /private/path', stderrBytes: 1, serial: 'CANARY_SERIAL', invitationSecret: 'CANARY_SECRET' };
+  const expected = { exitCode: 0, signal: null, reason: null, closeObserved: true, processGroupClosed: true,
+    stderrPresent: true, markerMatched: false };
+  assert.deepEqual(referenceTunAbsenceDiagnostic(hostile), expected);
+  assert.doesNotMatch(JSON.stringify(referenceTunAbsenceDiagnostic(hostile)), /CANARY|private|secret|traffic|identity/);
+  assert.deepEqual(referenceTunAbsenceDiagnostic({ ...hostile, output: 'REFERENCE_TUN_INPUT_AND_GATE_ABSENT\n', stderrBytes: 0 }),
+    { ...expected, stderrPresent: false, markerMatched: true });
+  assert.deepEqual(hostile.stderr, 'CANARY_RAW_STDERR serial /private/path');
+  for (const field of ['signal', 'reason']) {
+    assert.throws(() => referenceTunAbsenceDiagnostic({ ...hostile, [field]: 'CANARY_PRIVATE' }));
+  }
+});
+test('failed absence probes preserve passed HTTP, zero-start HTTPS and independent cleanup', async t => {
+  const logs = [], logger = t.mock.method(console, 'log', (...args) => logs.push(args));
+  try {
+    const vectors = [
+      { code: 1 },
+      { stderrBytes: 1, stderr: 'CANARY_STDERR' },
+      { output: 'CANARY_WRONG_MARKER' },
+      { output: '' },
+      { output: 'REFERENCE_TUN_INPUT_AND_GATE_ABSENT\nCANARY_SURPLUS' },
+      { code: null, signal: 'SIGTERM', reason: 'owned_child_timeout' },
+      { code: null },
+      { closeObserved: false },
+      { processGroupClosed: false },
+    ];
+    for (const absenceResult of vectors) {
+      const { report, calls, ok } = await simulated('complete', { absenceResult });
+      assert.equal(ok, false);
+      const [http, https] = report.methods;
+      assert.equal(http.invocation.state, 'passed');
+      assert.equal(http.invocation.actualStarted, 1); assert.equal(http.invocation.actualCompleted, 1);
+      assert(http.host.completeObservedBeforeAck && http.host.androidAckPhaseObserved && http.ack.published);
+      assert.equal(http.input.inputAbsentAfterMethod, false); assert.equal(http.ack.absentAfterMethod, false);
+      assert.equal(https.invocation.actualStarted, 0); assert.equal(https.invocation.actualCompleted, 0);
+      assert(!calls.includes(D.referenceTunMethods[1])); assert(!calls.includes('worker-2'));
+      const unjoined = absenceResult.closeObserved === false || absenceResult.processGroupClosed === false;
+      assert.deepEqual(report.problems, unjoined ? ['enrollment_input_failed', 'enrollment_cleanup_failed'] : ['enrollment_input_failed']);
+      assert.equal(http.resources.ownedCommandsClosed, absenceResult.closeObserved !== false);
+      assert.equal(http.resources.ownedCommandGroupsClosed, absenceResult.processGroupClosed !== false);
+      assert.equal(report.cleanup.ownedCommandsClosed, absenceResult.closeObserved !== false);
+      assert.equal(report.cleanup.ownedCommandGroupsClosed, absenceResult.processGroupClosed !== false);
+      for (const key of ['gatewayJoined', 'backendJoined', 'assetsJoined', 'ownedReversesAbsent', 'privateDirectoryRemoved']) assert.equal(http.resources[key], true, key);
+      assert.equal(http.resources.process.processGroupJoined, true);
+      assert.equal(report.cleanup.packageAbsentAfterCleanup, true);
+      assert.equal(calls.filter(call => call === 'reverse-remove').length, 3);
+      for (const call of ['worker-close-1', 'packages-cleanup', 'interop-cleanup', 'disposed']) assert(calls.includes(call), call);
+      assert.equal(calls.filter(call => call === 'absence-probe').length, 1);
+      assert.equal(report.revision, 1);
+      decodeReferenceTunReport(Buffer.from(JSON.stringify(report)));
+      assert.doesNotMatch(JSON.stringify(report), /CANARY|stderrPresent|markerMatched/);
+    }
+    assert.deepEqual(logs, []);
+  } finally { logger.mock.restore(); }
+});
+test('actual absence logging emits exactly one safe diagnostic per executed probe unless quiet', async t => {
+  const logs = [], logger = t.mock.method(console, 'log', (...args) => logs.push(args));
+  const prefix = 'Reference TUN absence probe: ';
+  try {
+    const absenceResult = { output: 'CANARY_STDOUT serial /private/input CA identity traffic', stderr: 'CANARY_STDERR secret', stderrBytes: 1 };
+    const result = await simulated('complete', { absenceResult, quiet: false });
+    assert.equal(result.ok, false); assert.equal(logs.length, 2);
+    assert.deepEqual(logs[0], [prefix + JSON.stringify(referenceTunAbsenceDiagnostic({ ...command(), ...absenceResult }))]);
+    assert.deepEqual(logs[1], ['Reference TUN research: 1 started; failed.']);
+    assert.doesNotMatch(JSON.stringify(logs), /CANARY|private|secret|serial|identity|traffic/);
+    logs.length = 0;
+    assert.equal((await simulated('complete', { quiet: false })).ok, true);
+    assert.equal(logs.length, 3);
+    for (const entry of logs.slice(0, 2)) assert.deepEqual(entry,
+      [prefix + JSON.stringify(referenceTunAbsenceDiagnostic({ ...command(), output: 'REFERENCE_TUN_INPUT_AND_GATE_ABSENT\n' }))]);
+    assert.deepEqual(logs[2], ['Reference TUN research: 2 started; passed.']);
+    logs.length = 0;
+    await simulated('unterminated', { quiet: false });
+    assert.equal(logs.filter(entry => entry[0].startsWith(prefix)).length, 0);
+  } finally { logger.mock.restore(); }
 });
 test('unterminated phase and late registration cannot authorize approval or acknowledgment after process close', async () => {
   for (const mode of ['unterminated', 'closed-before-registration']) {
