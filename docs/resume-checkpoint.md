@@ -7,6 +7,19 @@ The original goal is active and incomplete.
 
 ## Current Linux resume position
 
+- Android implementation continues independently of the external desktop/USB
+  blocker. Frozen [B6 selected-app preflight](selected-app-preflight.md) at main
+  `c71df54` assigns exact-package/current-user platform checks to isolated
+  `a0e6179fa35a7a489`, real app action/generation/lifecycle wiring to isolated
+  `ad8bda487fe4db060`, and offline debug bundle integrity verification to isolated
+  `a20e7ee50dab04e62` (`delivery-integrity-implementation`). These packages do not
+  start capture, enable production wire or claim USB. Both pre-landing contract
+  reviews are complete; no blocking issue, and root explicitly chose clean-source-
+  only delivery verification without attestation claims. Implementation reviews,
+  JVM/lint/build and fresh pinned host acceptance remain pending. Root owns
+  profile/docs/board and a currently uncommitted additive D-I test step in
+  `.github/workflows/android.yml`, pending the owner test files. See the work board.
+
 - Latest diagnostic host checkpoint is accepted at exact
   `4cd60b8a9bbdc7c04eaf516b3b05acef69d9f9ec`, host40351833250 attempt1. All three
   jobs and independent original-artifact/log replay pass:375 JVM/47 XMLs,22

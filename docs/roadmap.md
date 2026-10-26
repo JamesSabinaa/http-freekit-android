@@ -83,6 +83,16 @@ New checkpoint CI must be inspected before claiming hosted validation of later c
 
 ## Next milestones, in order
 
+Independent Android work is active while exact desktop C5/physical USB remain
+gated: [B6 selected-app preflight](selected-app-preflight.md) adds a real
+installed-mode exact-package check with off-main-thread PackageManager observations
+and stale-result rejection, never capture readiness. A separate offline delivered
+APK/checksum/metadata integrity verifier is assigned in parallel. Neither is
+implemented/validated yet; unique owners and current status are on the work board.
+Approval-bound combined credential persistence is the next verified foundation
+gap; it is not an excuse to declare production v1 frozen or silently reuse
+research storage. Existing service/native lifecycle is reusable, not duplicated.
+
 1. **Android CA retrieval acceptance — complete.** Source `fa2d845`, host run
    40220903154 and fresh API26/37 matrix 40222004218 pass independent artifact
    replay. Real Keystore enrollment, worker restart, CA/hash continuity, final

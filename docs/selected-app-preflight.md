@@ -76,8 +76,12 @@ It reads only existing stable dist APK/checksum/metadata files and an explicit
 expected source commit; no build, device, network, publication or writes. Strict
 bounded duplicate-rejecting metadata/checksum validation and streamed APK hashing
 must reject missing/nonregular/symlink files, unsafe/mismatched filenames, modified
-bytes, mixed hashes/source, malformed flags and unknown metadata fields. Keep
-current producer schema/values; null compatibleDesktopCommit stays unavailable.
+bytes, mixed hashes/source, malformed flags and unknown metadata fields. Root's
+receiving-side policy requires `sourceDirty` exactly boolean false and exact
+matching expected source commit; the producer may export dirty builds, but this
+gate refuses them. This is validation of self-reported metadata, not source or
+signing attestation. Keep other current producer schema/values; null
+compatibleDesktopCommit stays unavailable.
 Use safe no-follow reads and before/after file identity checks. Tests use opaque
 bytes, not purported valid APKs. Success means bundle integrity only, not APK
 signing, embedded manifest/version, provenance attestation, desktop compatibility,

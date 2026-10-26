@@ -36,9 +36,11 @@ The existing CaptureVpnService must be reused later rather than duplicated.
 
 | Implementation package | Exclusive scope | Owner / status |
 | --- | --- | --- |
-| B6-P platform | new SelectedCapturePlatformAdmission/PackageManagerSelectedPackageProbe and focused app tests only | launching isolated owner; frozen local seam in B6 profile |
-| B6-U app | PreviewViewModel/MainActivity/PreviewApp/strings, new pure preflight state/tests and focused Android test source | launching isolated owner; depends on exact B6-P seam, no manifest/wire/start changes |
-| D-I delivery | new scripts/verify-debug-delivery.py and scripts/tests/test_debug_delivery.py only | launching isolated owner; no producer/device/network changes |
+| B6-P platform | new SelectedCapturePlatformAdmission/PackageManagerSelectedPackageProbe and focused app tests only | `a0e6179fa35a7a489`, isolated same-ID branch; implementing frozen B6 seam |
+| B6-U app | PreviewViewModel/MainActivity/PreviewApp/strings, new pure preflight state/tests and focused Android test source | `ad8bda487fe4db060`, isolated same-ID branch; implementing from c71df54, no manifest/wire/start changes |
+| D-I delivery | new scripts/verify-debug-delivery.py and scripts/tests/test_debug_delivery.py only | `a20e7ee50dab04e62`, isolated branch `delivery-integrity-implementation`; implementing, no producer/device/network changes |
+| B6 contract review | read-only frozen B6 seam + existing selection/worker semantics | `ad341250bea5e4835`, isolated same-ID branch; complete, no blocking concrete issue; implementation review pending |
+| D-I contract review | read-only frozen delivery boundary + existing producer/schema | `a9fcf468bb6dfac8a`, isolated same-ID branch; complete, no schema mismatch; root explicitly freezes clean-source-only policy, no attestation claim |
 
 Root exclusively owns profile/docs/board/CI/build integration and will assign
 independent scoped reviews after each implementation. Existing B5 remains intact.
