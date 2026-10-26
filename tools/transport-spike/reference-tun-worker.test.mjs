@@ -22,7 +22,8 @@ test('canonical requests enforce private tag, ordering, IDs, exact args and rese
   for (const line of hostile) assert.throws(() => validateRequest(line,1),e => e.code === 'tun_input');
 });
 async function cli({args=[],input='',end=true}={}) {
-  const child = spawn(process.execPath,[entry,...args],{stdio:['pipe','pipe','pipe']});
+  // Suppress only the known experimental category, never TLS/security warnings.
+  const child = spawn(process.execPath,['--disable-warning=ExperimentalWarning',entry,...args],{stdio:['pipe','pipe','pipe']});
   const out=[],err=[]; let size=0;
   child.stdout.on('data',b => { size+=b.length; if (size>32768) child.kill('SIGKILL'); else out.push(b); });
   child.stderr.on('data',b => err.push(b)); child.stdin.on('error',()=>{});
