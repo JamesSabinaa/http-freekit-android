@@ -11,22 +11,27 @@ import java.security.interfaces.ECPublicKey
 import java.security.interfaces.RSAPublicKey
 import java.security.spec.ECGenParameterSpec
 import java.security.spec.ECParameterSpec
+import java.util.Date
 import javax.net.ssl.SNIHostName
 import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLSocket
 import javax.net.ssl.TrustManagerFactory
 
 /** One private trust store, never the process default or the Android user/system store. */
-internal class ReferenceTunTrust private constructor(val context: SSLContext) {
+internal class ReferenceTunTrust private constructor(val context: SSLContext, private val authority: X509Certificate) {
+    // PKIX providers need not recheck a trust anchor's validity. Retain and check it ourselves
+    // at the actual TLS admission point, not just when scoped configuration was created.
+    fun requireCurrent(now: Date) { authority.checkValidity(now) }
+
     companion object {
-        fun create(bytes: ByteArray): ReferenceTunTrust {
+        fun create(bytes: ByteArray, now: Date = Date()): ReferenceTunTrust {
             check(bytes.size in 1..4096)
             val copy = bytes.copyOf()
             canonicalDer(copy)
             val input = ByteArrayInputStream(copy)
             val ca = CertificateFactory.getInstance("X.509").generateCertificate(input) as X509Certificate
             check(input.available() == 0 && ca.encoded.contentEquals(copy))
-            ca.checkValidity()
+            ca.checkValidity(now)
             check(ca.notBefore.before(ca.notAfter) && ca.basicConstraints >= 0)
             check(ca.subjectX500Principal == ca.issuerX500Principal)
             check(ca.keyUsage?.getOrElse(5) { false } != false)
@@ -50,7 +55,7 @@ internal class ReferenceTunTrust private constructor(val context: SSLContext) {
                 setCertificateEntry("reference", ca)
             }
             val managers = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm()).apply { init(store) }
-            return ReferenceTunTrust(SSLContext.getInstance("TLS").apply { init(null, managers.trustManagers, null) })
+            return ReferenceTunTrust(SSLContext.getInstance("TLS").apply { init(null, managers.trustManagers, null) }, ca)
         }
 
         /** Public API26 SNI and HTTPS endpoint identification; only API29+ has public ALPN. */

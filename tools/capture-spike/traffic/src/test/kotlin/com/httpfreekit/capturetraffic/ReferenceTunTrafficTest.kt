@@ -86,6 +86,34 @@ class ReferenceTunTrafficTest {
         }
     }
 
+    @Test fun caValidityCrossingDuringConnectFailsBeforeHandshakeOrApplicationDispatch() {
+        val authority = ReferenceTunTestCertificates.authority().certificate
+        val initiallyValid = authority.notBefore.time + 1000
+        for (atHandshake in listOf(authority.notAfter.time + 1, authority.notBefore.time - 1, initiallyValid)) {
+            val clock = java.util.concurrent.atomic.AtomicLong(initiallyValid)
+            val raw = Raw(true).apply { afterConnect = { clock.set(atHandshake) } }
+            val tls = Tls(raw.events)
+            val traffic = ReferenceTunTraffic({ raw }, { 26 }, { _, _ -> tls }, { java.util.Date(clock.get()) })
+            try {
+                traffic.configure(authority.encoded)
+                if (atHandshake == initiallyValid) {
+                    assertArrayEquals(ReferenceTunHttpResponse.expectedBody(), traffic.execute(21) {})
+                    assertTrue(raw.events.contains("handshake"))
+                } else {
+                    val failure = assertCode("tls") { traffic.execute(21) {} }
+                    assertEquals("traffic_reference_tls", failure.message)
+                    assertEquals(0, failure.suppressed.size)
+                    assertTrue(raw.connected)
+                    assertFalse(raw.events.contains("handshake"))
+                    assertEquals(0, tls.written.size())
+                    assertEquals(0, raw.written.size())
+                }
+                assertTrue(raw.closed)
+                assertTrue(tls.closed)
+            } finally { traffic.close() }
+        }
+    }
+
     @Test fun hostileAlpnHandshakeAndRawEofCannotBecomeSuccess() {
         for (mode in 0..3) {
             val raw = Raw(true)
@@ -266,6 +294,7 @@ class ReferenceTunTrafficTest {
         var connectEntered: CountDownLatch? = null
         var connectRelease: CountDownLatch? = null
         var closeRelease: CountDownLatch? = null
+        var afterConnect: (() -> Unit)? = null
         private val input = responseInput(if (tls) byteArrayOf() else response(), { eofFailure }, { events.add("raw-eof") })
         override fun connect(endpoint: SocketAddress, timeout: Int) {
             destination = endpoint as InetSocketAddress
@@ -275,6 +304,7 @@ class ReferenceTunTrafficTest {
             if (closed) throw SocketException("canary-closed")
             connected = true
             events.add("connect")
+            afterConnect?.invoke()
         }
         override fun setSoTimeout(timeout: Int) { assertEquals(5000, timeout) }
         override fun getOutputStream() = written

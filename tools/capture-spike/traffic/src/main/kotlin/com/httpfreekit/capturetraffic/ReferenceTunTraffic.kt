@@ -5,6 +5,7 @@ import java.io.Closeable
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.Socket
+import java.util.Date
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLSocket
@@ -14,6 +15,7 @@ class ReferenceTunTraffic internal constructor(
     private val socketFactory: () -> Socket,
     private val sdk: () -> Int,
     private val layer: (ReferenceTunTrust, Socket) -> SSLSocket,
+    private val now: () -> Date = { Date() },
 ) : Closeable {
     constructor() : this({ Socket() }, { Build.VERSION.SDK_INT }, { trust, raw ->
         trust.context.socketFactory.createSocket(raw, ReferenceTunHttpResponse.HOST, 443, false) as SSLSocket
@@ -32,7 +34,7 @@ class ReferenceTunTraffic internal constructor(
     fun configure(caDer: ByteArray) {
         synchronized(lock) {
             if (sealed || trust != null || runner != null) throw Failure(CONFIGURATION)
-            try { trust = ReferenceTunTrust.create(caDer) }
+            try { trust = ReferenceTunTrust.create(caDer, now()) }
             catch (_: Exception) { throw Failure(CONFIGURATION) }
         }
     }
@@ -63,6 +65,7 @@ class ReferenceTunTraffic internal constructor(
                 session.attach(tls)
                 tls.soTimeout = 5000
                 ReferenceTunTrust.prepare(tls, sdk())
+                checkNotNull(context).requireCurrent(now())
                 tls.startHandshake()
                 ReferenceTunTrust.requireH1(tls, sdk())
                 tls

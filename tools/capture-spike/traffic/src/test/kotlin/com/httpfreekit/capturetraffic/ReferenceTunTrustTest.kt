@@ -30,6 +30,19 @@ class ReferenceTunTrustTest {
         assertNotNull(trust.context.socketFactory)
     }
 
+    @Test fun retainedAuthorityValidityRechecksBothActualCertificateBounds() {
+        val authority = ReferenceTunTestCertificates.authority().certificate
+        val trust = ReferenceTunTrust.create(authority.encoded, authority.notBefore)
+        trust.requireCurrent(authority.notBefore)
+        trust.requireCurrent(authority.notAfter)
+        assertThrows(java.security.cert.CertificateNotYetValidException::class.java) {
+            trust.requireCurrent(java.util.Date(authority.notBefore.time - 1))
+        }
+        assertThrows(java.security.cert.CertificateExpiredException::class.java) {
+            trust.requireCurrent(java.util.Date(authority.notAfter.time + 1))
+        }
+    }
+
     @Test fun hostileCaProfilesFailBeforeUse() {
         val invalid = listOf(
             ReferenceTunTestCertificates.authority(ca = false),
