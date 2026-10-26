@@ -10,10 +10,7 @@ import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
-import java.security.cert.CertificateException
 import java.time.Clock
-import java.util.Date
-import javax.net.ssl.SNIHostName
 import javax.net.ssl.X509ExtendedKeyManager
 
 enum class EnrolledCredentialError { INVALID_CREDENTIAL, STORAGE_FAILURE }
@@ -86,18 +83,7 @@ class AndroidEnrolledCredentialStore internal constructor(
 
     private fun validate(record: EnrolledCredentialRecord): X509ExtendedKeyManager {
         val identity = identities.load(record.desktopId) ?: error("Device identity is missing")
-        val gateway = record.gatewayCertificate
-        GatewayTrust.verifyPinnedCertificate(gateway, record.gatewaySpkiSha256, Date.from(clock.instant()))
-        val logicalName = SNIHostName(record.logicalServerName).asciiName
-        // The local format requires the dedicated leaf's exact DNS SAN; no CN or wildcard fallback.
-        val matches = gateway.subjectAlternativeNames.orEmpty().any { entry ->
-            entry.size == 2 && entry[0] == 2 && entry[1] is String &&
-                logicalName.equals(entry[1] as String, ignoreCase = true)
-        }
-        if (!matches) throw CertificateException("Gateway server name mismatch")
-        return identity.bindEnrolledClientCertificate(
-            record.clientCertificateChain, record.authenticatedEnrollmentAuthority, clock,
-        )
+        return EnrolledCredentialValidation.validate(record, identity, clock)
     }
 
     private fun recordName(desktopId: String): String {
@@ -127,7 +113,14 @@ internal interface CredentialRecordFiles {
 }
 
 /** Same-directory sync + atomic rename. Unsupported atomic publication fails without a fallback. */
-internal class AtomicCredentialRecordFiles(private val directory: File) : CredentialRecordFiles {
+internal class AtomicCredentialRecordFiles(
+    private val directory: File,
+    private val maximumRecordBytes: Int = EnrolledCredentialCodec.MAX_RECORD_BYTES,
+) : CredentialRecordFiles {
+    init {
+        require(maximumRecordBytes in 1..32768) { "Invalid credential record limit" }
+    }
+
     override fun read(name: String): ByteArray? {
         val path = target(name).toPath()
         if (Files.notExists(path, LinkOption.NOFOLLOW_LINKS)) return null
@@ -136,17 +129,17 @@ internal class AtomicCredentialRecordFiles(private val directory: File) : Creden
             val result = ByteArrayOutputStream()
             val buffer = ByteArray(1024)
             while (true) {
-                val count = input.read(buffer, 0, minOf(buffer.size, EnrolledCredentialCodec.MAX_RECORD_BYTES + 1 - result.size()))
+                val count = input.read(buffer, 0, minOf(buffer.size, maximumRecordBytes + 1 - result.size()))
                 if (count < 0) break
                 result.write(buffer, 0, count)
-                if (result.size() > EnrolledCredentialCodec.MAX_RECORD_BYTES) throw IOException("Credential record is too large")
+                if (result.size() > maximumRecordBytes) throw IOException("Credential record is too large")
             }
             result.toByteArray()
         }
     }
 
     override fun publish(name: String, encoded: ByteArray) {
-        require(encoded.size in 1..EnrolledCredentialCodec.MAX_RECORD_BYTES) { "Invalid credential record size" }
+        require(encoded.size in 1..maximumRecordBytes) { "Invalid credential record size" }
         val destination = target(name).toPath()
         Files.createDirectories(directory.toPath())
         val temporary = Files.createTempFile(directory.toPath(), "$name.", ".pending")

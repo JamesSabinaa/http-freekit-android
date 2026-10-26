@@ -60,6 +60,31 @@ class AndroidDeviceIdentityStore {
         }
     }
 
+    /** Original public Keystore evidence only; never installs or substitutes an issued chain. */
+    fun originalCertificateChain(desktopId: String): List<X509Certificate>? = synchronized(storeLock) {
+        try {
+            val alias = aliasFor(desktopId)
+            if (!keyStore.containsAlias(alias)) return@synchronized null
+            val identity = checkNotNull(load(desktopId))
+            val original = checkNotNull(keyStore.getCertificateChain(alias))
+            check(original.size in 1..4)
+            val chain = ArrayList<X509Certificate>(original.size)
+            var total = 0
+            for (certificate in original) {
+                check(chain.size < 4)
+                val snapshot = copyCertificate(certificate as X509Certificate)
+                total += snapshot.encoded.size
+                check(total <= 16384)
+                chain += snapshot
+            }
+            check(MessageDigest.isEqual(chain.first().publicKey.encoded, identity.publicKey.encoded))
+            check(identity.keyForClientAuthentication() != null)
+            java.util.Collections.unmodifiableList(chain)
+        } catch (_: Exception) {
+            throw IllegalStateException("Original device certificate evidence is unavailable; pair again")
+        }
+    }
+
     fun delete(desktopId: String): Unit = synchronized(storeLock) {
         keyStore.deleteEntry(aliasFor(desktopId))
     }
