@@ -17,7 +17,7 @@ and isolated research tests; those tests do not establish a finished capture app
 | --- | --- | --- |
 | App interface | Installed-app discovery, selection, keyboard/rotation and certificate-help checks on API 26/37 | Connect the interface to real pairing, capture, recovery and diagnostics |
 | Identity and enrollment | Keystore identity, scoped TLS, approval, saved credentials, restart/recovery, revocation and expiry research | Production credential/approval binding and remaining v1 decisions |
-| Capture and proxy transport | `d25dc53`/host40336789126 attempt2: reference Android preparation compiles,375 JVM/40 new Node/46 CA receipts/nine clean lints independently audited | Actual enrolled selected-UID TUN execution, production integration and physical USB |
+| Capture and proxy transport | `4cd60b8`/host40351833250: audited375 JVM/43 reference Node/46 CA receipts/nine clean lints, reviewed finite absence diagnostics | Fresh same-matrix API26/37 reference acceptance, production integration and physical USB |
 | Public interception CA | `fa2d845`: 46/46 source-bound CA receipts, 320 JVM host methods, nine clean lint reports and saved-credential Android retrieval on API26/37 | CA installation, target-app trust and production integration remain open |
 | Android CA runtime driver | Fresh matrix 40222004218 passes both APIs; independent original four-file replay verifies three ordered methods and all cleanup on each | A23 runtime research acceptance complete; preserve scope limits and advance to enrolled selected-app capture |
 | Reference interception | `65cd93f`/host40316060504: six actual factory/strict-JSSE cases and 23 private Node peer cases pass; audited 351 JVM/46 CA receipts/nine clean lints; earlier Node-only checkpoint retained | Distinct Android selected-UID execution next; not C5/desktop/USB |
@@ -182,8 +182,12 @@ New checkpoint CI must be inspected before claiming hosted validation of later c
    all jobs (metadata only), but predates repair `5085cb5`, integrated `4663e66`.
    Repaired coordinator focused8/8/full documentation166/166 and owner clock33/33
    pass; independent corrective review found no concrete remaining finding.
-   Fresh repaired-source full host is next, then diagnostic runtime. Production
-   clock bytes stay unchanged.
+   Fresh repaired-source host40351833250 at exact `4cd60b8` now passes all jobs
+   and independent original-artifact replay:375 JVM/46 CA receipts/nine clean lints,
+   43 reference Node/84 capture/141 enrollment documentation cases, including all
+   three diagnostic/eight budget mutation cases. Next is one exact-source fresh
+   diagnostic matrix with both APIs in that same matrix. Production clock bytes
+   stay unchanged; earlier failed attempts stay failed.
    No control is weakened.
    It is not the missing desktop backend, C5 or USB acceptance.
    Obtain and verify the exact already-authorized reviewed desktop source

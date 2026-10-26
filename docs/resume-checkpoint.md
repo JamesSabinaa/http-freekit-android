@@ -7,6 +7,19 @@ The original goal is active and incomplete.
 
 ## Current Linux resume position
 
+- Latest diagnostic host checkpoint is accepted at exact
+  `4cd60b8a9bbdc7c04eaf516b3b05acef69d9f9ec`, host40351833250 attempt1. All three
+  jobs and independent original-artifact/log replay pass:375 JVM/47 XMLs,22
+  traffic/two decoder/six fresh reference factory methods,46 CA receipts/all joins,
+  nine clean lints,43 reference Node/84 capture/141 enrollment documentation cases,
+  including all three diagnostic/eight clock budget/mutation cases. Original
+  evidence `/tmp/reference-tun-diagnostic-host-accepted.mM1lDP`; trusted script
+  `/tmp/audit-reference-tun-diagnostic-host.py`. Stable ignored host audit SHA256:
+  `57c29ba1e21e075dfb399861a94753d4f15cbb23b98d2d733796d690ddb71a6f`.
+  Next: one fresh diagnostic API26/37 matrix at exact accepted source, then
+  independent original four-file replay per API. No prior API successes combine.
+  Earlier failures and the following source-specific history remain retained.
+
 - Android reference host preparation is now accepted at exact
   `d25dc53459e8b88aa36007f21868750b569270c8`, host40336789126 attempt2.
   Independent original-report/log audit verifies375 JVM methods/47 XMLs,
@@ -60,9 +73,9 @@ The original goal is active and incomplete.
   Node documentation166/166 pass, owner clock33/33 passes; independent reviewer
   `a9cc5f4400d6f29c6` found no concrete remaining finding (static). Production clock
   bytes stay unchanged. Fresh repaired-source host40351833250 at exact
-  `4cd60b8a9bbdc7c04eaf516b3b05acef69d9f9ec` is running with a bounded40-minute
-  completion watch. Trusted pending audit: `/tmp/audit-reference-tun-diagnostic-host.py`.
-  No new runtime is dispatched before corrected full host acceptance.
+  `4cd60b8a9bbdc7c04eaf516b3b05acef69d9f9ec` is now independently accepted above.
+  Trusted audit: `/tmp/audit-reference-tun-diagnostic-host.py`.
+  No new runtime has yet been dispatched; accepted host now clears that gate.
   Finite ignored runtime audit SHA256:
   `b970f82c38e04897b5b6fedb73814203c2b85cd0419f1bd20fde197ad48d2581`.
   No third retry is dispatched. Require both APIs in one same-source attempt;

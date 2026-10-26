@@ -1,7 +1,9 @@
 # Android reference selected-UID HTTP/H1 HTTPS research
 
-Status: host preparation accepted at `d25dc53`/run40336789126 attempt2;
-first runtime40340552254 attempt1 independently passes API26's two methods.
+Status: latest host preparation accepted at `4cd60b8`/run40351833250 attempt1
+(including finite absence diagnostics and reviewed clock regressions); original
+preparation at `d25dc53`/run40336789126 attempt2 remains accepted.
+First runtime40340552254 attempt1 independently passes API26's two methods.
 Attempt2 independently passes API37 but fails API26 before HTTPS starts with
 `enrollment_input_failed`. Combined runtime acceptance is open.
 Prerequisite [Kotlin host checkpoint](reference-kotlin-interception-research.md)
@@ -241,9 +243,11 @@ Node24.22.1, bundled OpenSSL3.5.9 and JDK17.0.20.1+1.
 Attempt1 stopped before tests on NDK archive extraction; its original failure
 remains retained. One recorded fresh-runner retry used unchanged source/checks.
 Earlier clock/annotation/dependency/test-annotation failures also remain failed.
-The finite audit and checksum are exported directly in ignored
-`dist/reference-tun-host-audit.json`/`.sha256`; audit SHA256 is
-`e739d02e8c305ba706a75652de45461fb14b85436fa7f428b8da005910216f22`.
+The finite audit/checksum were initially exported directly in ignored
+`dist/reference-tun-host-audit.json`/`.sha256`; that historical audit SHA256 is
+`e739d02e8c305ba706a75652de45461fb14b85436fa7f428b8da005910216f22`, now retained
+as `/tmp/reference-tun-host-audit-d25dc53.json`. Stable dist filenames now carry
+the newer accepted source below.
 It binds exact source/run/attempt and original log/metadata/report-manifest hashes,
 without identity, keys, CA values or traffic digests. Original accepted evidence
 is retained at `/tmp/reference-tun-host-accepted.fF0F5a` outside trusted scripts.
@@ -343,3 +347,26 @@ full Node documentation166/166 pass without skips; owner clock33/33 also passes.
 Independent exact follow-up reviewer `a9cc5f4400d6f29c6` found no concrete remaining
 finding (static). Production clock/workflow bytes remain unchanged. Fresh full
 pinned host validation of the repaired source must precede diagnostic runtime.
+
+## Accepted diagnostic checkpoint
+
+Exact `4cd60b8a9bbdc7c04eaf516b3b05acef69d9f9ec` passes all three jobs in
+[host40351833250 attempt1](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40351833250/attempts/1).
+Independent original XML/log/metadata replay verifies375 unique JVM methods/
+47 XMLs,22 traffic/two decoder methods, all six fresh reference factory cases,
+46 clean-source CA receipts/all joins and nine zero-issue lint reports. All43
+reference Node/84 capture/141 enrollment documentation Node cases pass without
+failure/cancellation/skip, including three new diagnostic cases and eight exact
+root/unroot deadline/mutation cases. Both instrumentation methods/APKs compile.
+Node24.22.1, bundled OpenSSL3.5.9 and JDK17.0.20.1+1 are observed.
+
+Original evidence is `/tmp/reference-tun-diagnostic-host-accepted.mM1lDP`;
+trusted audit script is `/tmp/audit-reference-tun-diagnostic-host.py`, outside
+downloads. Stable finite export `dist/reference-tun-host-audit.json`/`.sha256`
+has SHA256 `57c29ba1e21e075dfb399861a94753d4f15cbb23b98d2d733796d690ddb71a6f`.
+The original failed host and earlier runtime attempts stay failed. No shared
+wire/report schema, production deadline, gate or TLS assertion changes.
+Next is one fresh diagnostic API26/37 matrix at this exact host-accepted source;
+require both ordered methods and independent four-file replay per API in that
+same matrix. No old individual API successes are combined. This host pass is
+not Android runtime, physical USB, C5/desktop or production acceptance.

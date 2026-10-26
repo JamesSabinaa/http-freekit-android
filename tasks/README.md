@@ -195,8 +195,14 @@ acceptance. Follow-up `5085cb5`, integrated `4663e66`, adds the independent anch
 focused8/8 and full integrated documentation166/166 pass, owner clock33/33 passes.
 Isolated read-only follow-up reviewer `a9cc5f4400d6f29c6`, branch
 `worktree-agent-a9cc5f4400d6f29c6`, found no concrete remaining finding. Fresh full
-pinned host40351833250 at exact `4cd60b8` is running with bounded completion watch;
-root owns original-artifact audit/integration. No runtime dispatch before acceptance.
+pinned host40351833250 attempt1 at exact `4cd60b8` now passes all jobs and root's
+independent original-artifact/log replay:375 JVM/47 XMLs,46 clean-source CA receipts/
+all joins,nine clean lints,43 reference Node/84 capture/141 enrollment documentation
+cases, including all three diagnostic/eight budget/mutation cases. Original
+accepted evidence `/tmp/reference-tun-diagnostic-host-accepted.mM1lDP`; stable safe
+host audit SHA256 `57c29ba1e21e075dfb399861a94753d4f15cbb23b98d2d733796d690ddb71a6f`.
+Root owns checked main promotion, next exact-source diagnostic matrix and original
+four-file replay per API; no runtime acceptance before both APIs pass one matrix.
 Root retains all profile/board/integration and dispatch; no report-schema, gate,
 timeout or shared-helper changes assigned.
 Input/ACK absence observations are false after HTTP, but the underlying failed

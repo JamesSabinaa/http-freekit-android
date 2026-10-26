@@ -386,7 +386,17 @@ integrated `4663e66`. The repair anchors the independent pre-assignment clock,
 asserts30 seconds before reconnect/injection and rejects all four60-second
 mutations. Coordinator focused8/8 and full documentation166/166 pass, owner
 clock33/33 passes. Independent corrective static review finds no concrete
-remaining finding. Require fresh repaired-source full host before runtime.
+remaining finding. Fresh host40351833250 attempt1 at exact `4cd60b8` now passes
+all jobs and independent original-report/log replay:375 unique JVM/47 XMLs,22
+traffic/two decoder/six fresh reference factory methods,46 clean-source CA
+receipts/all joins,nine clean lints,43 reference Node/84 capture/141 enrollment
+documentation cases. All three diagnostic/eight clock/mutation cases pass without
+skips. Original evidence `/tmp/reference-tun-diagnostic-host-accepted.mM1lDP`;
+trusted audit `/tmp/audit-reference-tun-diagnostic-host.py`. Latest stable ignored
+host audit SHA256 `57c29ba1e21e075dfb399861a94753d4f15cbb23b98d2d733796d690ddb71a6f`.
+Host preparation is accepted; next is a fresh exact-source API26/37 diagnostic
+matrix and independent same-matrix four-file replay per API. No previous success
+is combined; old failures remain failed. No production clock or schema changed.
 
 ## Authenticated public interception CA research
 
