@@ -854,6 +854,21 @@ Independent artifact audit confirmed each full class/method identity once, three
 
 [Run 40103200664](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40103200664) at `7e9b1c8c03b4bb925fd894e37cd53c5dc522eff4` passed on both APIs with the integrated exact-suite verifier. The actual job logs show successful Gradle execution followed by the new script's summary of twelve cases, three suites, and zero failures, errors, or skips for each API. Downloaded XML also passes that verifier independently. Both jobs used emulator 37.2.12 build 16428233, KVM version 12, and ADB 37.0.1-15733141. This supplies hosted evidence for the stricter gate without extending the persistence scope above.
 
+## Approval-bound credential library (B7)
+
+The [opt-in local persistence package](approved-credential-persistence.md) is
+assigned, not implemented/accepted. Existing host CI already discovers new
+core-security JVM tests and runs `:core-security:testDebugUnitTest`,
+`:core-security:assembleDebugAndroidTest` and `:core-security:lintDebug`; retain all
+existing credential/TLS/key-manager regressions. Require independent source review
+and fresh pinned full host before promotion. Test fixtures may assert prior
+validated approval provenance but cannot prove that arbitrary constructor inputs
+were authenticated. A successful round trip does not grant registry authorization,
+renew credentials, validate a downloaded CA, establish production pairing/capture
+or freeze wire. Legacy no-synthesis and shared-key Forget effects are mandatory
+negative checks. New exact-owned-alias Android evidence access needs separately
+gated device execution before any runtime claim; host compilation is insufficient.
+
 ## Preview runtime evidence
 
 Latest [B6 selected-app preflight](selected-app-preflight.md) checkpoint is accepted
