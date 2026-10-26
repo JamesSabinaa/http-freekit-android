@@ -82,7 +82,14 @@ horizontal scrolling; all displayed/enabled/touch/scenario/keyboard assertions
 remain. Finite Refresh geometry/enabled diagnostics only; production unchanged.
 Independent reviewer `a1e619c946a20d9ec` found no concrete defect; owner58/58
 workflow/cleanup checks pass. This is source-supported, not proof of the exact
-historical image cause. Fresh pinned host must precede a new full matrix.
+historical image cause. Fresh `0605472` host40365851244 attempt1 now passes all
+three jobs and independent original-artifact replay:406 JVM/49 XMLs/all31 new
+methods, nine clean lints,46 CA receipts/all joins, app/instrumentation compilation
+and all retained host gates. Original `/tmp/b6-scroll-host.O38XS9`; trusted
+`/tmp/audit-b6-scroll-host.py`; stable ignored audit SHA256
+`a8c72a59ef929a37f5cf89a0b8c806701f49066f726180ae152feb515edffe91`.
+Fresh exact-source full matrix40367969116 is dispatched, not yet accepted;
+all21 methods/owned cleanup remain mandatory on both APIs.
 
 ## Reference interception host checkpoint
 

@@ -1,8 +1,12 @@
 # Selected-app platform preflight (B6)
 
-Status: host accepted at exact `4ce72be` in
-[run40361791894](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40361791894),
-not yet runtime accepted; not production capture or wire integration.
+Status: latest corrected source `0605472` is host accepted in
+[run40365851244](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40365851244),
+with independent406-JVM/nine-clean-lint replay. Fresh exact-source
+[matrix40367969116](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40367969116)
+is dispatched, not accepted yet. Earlier host acceptance at exact `4ce72be` in
+[run40361791894](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40361791894)
+remains valid, but its runtime failed below. Not production capture or wire integration.
 Independent original reports/logs verify 406 JVM methods/49 XMLs, including all13
 platform/all18 state cases, nine clean lints, app/instrumentation compilation,
 46 clean-source CA receipts/all joins and24/24 delivery checks. The prior
@@ -18,8 +22,9 @@ acceptance. Test-only owner `4c7708c` (integrated `9b6243e`) extends the existin
 vertical LazyList reset to all non-fixture catalog controls before nested horizontal
 scrolling, preserving all old assertions/scenarios; finite Refresh geometry is
 added. Production bytes stay unchanged. The exact historical image cause remains
-unproven. Independent exact-commit review found no concrete defect. Require fresh
-host before a new matrix, never skip old tests.
+unproven. Independent exact-commit review found no concrete defect. Fresh
+host40365851244 now passes and a full new matrix is dispatched as above;
+old tests and assertions remain mandatory.
 Platform owner `c4ebbce` is integrated `91c1c33`; app owner `d4bcc1c` is integrated
 `e711b47`. Independent exact-commit reviews found no concrete defect. Thirteen
 platform and eighteen pure state JVM methods plus eight controlled Activity

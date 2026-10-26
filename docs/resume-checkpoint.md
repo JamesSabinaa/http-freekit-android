@@ -7,6 +7,20 @@ The original goal is active and incomplete.
 
 ## Current Linux resume position
 
+- Reviewed test-only scroll correction is host accepted at exact
+  `0605472a53582818a0cde96f900a720f34fee9f5`, host40365851244 attempt1. Independent
+  original reports/log replay confirms406 JVM/49 XMLs/all31 preflight methods,
+  nine clean lints, app/instrumentation compilation,46 clean-source CA receipts/
+  all joins,24 delivery/58 preview gate-cleanup/141 enrollment documentation/
+  43 reference Node/84 capture cases. Original `/tmp/b6-scroll-host.O38XS9`;
+  trusted `/tmp/audit-b6-scroll-host.py` reuses the unchanged previous audit checks.
+  Stable ignored `dist/selected-app-preflight-scroll-host-audit.json` SHA256:
+  `a8c72a59ef929a37f5cf89a0b8c806701f49066f726180ae152feb515edffe91`.
+  Fresh full API26/37 matrix40367969116 is dispatched at that exact accepted
+  source; runtime acceptance is pending, all21 methods/cleanup must pass on each.
+  Earlier failed matrix40363807230 remains failed; exact historical cause stays
+  unproven. No production bytes, shared contract or runtime assertion weakened.
+
 - B6 runtime matrix40363807230 attempt1 at exact host-accepted `4ce72be` fails:
   original XML contains21 methods each, API26 passes19/21 and API37 passes20/21.
   All eight new controlled preflight and three actual PackageManager methods pass

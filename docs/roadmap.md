@@ -109,7 +109,13 @@ acceptance remains open. Test-only owner `4c7708c`, integrated `9b6243e`, extend
 existing vertical-owner positioning to filter/refresh controls while preserving
 all displayed/enabled/touch/keyboard assertions. Independent exact-commit review
 found no concrete defect. Source supports the scroll-owner gap, not a proven
-historical image cause. Fresh host must precede a new full matrix. The work board tracks
+historical image cause. Corrected `0605472` now passes
+[host40365851244](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40365851244),
+independently replayed406 JVM/nine clean lints/all31 new methods and all retained
+host gates. Fresh same-source
+[matrix40367969116](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40367969116)
+is dispatched, not yet accepted; all21 methods/cleanup must pass on each API.
+The work board tracks
 additional real PackageManager adapter test source and exact runtime report gates.
 Approval-bound combined credential persistence is the next verified foundation
 gap; it is not an excuse to declare production v1 frozen or silently reuse
