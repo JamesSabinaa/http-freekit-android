@@ -1,7 +1,8 @@
 # Android reference selected-UID HTTP/H1 HTTPS research
 
 Status: host preparation accepted at `d25dc53`/run40336789126 attempt2;
-Android runtime and capture acceptance remain unrun.
+first runtime40340552254 attempt1 independently passes API26's two methods;
+API37 stops before boot on SDK extraction. Combined runtime acceptance is open.
 Prerequisite [Kotlin host checkpoint](reference-kotlin-interception-research.md)
 is accepted at `65cd93f`/run40316060504. This distinct checkpoint uses the owned
 reference backend, NOT the missing reviewed desktop implementation. Existing
@@ -250,3 +251,23 @@ This accepts host preparation only. Next is one separately named fresh API26/37
 matrix with both exact ordered methods and independent four-file replay per API.
 No Android TUN, Android TLS-provider closure, target-app trust, desktop C5,
 physical USB, production integration or v1 freeze is inferred from this host pass.
+
+## First Android runtime result
+
+[Runtime40340552254 attempt1](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/40340552254/attempts/1)
+uses exact host-accepted `d25dc53`. API26 passes both actual ordered methods;
+independent replay of all four original artifacts verifies sixteen phases and
+56 facts per method, source/strict clock, real HTTP/HTTPS request/reply/EOF,
+independent gateway COMPLETE before ACK/Stop, all Android/host/package/process
+cleanup and emulator stop/termination/join/exit0. Clock interval is
+[-887,118]ms with6ms round trip. This is reference selected-UID Android evidence,
+not an Android close_notify or ALPN-negotiation claim.
+
+API37 stops before boot/methods while preparing NDK28.2.13676358:
+`Error reading Zip content from a SeekableByteChannel`. It has no runtime result.
+Original first-attempt reports/logs/metadata are retained in
+`/tmp/reference-tun-runtime-first.iyEdE1`, outside trusted scripts. Attempt1 remains
+failed overall. One recorded full fresh-runner matrix retry is attempt2 at the
+unchanged exact source, in progress; both APIs must pass that same attempt.
+Do not combine API26's earlier success with later individual methods/APIs.
+No code, SDK version, integrity check, workflow, assertion or deadline is changed.

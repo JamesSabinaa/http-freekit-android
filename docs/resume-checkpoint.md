@@ -12,14 +12,20 @@ The original goal is active and incomplete.
   Independent original-report/log audit verifies375 JVM methods/47 XMLs,
   all22 new traffic and two shared-decoder methods,40 new reference Node/84
   finite capture cases,46 clean-source CA receipts/all joins and nine clean
-  lint XMLs. New Android methods/APKs compile; runtime remains unrun.
+  lint XMLs. New Android methods/APKs compile; partial runtime is recorded below.
   Original accepted evidence: `/tmp/reference-tun-host-accepted.fF0F5a`.
   Safe coordinator `dist/reference-tun-host-audit.json` SHA256:
   `e739d02e8c305ba706a75652de45461fb14b85436fa7f428b8da005910216f22`.
   Attempt1's SDK archive failure and every earlier failure stay failed.
-  Publish this checked preparation/evidence to main, then dispatch the distinct
-  fresh API26/37 two-method reference runtime and independently replay all four
-  original files per API. No Android/TUN/desktop C5/USB acceptance is inferred.
+  Checked preparation/evidence is published on main at `7e87724`. First distinct
+  runtime40340552254 attempt1 at exact host-accepted `d25dc53` independently
+  passes both API26 methods/all four artifacts (16 phases/56 facts each, strict
+  clock[-887,118]ms/RTT6, every cleanup/emulator stop/join/exit0). API37 stops
+  before boot/methods on NDK ZIP extraction. Original evidence:
+  `/tmp/reference-tun-runtime-first.iyEdE1`. Attempt1 remains failed overall.
+  One recorded full fresh-runner matrix retry is attempt2 at unchanged source,
+  in progress. Require both APIs in that attempt; do not merge earlier success.
+  Desktop C5, physical USB and production remain unaccepted.
 - The previous Android public `main` checkpoint is `751e35a`.
   The latest accepted Kotlin/reference host implementation is exact source
   `65cd93f9ff11eabd208b47af48c29f345e73853b`, run40316060504. All three jobs

@@ -147,9 +147,14 @@ Node/84 capture cases,46 clean-source CA receipts/all joins and nine clean lint
 XMLs. New instrumentation/APKs compile; host preparation accepted. Safe audit
 SHA256 `e739d02e8c305ba706a75652de45461fb14b85436fa7f428b8da005910216f22`;
 original accepted evidence `/tmp/reference-tun-host-accepted.fF0F5a`.
-Attempt1 and every earlier failed source remain failed. Root owns checked main
-promotion and then one distinct fresh API26/37 reference runtime; no Android,
-physical USB, desktop C5 or production acceptance is inferred.
+Attempt1 and every earlier failed source remain failed. Root published checked
+main promotion `7e87724` and dispatched first reference runtime40340552254 at
+exact host-accepted `d25dc53`. Attempt1 independently passes both actual API26
+methods/all four artifacts/every cleanup; API37 stops before boot on NDK ZIP
+extraction. Original evidence `/tmp/reference-tun-runtime-first.iyEdE1`. One
+recorded full fresh-runner attempt2 at unchanged source is in progress; require
+both APIs in that attempt, no merging earlier success. Root owns original
+artifact replay/evidence. No physical USB, desktop C5 or production acceptance.
 
 Each uses its own branch/worktree; no subagent toolchain installation,
 publication, CI/device dispatch or changes to another package. Current source

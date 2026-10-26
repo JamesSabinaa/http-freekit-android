@@ -157,9 +157,13 @@ New checkpoint CI must be inspected before claiming hosted validation of later c
    unchanged source. **Attempt2 passes all three jobs.** Independent original
    evidence verifies375 JVM methods/47 XMLs,22 new traffic/two decoder methods,
    40 new reference Node/84 capture cases,46 CA receipts/all joins and nine clean
-   lint XMLs. Host preparation is accepted at exact `d25dc53`; publish checked
-   preparation to main and run the distinct fresh API26/37 two-method proof.
-   Historical runs/attempt1 remain failed. No Android acceptance is inferred.
+   lint XMLs. Host preparation is accepted at exact `d25dc53` and published with
+   evidence on main `7e87724`. First runtime40340552254 attempt1 at exact
+   host-accepted `d25dc53` independently passes both API26 methods/all four
+   artifacts and cleanup; API37 stops before boot on NDK ZIP extraction. One
+   recorded full fresh-runner attempt2 is in progress at unchanged source;
+   require both APIs in that same attempt, without combining earlier success.
+   Historical failures remain failed; combined Android acceptance remains open.
    No control is weakened.
    It is not the missing desktop backend, C5 or USB acceptance.
    Obtain and verify the exact already-authorized reviewed desktop source

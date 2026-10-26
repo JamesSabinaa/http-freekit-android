@@ -338,6 +338,15 @@ records original evidence and safe `dist/reference-tun-host-audit.json` checksum
 This accepts host preparation, not Android TUN/TLS-provider behavior or USB.
 Next is the distinct fresh API26/37 runtime; preserve every earlier failed run.
 
+First runtime40340552254 attempt1 at exact `d25dc53` independently passes both
+API26 methods/all four original files:16 phases/56 observations per method,
+clock[-887,118]ms/RTT6, natural gateway COMPLETE before ACK/Stop, all package/
+process/native/TUN cleanup and emulator stop/termination/join/exit0. API37 stops
+before boot on the NDK ZIP extraction error and has no method evidence. Original
+files/logs/metadata are in `/tmp/reference-tun-runtime-first.iyEdE1`.
+One recorded full fresh-runner attempt2 at unchanged source is in progress;
+require both APIs in that attempt, do not combine prior API26 success.
+
 ## Authenticated public interception CA research
 
 The [A23 contract](protocol-interception-ca.md) is checked by the compiled shared
