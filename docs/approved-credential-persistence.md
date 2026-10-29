@@ -1,7 +1,14 @@
 # Approval-bound local credential persistence (B7)
 
-Status: main code is implemented locally after accepted [B6](selected-app-preflight.md),
-not host/runtime validated. Model/codec owner `4558923` is integrated `fffd98e`;
+Status: main code is implemented locally after accepted [B6](selected-app-preflight.md).
+Host40843095033 attempt1 at exact `fdd00f8` FAILED strict app lint: two
+AndroidGradlePluginVersion errors (pinned9.4.1, available9.5.0). Independent original
+replay verifies partial364 JVM methods/38 XMLs, including all46 new methods,
+security/app instrumentation compilation, but not the complete host gate. No
+emulator dispatch. Root owns the reviewed AGP-only update and fresh host gate;
+no lint suppression or unchanged-source retry. Stable ignored failure audit SHA256
+`060aa78e68c71d30cc4b7a3b013cdc7eff71323c089c2361c67d12a00235ab35`.
+Model/codec owner `4558923` is integrated `fffd98e`;
 identity/validator owner `a893faf` is integrated `12a0629`; store owner `febe5bb` is
 integrated `d944baf`. Independent contract and all M/I/S implementation reviews found
 no concrete defect. Independent test owner `4184e1a` is integrated `26c2004`
@@ -10,8 +17,10 @@ no concrete defect. Independent test owner `4184e1a` is integrated `26c2004`
 `1d2dd18`, independently reviewed, with coordinator19/19 synthetic checks passing.
 Bounded cleanup `d585032` is integrated `a36fe7f`; coordinator83/83 combined new
 Keystore/unchanged preview cleanup/gate tests pass. Independent T/W reviews found
-no concrete defect. No hosted B7 validation or emulator run has been dispatched. Local Java/SDK
-are absent: no compilation/JVM/lint/runtime claim.
+no concrete defect. The failed hosted gate above compiled and executed the new
+JVM tests, but is not complete host acceptance. Local Java/SDK are absent: no
+local compilation/JVM/lint/runtime claim; original-owned-key Android execution is
+still unrun.
 This is an opt-in core-security library increment, not app wiring,
 authenticated enrollment implementation, production wire integration or v1 freeze.
 [Protocol](protocol.md) remains canonical and draft. Existing generic credential

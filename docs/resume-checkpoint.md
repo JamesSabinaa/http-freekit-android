@@ -7,6 +7,20 @@ The original goal is active and incomplete.
 
 ## Current Linux resume position
 
+- Update29 October: host40843095033 attempt1 at exact `fdd00f8` FAILED strict
+  `:app:lintDebug` with two AndroidGradlePluginVersion errors:9.4.1 vs9.5.0.
+  Documentation/native jobs pass. Original replay verifies364 partial JVM methods/
+  38 XMLs including all46 new B7 methods and security/app instrumentation
+  compilation; this is not the full host gate. No runtime dispatch. Evidence
+  `/tmp/b7-approved-host.ddcoMf`, trusted `/tmp/audit-b7-host-failure.py`, stable
+  ignored `dist/approved-credential-host-failure-audit.json` SHA256
+  `060aa78e68c71d30cc4b7a3b013cdc7eff71323c089c2361c67d12a00235ab35`.
+  Root owns AGP-only9.5.0 update with unchanged Gradle9.8.2/JDK17/SDK pins and
+  strict lint, independent review and fresh full host required. B8 test/verifier
+  owners have committed isolated implementations; verifier review passes, Android
+  review confirmed primary-failure masking in finally cleanup and owner correction
+  is active. Do not integrate B8 into B7's fifteen-case replay source.
+
 - Next executable package is frozen
   [B7 local approval-bound credential persistence](approved-credential-persistence.md):
   opt-in atomic combined public envelope, original-owned-alias evidence, shared

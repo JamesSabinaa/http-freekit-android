@@ -108,6 +108,29 @@ branches. Original same-source host40843095033 is running; documentation/native
 pass and Android remains in progress. Publication of this checkpoint is no longer
 blocked, but host acceptance/runtime/main promotion are still pending.
 
+## B7 host toolchain correction
+
+Host40843095033 attempt1 at exact `fdd00f8` FAILED at `:app:lintDebug`:
+two AndroidGradlePluginVersion errors report pinned9.4.1 versus available9.5.0.
+Documentation/native jobs pass; security/app JVM and instrumentation compiled,
+but the full host gate is not accepted and no emulator matrix is authorized by
+that partial result. Original artifacts/logs are preserved separately at
+`/tmp/b7-approved-host.ddcoMf`; no unchanged-source retry or lint suppression.
+Root exclusively owns `gradle/libs.versions.toml`, current toolchain documentation
+and evidence/board updates on `worktree-coord-a23-resume`. Official AGP9.5 release
+notes require Gradle>=9.6.0/JDK17/build-tools36/API<=37; existing Gradle9.8.2 and
+other pins meet those stated requirements. Kotlin compatibility still needs the
+fresh full pinned host; no local Java/SDK validation is claimed. Change only AGP
+to9.5.0, preserve strict lint and wrapper checksum; require independent review and
+fresh complete host before runtime. B8 implementations remain separate pending
+B7 recovery and reviewed cleanup correction. Independent direct-file reviewer
+`a59f526ca833a4ac1` found no concrete defect in pin/prerequisites/docs; broader
+comparison was isolation-denied and not retried. Root's own diff/check and106/106
+Python/306 local links pass. Original failure replay verifies364 partial JVM
+methods/38 XMLs including all46 new B7 tests; failure audit SHA256
+`060aa78e68c71d30cc4b7a3b013cdc7eff71323c089c2361c67d12a00235ab35`.
+No full host or runtime acceptance.
+
 ## B8 real approved-store Android lifecycle validation
 
 Scoped 29 October 2026 by root after independent read-only investigation
@@ -117,9 +140,9 @@ still running; B8 authorship does not constitute B7 host/runtime acceptance.
 
 | Package | Exclusive files | Owner / branch / status / dependencies |
 | --- | --- | --- |
-| B8-A Android lifecycle tests | NEW AndroidApprovedEnrolledCredentialStoreTest.kt only | `a7d21b15805c12139`, isolated same-ID worktree/branch from4497161; implementing six frozen methods; existing B7/shared certificate builders; no production changes |
-| B8-V exact result verifier | scripts/verify-keystore-results.py and scripts/tests/test_keystore_results.py only | `af6babd817ca2803b`, isolated same-ID worktree/branch from4497161; implementing preserved fifteen plus six, exact21/five suites; no workflow/dispatch |
-| B8-R contract review | read-only frozen profile and actual existing key/store/test seams | `a599839e4e1ad28b6`, isolated same-ID worktree/branch; reviewing exact4497161; no edits |
+| B8-A Android lifecycle tests | NEW AndroidApprovedEnrolledCredentialStoreTest.kt only | `a7d21b15805c12139`, isolated same-ID worktree/branch from4497161; owner `705f41d` plus cleanup correction `c7e8fdb` complete, intentionally not integrated pending B7 recovery; six frozen methods authored, Java/SDK UNRUN; independent review confirmed primary-failure masking, correction review pending |
+| B8-V exact result verifier | scripts/verify-keystore-results.py and scripts/tests/test_keystore_results.py only | `af6babd817ca2803b`, isolated same-ID worktree/branch from4497161; owner `a037e05` complete, intentionally not integrated until B7 fifteen-case replay; owner26/26 focused and113/113 Python pass; exact21/five suites; independent reviewer `a2a1dc04ba0bbfb68` found no concrete defect; no runtime claim |
+| B8-R contract review | read-only frozen profile and actual existing key/store/test seams | `a599839e4e1ad28b6`, isolated same-ID worktree/branch; exact4497161 review complete, no concrete contradiction/impossible assertion; existing seams suffice, source-only |
 
 Root owns docs/CI/evidence/integration/reviews. Keep B7's exact published source
 and fifteen-case runtime separate. Fresh full pinned host precedes a fresh B8

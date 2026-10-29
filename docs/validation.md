@@ -857,8 +857,16 @@ Independent artifact audit confirmed each full class/method identity once, three
 ## Approval-bound credential library (B7)
 
 The [opt-in local persistence package](approved-credential-persistence.md) main
-code is locally composed and independently reviewed, not compiled/accepted yet.
-All46 independent JVM methods are authored and reviewed. Three original-owned-key
+code is locally composed and independently reviewed, not fully host accepted.
+Host40843095033 at `fdd00f8` attempt1 failed `:app:lintDebug`: two
+AndroidGradlePluginVersion errors for pinned9.4.1 versus available9.5.0. Independent
+original replay verifies364 partial JVM methods/38 XMLs, including all46 B7 tests,
+and security/app instrumentation compilation. Remaining JVM/lint/comparison gates
+are not accepted; no runtime dispatch. Original `/tmp/b7-approved-host.ddcoMf`,
+trusted `/tmp/audit-b7-host-failure.py`, stable ignored failure audit SHA256
+`060aa78e68c71d30cc4b7a3b013cdc7eff71323c089c2361c67d12a00235ab35`.
+Root owns the narrow compatible AGP update with strict lint retained and fresh full
+host required. All46 independent JVM methods are authored and reviewed. Three original-owned-key
 Android methods are authored; the exact verifier now requires fifteen methods/four
 suites, retaining the old twelve. Coordinator19/19 verifier regressions and83/83
 combined Keystore/preview cleanup/gate checks pass. The new Keystore cleanup emits

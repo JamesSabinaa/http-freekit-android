@@ -19,8 +19,13 @@ Keystore cleanup. Independent main/T/A/V/W reviews found no concrete defect.
 Local Python106/106 and combined cleanup/gate83/83 pass, after
 preserving and correcting the delivery test's timestamp assumption. Production
 verifier is unchanged; file-stat rechecks are best-effort, not an atomic snapshot.
-Fresh pinned host validation must precede an exact-source API26/37 Keystore matrix
-and checked main promotion. No B7 JVM/Android execution is claimed yet.
+Fresh host40843095033 at `fdd00f8` failed strict app lint on AGP update availability
+(9.4.1 vs9.5.0); original replay verifies364 partial JVM methods/38 XMLs including
+all46 B7 methods and security/app instrumentation compilation, not full host
+acceptance. Root owns narrow AGP update without lint suppression and a fresh full
+host gate. Exact-source API26/37 Keystore runtime and checked main promotion remain
+pending. Separately scoped [B8 real approved-store lifecycle tests](approved-store-android-validation.md)
+are authored, with the reviewed cleanup correction pending; no device execution.
 
 | Area | Verified progress | Remaining work |
 | --- | --- | --- |

@@ -11,7 +11,15 @@ The current build contains a native Kotlin/Compose [local interface preview](and
 
 In a Windows `local.properties`, escape the drive colon and use forward slashes, for example `sdk.dir=C\:/Android/Sdk`.
 
-Gradle 9.8.2, Android Gradle Plugin 9.4.1, Kotlin 2.4.21, and the Compose BOM are pinned in the wrapper and [version catalogue](../gradle/libs.versions.toml). The wrapper verifies its distribution SHA-256. Android API 26 is the current minimum; API 37 is the compile/target SDK. Native forwarding-engine compatibility remains to be proved before confirming the minimum for capture.
+Gradle 9.8.2, Android Gradle Plugin 9.5.0, Kotlin 2.4.21, and the Compose BOM are pinned in the wrapper and [version catalogue](../gradle/libs.versions.toml). The wrapper verifies its distribution SHA-256. Android API 26 is the current minimum; API 37 is the compile/target SDK. Native forwarding-engine compatibility remains to be proved before confirming the minimum for capture.
+
+The AGP pin advances from9.4.1 after host40843095033 fails strict
+AndroidGradlePluginVersion lint on29 October2026; the check is not suppressed.
+[Official AGP9.5 compatibility notes](https://developer.android.com/build/releases/agp-9-5-0-release-notes)
+require Gradle>=9.6.0, JDK17 and build-tools36.0.0 and support API37. Existing
+wrapper/JDK/SDK pins satisfy those stated requirements; full project/Kotlin
+compatibility still requires fresh pinned host validation. Historical validation
+records retain their original9.4.1 toolchain.
 
 ## Build and validate
 
