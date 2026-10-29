@@ -9,6 +9,17 @@ emulator dispatch. Root owns the reviewed AGP-only update and fresh host gate;
 no lint suppression or unchanged-source retry. Stable ignored failure audit SHA256
 `060aa78e68c71d30cc4b7a3b013cdc7eff71323c089c2361c67d12a00235ab35`.
 Model/codec owner `4558923` is integrated `fffd98e`;
+corrective AGP9.5.0 source `b040ddd` also fails host40845309252 at strict app lint:
+ObsoleteLintCustomCheck in LifecycleRuntimeIssueRegistry references an unavailable
+API and would skip two checks. Independent replay again finds364 partial JVM/
+all46 B7 methods and instrumentation compilation, not host acceptance. No runtime.
+Root scopes dependency compatibility correction without suppression. The normal
+Lifecycle runtime2.11.0 pin has independent source review, not hosted acceptance;
+require actual dependencyInsight, fresh full host, and both existing preview21-case
+and Keystore15-case API26/37 matrices at that source before combined promotion.
+Second stable
+ignored failure audit SHA256
+`ecb8acfbd7b44fb400f981de8a8b79ad38b1fcf07dbd883d54464dd54e14a365`.
 identity/validator owner `a893faf` is integrated `12a0629`; store owner `febe5bb` is
 integrated `d944baf`. Independent contract and all M/I/S implementation reviews found
 no concrete defect. Independent test owner `4184e1a` is integrated `26c2004`

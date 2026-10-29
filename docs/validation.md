@@ -866,7 +866,24 @@ are not accepted; no runtime dispatch. Original `/tmp/b7-approved-host.ddcoMf`,
 trusted `/tmp/audit-b7-host-failure.py`, stable ignored failure audit SHA256
 `060aa78e68c71d30cc4b7a3b013cdc7eff71323c089c2361c67d12a00235ab35`.
 Root owns the narrow compatible AGP update with strict lint retained and fresh full
-host required. All46 independent JVM methods are authored and reviewed. Three original-owned-key
+host required. Corrective host40845309252 at `b040ddd` also failed app lint:
+ObsoleteLintCustomCheck reports LifecycleRuntimeIssueRegistry referencing missing
+KtLightModifierList#getKotlinOrigin; two Lifecycle checks would be skipped.
+Original replay independently verifies364 partial JVM/38 XMLs/all46 B7 methods
+and instrumentation compilation again, not full acceptance. Original
+`/tmp/b7-plugin-host.zyoymi`, trusted `/tmp/audit-b7-plugin-host-failure.py`,
+second stable ignored failure audit SHA256
+`ecb8acfbd7b44fb400f981de8a8b79ad38b1fcf07dbd883d54464dd54e14a365`.
+Dependency/lint ABI investigation verifies the official Lifecycle2.11.0 checker
+retains both checks without the obsolete reference. Root's normal app/runtime
+catalogue pin2.11.0 uses published group constraints rather than force/exclusion;
+old2.9.4 resolution remains inferred, not observed. Early retained dependencyInsight
+must establish actual selected versions; strict lint/full host remain mandatory.
+Because the app dependency changes, also require a fresh unchanged21-method preview
+matrix on both APIs at the accepted source, alongside B7's15-method Keystore matrix,
+before combined promotion. Earlier B6 runtime does not cover the new dependency.
+No suppression, downgrade or runtime dispatch. All46 independent JVM methods are
+authored and reviewed. Three original-owned-key
 Android methods are authored; the exact verifier now requires fifteen methods/four
 suites, retaining the old twelve. Coordinator19/19 verifier regressions and83/83
 combined Keystore/preview cleanup/gate checks pass. The new Keystore cleanup emits

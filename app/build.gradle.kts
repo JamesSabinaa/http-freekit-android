@@ -44,6 +44,7 @@ dependencies {
     implementation(libs.compose.material3)
     implementation(libs.compose.ui)
     implementation(libs.activity.compose)
+    implementation(libs.lifecycle.runtime)
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.compose.test.junit4)

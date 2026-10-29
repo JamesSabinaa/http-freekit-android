@@ -129,7 +129,40 @@ comparison was isolation-denied and not retried. Root's own diff/check and106/10
 Python/306 local links pass. Original failure replay verifies364 partial JVM
 methods/38 XMLs including all46 new B7 tests; failure audit SHA256
 `060aa78e68c71d30cc4b7a3b013cdc7eff71323c089c2361c67d12a00235ab35`.
-No full host or runtime acceptance.
+No full host or runtime acceptance. Corrective source `b040ddd23bb312643369f6332e230046c6f29713`
+is now published on the intended coordinator branch; fresh full host40845309252
+is FAILED at `:app:lintDebug`: ObsoleteLintCustomCheck in LifecycleRuntimeIssueRegistry
+references missing KtLightModifierList#getKotlinOrigin and would skip
+UnsafeLifecycleWhenUsage/RepeatOnLifecycleWrongUsage. Strict lint correctly refuses
+that gap. Original `/tmp/b7-plugin-host.zyoymi`; trusted
+`/tmp/audit-b7-plugin-host-failure.py` independently verifies364 partial JVM/38 XMLs,
+all46 B7 tests, and security/app instrumentation compilation, not complete host.
+Stable ignored audit SHA256
+`ecb8acfbd7b44fb400f981de8a8b79ad38b1fcf07dbd883d54464dd54e14a365`.
+Read-only investigator `ad61190abb5249c78`, isolated same-ID worktree/branch, owns
+bounded primary-source dependency/Lifecycle compatibility investigation, no edits.
+Root owns the eventual minimal pin/dependency correction, documents and fresh host;
+no lint suppression/exclusion/downgrade or unchanged-source retry. Investigation is
+complete: Activity1.13.0 POM requests Lifecycle2.9.4 and that official runtime AAR's
+checker contains the exact obsolete reference; actual old Gradle resolution is
+inferred, not observed. Official stable Lifecycle2.11.0 AAR retains both checks
+without that reference; published group constraints align already-present Lifecycle
+modules. Root exclusively owns catalogue + `app/build.gradle.kts` ordinary runtime
+pin2.11.0 and `.github/workflows/android.yml` early dependencyInsight report, plus
+docs, on the coordinator branch. No force/substitution/exclusion/suppression,
+wrapper/SDK change or production behavior edit. Fresh host and actual resolved
+versions remain mandatory. Because the dependency also affects the actual app,
+require the unchanged21-method preview matrix on API26/37 at the same accepted
+source, as well as B7's15-method Keystore matrix, before promoting this combined
+checkpoint. Do not reuse B6 runtime evidence for the new dependency. The second user
+push also triggered same-source failed host40843378975;
+that run has not been independently replayed and is not acceptance evidence.
+No emulator dispatch until the corrective host and original evidence replay pass.
+Independent candidate reviewer `ad577c009a8d89855` found no concrete defect and
+corroborated official module constraints/checker bytes. Root catalogue/alias YAML,
+report order/retention and exact-block ShellCheck checks pass;9/9 documentation
+checker regressions and306 local links pass. These are static checks, not Gradle,
+resolved-version or device acceptance.
 
 ## B8 real approved-store Android lifecycle validation
 
@@ -140,7 +173,7 @@ still running; B8 authorship does not constitute B7 host/runtime acceptance.
 
 | Package | Exclusive files | Owner / branch / status / dependencies |
 | --- | --- | --- |
-| B8-A Android lifecycle tests | NEW AndroidApprovedEnrolledCredentialStoreTest.kt only | `a7d21b15805c12139`, isolated same-ID worktree/branch from4497161; owner `705f41d` plus cleanup correction `c7e8fdb` complete, intentionally not integrated pending B7 recovery; six frozen methods authored, Java/SDK UNRUN; independent review confirmed primary-failure masking, correction review pending |
+| B8-A Android lifecycle tests | NEW AndroidApprovedEnrolledCredentialStoreTest.kt only | `a7d21b15805c12139`, isolated same-ID worktree/branch from4497161; owner `705f41d` plus cleanup correction `c7e8fdb` complete, intentionally not integrated pending B7 recovery; six frozen methods authored, Java/SDK UNRUN; independent review confirmed primary-failure masking; fresh correction reviewer `a90c0bef0515ffd42` found no remaining concrete defect, private four-case precedence regression authored/UNRUN |
 | B8-V exact result verifier | scripts/verify-keystore-results.py and scripts/tests/test_keystore_results.py only | `af6babd817ca2803b`, isolated same-ID worktree/branch from4497161; owner `a037e05` complete, intentionally not integrated until B7 fifteen-case replay; owner26/26 focused and113/113 Python pass; exact21/five suites; independent reviewer `a2a1dc04ba0bbfb68` found no concrete defect; no runtime claim |
 | B8-R contract review | read-only frozen profile and actual existing key/store/test seams | `a599839e4e1ad28b6`, isolated same-ID worktree/branch; exact4497161 review complete, no concrete contradiction/impossible assertion; existing seams suffice, source-only |
 

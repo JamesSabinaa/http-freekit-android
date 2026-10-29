@@ -7,6 +7,26 @@ The original goal is active and incomplete.
 
 ## Current Linux resume position
 
+- Corrective host40845309252 attempt1 at `b040ddd` FAILED strict app lint after
+  AGP9.5.0: ObsoleteLintCustomCheck, LifecycleRuntimeIssueRegistry references missing
+  KtLightModifierList#getKotlinOrigin, disabling two Lifecycle checks if ignored.
+  Do not suppress it. Original `/tmp/b7-plugin-host.zyoymi`, trusted
+  `/tmp/audit-b7-plugin-host-failure.py`, stable ignored failure audit SHA256
+  `ecb8acfbd7b44fb400f981de8a8b79ad38b1fcf07dbd883d54464dd54e14a365`.
+  Independent replay again verifies364 partial JVM/38 XMLs/all46 B7 methods and
+  security/app instrumentation compilation, not full host acceptance. No runtime.
+  Investigation `ad61190abb5249c78` is complete: old2.9.4 is inferred from
+  published dependency POMs and its AAR contains the obsolete reference. Official
+  stable2.11.0 retains both checks without that reference. Root adds a normal
+  catalogue/app runtime2.11.0 dependency and early retained dependencyInsight,
+  without force/exclusion/suppression; actual alignment and full host remain
+  unverified. Independent correction review found no concrete defect and corroborated
+  official constraints/checker bytes. No unchanged-source retry. After fresh host
+  acceptance/replay, require both15-method Keystore and unchanged21-method preview
+  API26/37 matrices at that source before promotion because Lifecycle affects app.
+  B8 correction `c7e8fdb` and verifier `a037e05` now have no remaining concrete
+  review findings; both remain intentionally unintegrated for B7 source isolation.
+
 - Update29 October: host40843095033 attempt1 at exact `fdd00f8` FAILED strict
   `:app:lintDebug` with two AndroidGradlePluginVersion errors:9.4.1 vs9.5.0.
   Documentation/native jobs pass. Original replay verifies364 partial JVM methods/

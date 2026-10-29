@@ -179,6 +179,12 @@ jobs:
           node --test tools/transport-spike/companion-enrollment-*.test.mjs
           node scripts/verify-enrollment-crash-report.mjs \
             --source "$GITHUB_SHA" --platform linux --started "$started"
+      - name: Record resolved app Lifecycle dependencies
+        run: |
+          mkdir -p build/reports/dependencies
+          ./gradlew --no-daemon --console=plain :app:dependencyInsight \
+            --dependency androidx.lifecycle --configuration debugRuntimeClasspath \
+            > build/reports/dependencies/android-debug-lifecycle.txt
       - name: Compile, test, and lint
         run: >-
           ./gradlew --no-daemon --console=plain

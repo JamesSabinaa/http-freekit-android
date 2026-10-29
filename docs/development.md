@@ -21,6 +21,18 @@ wrapper/JDK/SDK pins satisfy those stated requirements; full project/Kotlin
 compatibility still requires fresh pinned host validation. Historical validation
 records retain their original9.4.1 toolchain.
 
+Corrective host40845309252 then failed ObsoleteLintCustomCheck in the transitive
+Lifecycle runtime lint registry under AGP9.5.0. The app now declares Lifecycle
+runtime2.11.0 through the catalogue: a normal dependency, not force/substitution,
+exclusion or a suppressed checker. [Official stable release notes](https://developer.android.com/jetpack/androidx/releases/lifecycle)
+and [published group constraints](https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-runtime-android/2.11.0/lifecycle-runtime-android-2.11.0.module)
+support the candidate. Inspection of the official2.11.0 AAR retains both affected
+checks without the obsolete API reference; full-project compatibility is still
+unverified. The old2.9.4 resolution is inferred from published POMs, not an observed
+Gradle inventory. Host CI now retains `android-debug-lifecycle.txt` dependencyInsight
+before compilation, even if a later gate fails. Require actual resolved alignment,
+strict lint, complete host validation and separately gated device evidence.
+
 ## Build and validate
 
 On Windows, set `JAVA_HOME` to your JDK 17 directory, then run:

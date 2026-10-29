@@ -23,8 +23,13 @@ Fresh host40843095033 at `fdd00f8` failed strict app lint on AGP update availabi
 (9.4.1 vs9.5.0); original replay verifies364 partial JVM methods/38 XMLs including
 all46 B7 methods and security/app instrumentation compilation, not full host
 acceptance. Root owns narrow AGP update without lint suppression and a fresh full
-host gate. Exact-source API26/37 Keystore runtime and checked main promotion remain
-pending. Separately scoped [B8 real approved-store lifecycle tests](approved-store-android-validation.md)
+host gate. Corrective host40845309252 at `b040ddd` also fails strict app lint:
+Lifecycle's custom lint registry references an unavailable API under AGP9.5.0.
+Original replay again verifies364 partial JVM/all46 B7 methods, not full host
+acceptance. Investigation supports a normal stable Lifecycle2.11.0 runtime pin
+with both checks retained; early dependencyInsight will record actual alignment.
+Fresh strict full host remains mandatory; no suppression or runtime dispatch. Exact-source API26/37 Keystore runtime and checked main promotion
+remain pending. Separately scoped [B8 real approved-store lifecycle tests](approved-store-android-validation.md)
 are authored, with the reviewed cleanup correction pending; no device execution.
 
 | Area | Verified progress | Remaining work |
