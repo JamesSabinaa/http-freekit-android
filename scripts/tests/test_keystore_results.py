@@ -24,8 +24,19 @@ ORIGINAL_EVIDENCE_METHODS = (
 )
 
 
+APPROVED_STORE_CLASS = "com.httpfreekit.security.AndroidApprovedEnrolledCredentialStoreTest"
+APPROVED_STORE_METHODS = (
+    "reopenedApprovalUsesOriginalNonexportableKeyAndPreservesOriginalEvidence",
+    "issuedChainCannotSubstituteForOriginalApprovalEvidence",
+    "missingReplacedAndExpiredIdentityStatesFailClosedWithoutRepair",
+    "corruptEnvelopeAndInterruptedPendingCannotReplacePublishedApproval",
+    "legacyNeverSynthesizesApprovalAndForgetInvalidatesOnlyItsSharedIdentity",
+    "metadataCleanupFailureDeletesKeyFirstAndCanBeRetried",
+)
+
+
 def passing_report():
-    root = ET.Element("testsuites", tests="15", failures="0", errors="0", skipped="0")
+    root = ET.Element("testsuites", tests="21", failures="0", errors="0", skipped="0")
     for name, methods in verifier.EXPECTED_METHODS.items():
         suite = ET.SubElement(root, "testsuite", name=name, tests=str(len(methods)), failures="0", errors="0", skipped="0")
         properties = ET.SubElement(suite, "properties")
@@ -58,19 +69,84 @@ class KeystoreResultsTest(unittest.TestCase):
         with self.assertRaises(verifier.InvalidResults):
             verifier.verify_results(self.directory)
 
-    def test_complete_agp_report_requires_fifteen_cases_in_four_suites(self):
+    def test_complete_agp_report_requires_twenty_one_cases_in_five_suites(self):
         root = passing_report()
         evidence = root.find(f"testsuite[@name='{ORIGINAL_EVIDENCE_CLASS}']")
         self.assertIsNotNone(evidence)
         self.assertEqual({case.get("name") for case in evidence.findall("testcase")},
                          set(ORIGINAL_EVIDENCE_METHODS))
+        approved = root.find(f"testsuite[@name='{APPROVED_STORE_CLASS}']")
+        self.assertIsNotNone(approved)
+        self.assertEqual({case.get("name") for case in approved.findall("testcase")},
+                         set(APPROVED_STORE_METHODS))
         self.write(root, "debug/TEST-device.xml")
         self.assertEqual(verifier.verify_results(self.directory),
-                         {"reports": 1, "suites": 4, "tests": 15, "failures": 0, "errors": 0, "skipped": 0})
+                         {"reports": 1, "suites": 5, "tests": 21, "failures": 0, "errors": 0, "skipped": 0})
+
+    def test_original_fifteen_only_is_rejected_with_consistent_counters(self):
+        root = passing_report()
+        root.remove(root.find(f"testsuite[@name='{APPROVED_STORE_CLASS}']"))
+        update_counts(root)
+        self.assertEqual((len(root), root.get("tests")), (4, "15"))
+        self.reject(root)
+
+    def test_each_approved_store_method_is_required(self):
+        for method in APPROVED_STORE_METHODS:
+            with self.subTest(method=method):
+                root = passing_report()
+                suite = root.find(f"testsuite[@name='{APPROVED_STORE_CLASS}']")
+                suite.remove(suite.find(f"testcase[@name='{method}']"))
+                update_counts(root)
+                self.reject(root)
+
+    def test_each_approved_store_method_cannot_be_duplicated(self):
+        for method in APPROVED_STORE_METHODS:
+            with self.subTest(method=method):
+                root = passing_report()
+                suite = root.find(f"testsuite[@name='{APPROVED_STORE_CLASS}']")
+                suite.append(copy.deepcopy(suite.find(f"testcase[@name='{method}']")))
+                update_counts(root)
+                self.reject(root)
+
+    def test_each_approved_store_failure_error_and_skip_rejects_zero_counters(self):
+        for method in APPROVED_STORE_METHODS:
+            for tag in ("failure", "error", "skipped"):
+                with self.subTest(method=method, tag=tag):
+                    root = passing_report()
+                    suite = root.find(f"testsuite[@name='{APPROVED_STORE_CLASS}']")
+                    ET.SubElement(suite.find(f"testcase[@name='{method}']"), tag)
+                    self.reject(root)
+
+    def test_each_approved_store_method_cannot_move_to_another_suite(self):
+        for method in APPROVED_STORE_METHODS:
+            with self.subTest(method=method):
+                root = passing_report()
+                suite = root.find(f"testsuite[@name='{APPROVED_STORE_CLASS}']")
+                case = suite.find(f"testcase[@name='{method}']")
+                suite.remove(case)
+                root[0].append(case)
+                update_counts(root)
+                self.reject(root)
+
+    def test_approved_store_suite_name_must_match_the_frozen_contract(self):
+        root = passing_report()
+        root.find(f"testsuite[@name='{APPROVED_STORE_CLASS}']").set("name", "unexpected.Test")
+        self.reject(root)
+
+    def test_approved_store_suite_and_aggregate_counters_must_match(self):
+        for target in ("suite", "aggregate"):
+            for field in verifier.COUNTERS:
+                with self.subTest(target=target, field=field):
+                    root = passing_report()
+                    suite = root.find(f"testsuite[@name='{APPROVED_STORE_CLASS}']")
+                    element = suite if target == "suite" else root
+                    element.set(field, str(int(element.get(field)) + 1))
+                    self.reject(root)
 
     def test_original_twelve_only_is_rejected_with_consistent_counters(self):
         root = passing_report()
         root.remove(root.find(f"testsuite[@name='{ORIGINAL_EVIDENCE_CLASS}']"))
+        root.remove(root.find(f"testsuite[@name='{APPROVED_STORE_CLASS}']"))
         update_counts(root)
         self.assertEqual(root.get("tests"), "12")
         self.reject(root)
@@ -106,7 +182,7 @@ class KeystoreResultsTest(unittest.TestCase):
         for index, suite in enumerate(passing_report()):
             self.write(suite, f"TEST-class-{index}.xml")
         result = verifier.verify_results(self.directory)
-        self.assertEqual((result["reports"], result["tests"]), (4, 15))
+        self.assertEqual((result["reports"], result["tests"]), (5, 21))
 
     def test_missing_directory_or_reports_cannot_pass(self):
         for directory in (self.directory, self.directory / "missing"):
@@ -210,7 +286,7 @@ class KeystoreResultsTest(unittest.TestCase):
         command = [sys.executable, str(SCRIPT), "--results", str(self.directory), "--api", "26"]
         result = subprocess.run(command, capture_output=True, text=True, timeout=5)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(json.loads(result.stdout)["tests"], 15)
+        self.assertEqual(json.loads(result.stdout)["tests"], 21)
         self.assertEqual(json.loads(result.stdout)["api"], 26)
         ET.SubElement(root[0].find("testcase"), "error", message="DO_NOT_PRINT_PRIVATE_DETAIL")
         self.write(root)

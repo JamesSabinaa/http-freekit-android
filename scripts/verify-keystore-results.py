@@ -31,6 +31,14 @@ EXPECTED_METHODS = {
         "absentAndDeletedIdentityEvidenceNeverCreatesOrReplacesAKey",
         "evidenceRemainsBoundToTheRequestedComputer",
     )),
+    "com.httpfreekit.security.AndroidApprovedEnrolledCredentialStoreTest": frozenset((
+        "reopenedApprovalUsesOriginalNonexportableKeyAndPreservesOriginalEvidence",
+        "issuedChainCannotSubstituteForOriginalApprovalEvidence",
+        "missingReplacedAndExpiredIdentityStatesFailClosedWithoutRepair",
+        "corruptEnvelopeAndInterruptedPendingCannotReplacePublishedApproval",
+        "legacyNeverSynthesizesApprovalAndForgetInvalidatesOnlyItsSharedIdentity",
+        "metadataCleanupFailureDeletesKeyFirstAndCanBeRetried",
+    )),
 }
 EXPECTED_CASES = frozenset((name, method) for name, methods in EXPECTED_METHODS.items() for method in methods)
 COUNTERS = ("tests", "failures", "errors", "skipped")
@@ -105,7 +113,7 @@ def verify_results(directory):
         if root.tag == "testsuites" and counters(root) != report_totals:
             raise InvalidResults("JUnit aggregate counters disagree with its suites")
     if seen_cases != EXPECTED_CASES or seen_suites != set(EXPECTED_METHODS):
-        raise InvalidResults("The exact fifteen Keystore testcases did not execute")
+        raise InvalidResults("The exact twenty-one Keystore testcases did not execute")
     return {"reports": len(reports), "suites": len(seen_suites), "tests": len(seen_cases),
             "failures": 0, "errors": 0, "skipped": 0}
 
