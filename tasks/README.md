@@ -104,6 +104,23 @@ Exfiltration. Root preserves work locally; no publication retry/bypass or hosted
 dispatch. Remote coordinator remains at accepted B6 source until publication is
 permitted; B7 must not be represented as hosted or promoted.
 
+## B8 real approved-store Android lifecycle validation
+
+Scoped 29 October 2026 by root after independent read-only investigation
+`ad33438e30d4fe181` against `fdd00f8`. See the frozen
+[B8 profile](../docs/approved-store-android-validation.md). B7 host40843095033 is
+still running; B8 authorship does not constitute B7 host/runtime acceptance.
+
+| Package | Exclusive files | Owner / branch / status / dependencies |
+| --- | --- | --- |
+| B8-A Android lifecycle tests | NEW AndroidApprovedEnrolledCredentialStoreTest.kt only | unique isolated test owner assigned next; six frozen methods; existing B7/shared certificate builders; no production changes |
+| B8-V exact result verifier | scripts/verify-keystore-results.py and scripts/tests/test_keystore_results.py only | unique isolated verifier owner assigned next; preserve fifteen, add six, exact21/five suites; no workflow/dispatch |
+
+Root owns docs/CI/evidence/integration/reviews. Keep B7's exact published source
+and fifteen-case runtime separate. Fresh full pinned host precedes a fresh B8
+API26/37 matrix; all old gates and source/API-bound cleanup stay mandatory. No
+production API/wire/app/CA trust/C5/USB/freeze claim.
+
 ## B6 runtime catalog scroll investigation
 
 Matrix40363807230 at exact `4ce72be` is failed, not accepted. Original artifacts
