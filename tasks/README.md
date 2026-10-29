@@ -102,7 +102,11 @@ fresh pinned host and exact-source original-alias API26/37 runtime remain pendin
 The combined local commit/push command was denied before execution as Data
 Exfiltration. Root preserves work locally; no publication retry/bypass or hosted
 dispatch. Remote coordinator remains at accepted B6 source until publication is
-permitted; B7 must not be represented as hosted or promoted.
+permitted; B7 must not be represented as hosted or promoted. Update29 October:
+the user published exact `fdd00f8` to both literal-suffix and intended coordinator
+branches. Original same-source host40843095033 is running; documentation/native
+pass and Android remains in progress. Publication of this checkpoint is no longer
+blocked, but host acceptance/runtime/main promotion are still pending.
 
 ## B8 real approved-store Android lifecycle validation
 
@@ -113,8 +117,9 @@ still running; B8 authorship does not constitute B7 host/runtime acceptance.
 
 | Package | Exclusive files | Owner / branch / status / dependencies |
 | --- | --- | --- |
-| B8-A Android lifecycle tests | NEW AndroidApprovedEnrolledCredentialStoreTest.kt only | unique isolated test owner assigned next; six frozen methods; existing B7/shared certificate builders; no production changes |
-| B8-V exact result verifier | scripts/verify-keystore-results.py and scripts/tests/test_keystore_results.py only | unique isolated verifier owner assigned next; preserve fifteen, add six, exact21/five suites; no workflow/dispatch |
+| B8-A Android lifecycle tests | NEW AndroidApprovedEnrolledCredentialStoreTest.kt only | `a7d21b15805c12139`, isolated same-ID worktree/branch from4497161; implementing six frozen methods; existing B7/shared certificate builders; no production changes |
+| B8-V exact result verifier | scripts/verify-keystore-results.py and scripts/tests/test_keystore_results.py only | `af6babd817ca2803b`, isolated same-ID worktree/branch from4497161; implementing preserved fifteen plus six, exact21/five suites; no workflow/dispatch |
+| B8-R contract review | read-only frozen profile and actual existing key/store/test seams | `a599839e4e1ad28b6`, isolated same-ID worktree/branch; reviewing exact4497161; no edits |
 
 Root owns docs/CI/evidence/integration/reviews. Keep B7's exact published source
 and fifteen-case runtime separate. Fresh full pinned host precedes a fresh B8

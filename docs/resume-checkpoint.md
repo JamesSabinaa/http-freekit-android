@@ -28,7 +28,14 @@ The original goal is active and incomplete.
   commit/push command was denied by the permission gate as Data Exfiltration before
   execution. Local validation remains available; do not bypass the publication
   denial or claim the remote coordinator contains B7. Hosted validation awaits
-  permitted publication.
+  permitted publication. Update29 October: the user published exact `fdd00f8` to
+  both `worktree-coord-a23-resume#` (accidental literal suffix, retained) and the
+  intended `worktree-coord-a23-resume`. Original same-source host40843095033 is
+  progressing; documentation/native pass, Android remains running. The publication
+  blocker is resolved for this checkpoint; no B7 runtime dispatch yet.
+  Separately frozen [B8 test-only lifecycle package](approved-store-android-validation.md)
+  at4497161 has unique Android/verifier owners and independent contract review;
+  it does not change B7's exact fifteen-method runtime source.
   A full Python run failed105/106 on D-I's immediate same-size timestamp assumption
   (475/1000 bounded probe writes retained both timestamps). Root's test-only fix
   forces observable mtime change while keeping inode/size;24/24 focused and106/106
