@@ -30,7 +30,8 @@ class AndroidApprovedEnrolledCredentialStoreTest {
 
     @Test fun reopenedApprovalUsesOriginalNonexportableKeyAndPreservesOriginalEvidence() {
         val id = ownedId()
-        try {
+        withOwnedResources(id) {
+            verifyCleanupFailurePrecedence()
             val fixture = fixture(id)
             val before = originalHashes(id)
             publicStore(fixture.clock).save(fixture.record)
@@ -46,12 +47,12 @@ class AndroidApprovedEnrolledCredentialStoreTest {
             assertUsable(reopened)
             sameHashes(before, originalHashes(id))
             assertFalse(before.first().contentEquals(fixture.record.approval.clientCertificateSha256))
-        } finally { cleanup(id) }
+        }
     }
 
     @Test fun issuedChainCannotSubstituteForOriginalApprovalEvidence() {
         val id = ownedId()
-        try {
+        withOwnedResources(id) {
             val fixture = fixture(id)
             val before = originalHashes(id)
             val substituted = withOriginalHashes(fixture.record,
@@ -69,14 +70,14 @@ class AndroidApprovedEnrolledCredentialStoreTest {
             unavailable { publicStore(fixture.clock).load(id) }
             sameIdentity(fixture)
             sameHashes(before, originalHashes(id))
-        } finally { cleanup(id) }
+        }
     }
 
     @Test fun missingReplacedAndExpiredIdentityStatesFailClosedWithoutRepair() {
         val missingId = ownedId()
         val replacedId = ownedId()
         val expiredId = ownedId()
-        try {
+        withOwnedResources(missingId, replacedId, expiredId) {
             val missing = fixture(missingId)
             publicStore(missing.clock).save(missing.record)
             val missingLoaded = checkNotNull(publicStore(missing.clock).load(missingId))
@@ -114,12 +115,12 @@ class AndroidApprovedEnrolledCredentialStoreTest {
             sameIdentity(expired)
             sameHashes(expired.record.approval.originalKeystoreCertificateHashes, originalHashes(expiredId))
             assertUsable(checkNotNull(publicStore(expired.clock).load(expiredId)))
-        } finally { cleanup(missingId, replacedId, expiredId) }
+        }
     }
 
     @Test fun corruptEnvelopeAndInterruptedPendingCannotReplacePublishedApproval() {
         val id = ownedId()
-        try {
+        withOwnedResources(id) {
             val fixture = fixture(id)
             val store = publicStore(fixture.clock)
             store.save(fixture.record)
@@ -145,13 +146,13 @@ class AndroidApprovedEnrolledCredentialStoreTest {
             assertFalse(published.exists())
             assertNull(AndroidDeviceIdentityStore().load(id))
             assertNull(store.load(id))
-        } finally { cleanup(id) }
+        }
     }
 
     @Test fun legacyNeverSynthesizesApprovalAndForgetInvalidatesOnlyItsSharedIdentity() {
         val id = ownedId()
         val otherId = ownedId()
-        try {
+        withOwnedResources(id, otherId) {
             val fixture = fixture(id)
             val other = fixture(otherId)
             val legacy = AndroidEnrolledCredentialStore(context, fixture.clock)
@@ -185,12 +186,12 @@ class AndroidApprovedEnrolledCredentialStoreTest {
             legacy.forget(id)
             assertNull(legacy.load(id))
             assertFalse(File(legacyDirectory, name(id)).exists())
-        } finally { cleanup(id, otherId) }
+        }
     }
 
     @Test fun metadataCleanupFailureDeletesKeyFirstAndCanBeRetried() {
         val id = ownedId()
-        try {
+        withOwnedResources(id) {
             val fixture = fixture(id)
             val normal = publicStore(fixture.clock)
             normal.save(fixture.record)
@@ -220,7 +221,7 @@ class AndroidApprovedEnrolledCredentialStoreTest {
             assertFalse(published(id).exists())
             assertNull(normal.load(id))
             assertNull(identities.load(id))
-        } finally { cleanup(id) }
+        }
     }
 
     private data class Fixture(val record: ApprovedEnrolledCredentialRecord, val clock: Clock)
@@ -325,6 +326,64 @@ class AndroidApprovedEnrolledCredentialStoreTest {
             return
         }
         throw AssertionError("Unusable approved credential accepted")
+    }
+
+    private fun withOwnedResources(vararg ids: String, action: () -> Unit) {
+        preservingPrimaryFailure(action) { cleanup(*ids) }
+    }
+
+    /** Never replace a body failure or retain identifying cleanup exception details. */
+    private fun preservingPrimaryFailure(action: () -> Unit, release: () -> Unit) {
+        var primary: Throwable? = null
+        try {
+            action()
+        } catch (failure: Throwable) {
+            primary = failure
+            throw failure
+        } finally {
+            try {
+                release()
+            } catch (_: Throwable) {
+                val redacted = AssertionError("Owned approved credential cleanup failed [REDACTED]")
+                if (primary == null) throw redacted else primary.addSuppressed(redacted)
+            }
+        }
+    }
+
+    /** Deterministic regression inside the frozen manifest; no keys/files are created here. */
+    private fun verifyCleanupFailurePrecedence() {
+        listOf(false, true).forEach { bodyFails ->
+            listOf(false, true).forEach { cleanupFails ->
+                val primary = AssertionError("Synthetic primary failure")
+                var releaseCalls = 0
+                var observed: Throwable? = null
+                try {
+                    preservingPrimaryFailure(
+                        action = { if (bodyFails) throw primary },
+                        release = {
+                            releaseCalls++
+                            if (cleanupFails) throw IOException("Synthetic private cleanup detail")
+                        },
+                    )
+                } catch (failure: Throwable) {
+                    observed = failure
+                }
+                assertEquals(1, releaseCalls)
+                if (bodyFails) {
+                    assertTrue("Primary failure was replaced", observed === primary)
+                    assertEquals(if (cleanupFails) 1 else 0, primary.suppressed.size)
+                } else if (!cleanupFails) {
+                    assertNull(observed)
+                }
+                if (cleanupFails) {
+                    val redacted = if (bodyFails) primary.suppressed.single() else checkNotNull(observed)
+                    assertTrue(redacted is AssertionError)
+                    assertEquals("Owned approved credential cleanup failed [REDACTED]", redacted.message)
+                    assertNull(redacted.cause)
+                    assertTrue(redacted.suppressed.isEmpty())
+                }
+            }
+        }
     }
 
     /** Attempt every owned key and both metadata families, regardless of earlier cleanup failures. */
