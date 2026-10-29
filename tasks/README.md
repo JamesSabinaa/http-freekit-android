@@ -162,7 +162,11 @@ Independent candidate reviewer `ad577c009a8d89855` found no concrete defect and
 corroborated official module constraints/checker bytes. Root catalogue/alias YAML,
 report order/retention and exact-block ShellCheck checks pass;9/9 documentation
 checker regressions and306 local links pass. These are static checks, not Gradle,
-resolved-version or device acceptance.
+resolved-version or device acceptance. Candidate committed locally as `76527a3`;
+its plain coordinator-branch push was denied as Data Exfiltration before execution.
+No alternate publication route, retry or hosted dispatch. Remote coordinator stays
+`b040ddd`; fresh host and both runtime gates await permitted publication. B8 owner
+commits remain preserved separately, unintegrated.
 
 ## B8 real approved-store Android lifecycle validation
 

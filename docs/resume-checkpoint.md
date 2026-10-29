@@ -7,6 +7,14 @@ The original goal is active and incomplete.
 
 ## Current Linux resume position
 
+- Current publication blocker: reviewed Lifecycle correction `76527a3` is committed
+  locally, but its plain coordinator-branch push was denied as Data Exfiltration
+  before execution. Do not bypass/retry via another route. Remote intended branch
+  remains `b040ddd`; no fresh correction host or runtime dispatch exists. Preserve
+  local correction and separate B8 owner commits; resume hosted gates only after
+  permitted publication. The retained coordinator worktree remains clean after
+  this handoff record is committed.
+
 - Corrective host40845309252 attempt1 at `b040ddd` FAILED strict app lint after
   AGP9.5.0: ObsoleteLintCustomCheck, LifecycleRuntimeIssueRegistry references missing
   KtLightModifierList#getKotlinOrigin, disabling two Lifecycle checks if ignored.
