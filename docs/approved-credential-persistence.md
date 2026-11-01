@@ -20,6 +20,13 @@ and Keystore15-case API26/37 matrices at that source before combined promotion.
 Second stable
 ignored failure audit SHA256
 `ecb8acfbd7b44fb400f981de8a8b79ad38b1fcf07dbd883d54464dd54e14a365`.
+Latest host41304158466 at `0d5d9e6` observes actual sixteen-module Lifecycle2.11.0
+alignment but fails EmptySuperCall in PreviewViewModel.kt:180. Root's reviewed
+one-line removal preserves all owned cleanup; fresh full host and both runtime
+matrices remain mandatory. Third independent original replay verifies364 partial
+JVM/38 XMLs/all46 B7 methods and instrumentation compilation, not acceptance.
+Stable ignored failure audit SHA256
+`c674729dc536900a7393f7f8bf679e7b7a673c28ba52c37623c69990c26e9a9b`.
 identity/validator owner `a893faf` is integrated `12a0629`; store owner `febe5bb` is
 integrated `d944baf`. Independent contract and all M/I/S implementation reviews found
 no concrete defect. Independent test owner `4184e1a` is integrated `26c2004`

@@ -882,6 +882,16 @@ must establish actual selected versions; strict lint/full host remain mandatory.
 Because the app dependency changes, also require a fresh unchanged21-method preview
 matrix on both APIs at the accepted source, alongside B7's15-method Keystore matrix,
 before combined promotion. Earlier B6 runtime does not cover the new dependency.
+Host41304158466 at `0d5d9e6` now proves actual sixteen-module Lifecycle2.11.0
+alignment, but fails strict EmptySuperCall at PreviewViewModel.kt:180. Independent
+original replay verifies364 partial JVM/38 XMLs/all46 B7 methods and security/app
+instrumentation compilation, not full host. Third original
+`/tmp/b7-lifecycle-host.FA3od5`, trusted `/tmp/audit-b7-lifecycle-host-failure.py`,
+stable ignored audit SHA256
+`c674729dc536900a7393f7f8bf679e7b7a673c28ba52c37623c69990c26e9a9b`.
+One-line removal of the empty superclass hook is independently reviewed; every
+owned cleanup remains, no suppression. Fresh full host and both matrices are still
+required; local Java/SDK execution remains unavailable.
 No suppression, downgrade or runtime dispatch. All46 independent JVM methods are
 authored and reviewed. Three original-owned-key
 Android methods are authored; the exact verifier now requires fifteen methods/four

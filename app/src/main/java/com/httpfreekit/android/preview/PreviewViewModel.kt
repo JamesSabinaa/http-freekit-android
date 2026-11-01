@@ -177,6 +177,5 @@ class PreviewViewModel(
         pending?.cancel(true)
         worker.shutdownNow()
         main.removeCallbacksAndMessages(null)
-        super.onCleared()
     }
 }

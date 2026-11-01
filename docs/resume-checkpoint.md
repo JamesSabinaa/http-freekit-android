@@ -7,13 +7,29 @@ The original goal is active and incomplete.
 
 ## Current Linux resume position
 
+- Latest host41304158466 attempt1 at exact `0d5d9e6` FAILED strict app lint on
+  EmptySuperCall, PreviewViewModel.kt:180. Independent original replay verifies
+  sixteen selected Lifecycle modules aligned to2.11.0,364 partial JVM/38 XMLs/
+  all46 B7 methods and security/app instrumentation compilation; not full host.
+  Original `/tmp/b7-lifecycle-host.FA3od5`, trusted
+  `/tmp/audit-b7-lifecycle-host-failure.py`, stable ignored audit SHA256
+  `c674729dc536900a7393f7f8bf679e7b7a673c28ba52c37623c69990c26e9a9b`.
+  Root removes ONLY final super.onCleared(), preserving every owned cleanup and
+  publication guard. Independent exact-file review verified pinned superclass
+  hook empty and internal Lifecycle resource cleanup happens before it; no concrete
+  defect. Java/SDK unavailable locally; fresh full host and same-source21-method
+  preview/15-method Keystore API26/37 matrices remain mandatory. No dispatch yet.
+
 - Current publication blocker: reviewed Lifecycle correction `76527a3` is committed
   locally, but its plain coordinator-branch push was denied as Data Exfiltration
   before execution. Do not bypass/retry via another route. Remote intended branch
   remains `b040ddd`; no fresh correction host or runtime dispatch exists. Preserve
   local correction and separate B8 owner commits; resume hosted gates only after
   permitted publication. The retained coordinator worktree remains clean after
-  this handoff record is committed.
+  this handoff record is committed. Update1 November: the user published exact
+  `0d5d9e6930542bccf818feb725cf0e7744aec044`; fresh host41304158466 is running.
+  Publication of this checkpoint is unblocked; full host/actual Lifecycle alignment
+  and same-source preview/Keystore runtime acceptance remain pending.
 
 - Corrective host40845309252 attempt1 at `b040ddd` FAILED strict app lint after
   AGP9.5.0: ObsoleteLintCustomCheck, LifecycleRuntimeIssueRegistry references missing

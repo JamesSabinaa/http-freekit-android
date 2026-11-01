@@ -28,9 +28,13 @@ Lifecycle's custom lint registry references an unavailable API under AGP9.5.0.
 Original replay again verifies364 partial JVM/all46 B7 methods, not full host
 acceptance. Investigation supports a normal stable Lifecycle2.11.0 runtime pin
 with both checks retained; early dependencyInsight will record actual alignment.
-Fresh strict full host remains mandatory; no suppression or runtime dispatch. Exact-source API26/37 Keystore runtime and checked main promotion
-remain pending. Separately scoped [B8 real approved-store lifecycle tests](approved-store-android-validation.md)
-are authored, with the reviewed cleanup correction pending; no device execution.
+Latest host41304158466 at `0d5d9e6` observes sixteen Lifecycle modules aligned to
+2.11.0 but fails EmptySuperCall in PreviewViewModel.onCleared. Original replay
+again verifies364 partial JVM/all46 B7 methods, not full acceptance. Root's
+independently reviewed one-line removal preserves all owned cleanup. Fresh full
+host and unchanged preview21-case/Keystore15-case API26/37 matrices remain mandatory
+before main promotion. Separately scoped [B8 real approved-store lifecycle tests](approved-store-android-validation.md)
+are authored and reviewed after the cleanup correction; no device execution.
 
 | Area | Verified progress | Remaining work |
 | --- | --- | --- |

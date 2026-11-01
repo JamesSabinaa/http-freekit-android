@@ -166,7 +166,35 @@ resolved-version or device acceptance. Candidate committed locally as `76527a3`;
 its plain coordinator-branch push was denied as Data Exfiltration before execution.
 No alternate publication route, retry or hosted dispatch. Remote coordinator stays
 `b040ddd`; fresh host and both runtime gates await permitted publication. B8 owner
-commits remain preserved separately, unintegrated.
+commits remain preserved separately, unintegrated. Update1 November: the user
+published `0d5d9e6930542bccf818feb725cf0e7744aec044` on the intended coordinator
+branch; fresh host41304158466 is running at that exact source. The publication
+blocker is resolved for this checkpoint, not proof of host/runtime acceptance.
+Require independent original reports and resolved Lifecycle versions before both
+fresh runtime matrices. Do not silently retry either prior failed source.
+
+## B7 empty-super lifecycle correction
+
+Host41304158466 attempt1 at exact `0d5d9e6` FAILED `:app:lintDebug` on
+EmptySuperCall at PreviewViewModel.kt:180. The old obsolete-checker failure is not
+reported; strict lint now rejects the redundant call to the empty superclass
+onCleared. Root exclusively owns removal of that single call in
+`app/src/main/java/com/httpfreekit/android/preview/PreviewViewModel.kt`, evidence,
+board/docs on `worktree-coord-a23-resume`. Preserve every owned invalidation,
+cancellation, worker shutdown and handler cleanup statement. No suppression or
+other app behavior change. Original reports/logs at `/tmp/b7-lifecycle-host.FA3od5`
+are being independently replayed; resolved dependency evidence and all previous
+failures remain distinct. Fresh full host, then both exact-source runtime matrices
+are still required; no unchanged-source retry, runtime dispatch or main promotion.
+Independent original replay verifies364 partial JVM methods/38 XMLs/all46 new B7
+cases, security/app instrumentation compilation and sixteen selected Lifecycle
+modules aligned to2.11.0. Stable ignored third failure audit SHA256
+`c674729dc536900a7393f7f8bf679e7b7a673c28ba52c37623c69990c26e9a9b`;
+trusted `/tmp/audit-b7-lifecycle-host-failure.py`. Independent direct-file reviewer
+`affce38968d6bd6b4` found no concrete defect in the one-line correction and verified
+pinned2.11.0 source defines empty onCleared; Lifecycle's internal resource clear
+happens before that hook. Existing real-owner clear test remains unchanged.
+No local Kotlin/Gradle/lint or runtime execution is available/claimed.
 
 ## B8 real approved-store Android lifecycle validation
 
