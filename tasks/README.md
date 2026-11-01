@@ -194,7 +194,11 @@ trusted `/tmp/audit-b7-lifecycle-host-failure.py`. Independent direct-file revie
 `affce38968d6bd6b4` found no concrete defect in the one-line correction and verified
 pinned2.11.0 source defines empty onCleared; Lifecycle's internal resource clear
 happens before that hook. Existing real-owner clear test remains unchanged.
-No local Kotlin/Gradle/lint or runtime execution is available/claimed.
+No local Kotlin/Gradle/lint or runtime execution is available/claimed. Correction
+is committed locally as `09cbaa3`; its plain coordinator-branch push was denied as
+Data Exfiltration before execution. Do not retry through another route. Remote
+remains `0d5d9e6`; no new host/runtime dispatch. Local9/9 link-checker regressions,
+306 local links and diff checks pass; fresh hosted gates await permitted publication.
 
 ## B8 real approved-store Android lifecycle validation
 

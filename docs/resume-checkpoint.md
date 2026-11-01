@@ -19,6 +19,10 @@ The original goal is active and incomplete.
   hook empty and internal Lifecycle resource cleanup happens before it; no concrete
   defect. Java/SDK unavailable locally; fresh full host and same-source21-method
   preview/15-method Keystore API26/37 matrices remain mandatory. No dispatch yet.
+  Correction `09cbaa3` is local: plain coordinator-branch push was denied as Data
+  Exfiltration before execution. Remote stays `0d5d9e6`; do not bypass/retry
+  publication through another route. No correction host/runtime exists until
+  permitted publication; local9/9 documentation tests/306 links/diff checks pass.
 
 - Current publication blocker: reviewed Lifecycle correction `76527a3` is committed
   locally, but its plain coordinator-branch push was denied as Data Exfiltration
