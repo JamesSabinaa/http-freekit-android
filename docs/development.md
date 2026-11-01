@@ -27,11 +27,14 @@ runtime2.11.0 through the catalogue: a normal dependency, not force/substitution
 exclusion or a suppressed checker. [Official stable release notes](https://developer.android.com/jetpack/androidx/releases/lifecycle)
 and [published group constraints](https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-runtime-android/2.11.0/lifecycle-runtime-android-2.11.0.module)
 support the candidate. Inspection of the official2.11.0 AAR retains both affected
-checks without the obsolete API reference; full-project compatibility is still
-unverified. The old2.9.4 resolution is inferred from published POMs, not an observed
-Gradle inventory. Host CI now retains `android-debug-lifecycle.txt` dependencyInsight
-before compilation, even if a later gate fails. Require actual resolved alignment,
-strict lint, complete host validation and separately gated device evidence.
+checks without the obsolete API reference. Subsequent host41304158466 observed
+actual alignment but found a redundant empty-super call; reviewed removal is part
+of accepted source586177e. Full pinned host41326925424 now passes independent
+452-JVM/nine-clean-lint replay with sixteen Lifecycle modules selected2.11.0.
+The old2.9.4 resolution remains inferred from published POMs, not an observed
+old Gradle inventory. Host CI retains `android-debug-lifecycle.txt` dependencyInsight
+before compilation, even if a later gate fails. Device/runtime evidence remains
+separately gated; a complete host pass is not app capture acceptance.
 
 ## Build and validate
 

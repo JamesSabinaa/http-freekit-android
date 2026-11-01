@@ -13,6 +13,14 @@ Production pairing and capture in the main app remain pending. Much of the
 authentication, transport and capture foundation exists as executable libraries
 and isolated research tests; those tests do not establish a finished capture app.
 
+B7 full host acceptance is now independently verified at `586177e`,
+[run41326925424](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/41326925424):
+452 JVM methods/52 XMLs/all46 B7 cases, nine clean lints,46 CA receipts/all joins,
+instrumentation compilation and actual sixteen-module Lifecycle2.11.0 alignment.
+Fresh same-source Keystore matrix41328422583 (15 methods) and preview matrix41328435853
+(21 methods), each API26/37, are dispatched. No runtime acceptance/main promotion
+until both original evidence replays pass. Prior failed runs below remain failed.
+
 B7 opt-in approval persistence is composed locally: M/I/S,46 new JVM methods,
 three real-owned-key instrumentation methods, strict15-case verifier and bounded
 Keystore cleanup. Independent main/T/A/V/W reviews found no concrete defect.

@@ -856,6 +856,18 @@ Independent artifact audit confirmed each full class/method identity once, three
 
 ## Approval-bound credential library (B7)
 
+Latest full host gate is ACCEPTED at exact `586177e`, run41326925424 attempt1.
+Independent original reports/log replay verifies452 JVM methods/52 XMLs/all46 B7
+cases, nine clean lints,46 CA receipts/all joins, instrumentation compilation,
+all retained baseline gates,25 cleanup Node/19 verifier Python and actual sixteen-
+module Lifecycle2.11.0 resolution. Original `/tmp/b7-host-accepted.APAGfg`, trusted
+`/tmp/audit-b7-host.py`, stable ignored host audit SHA256
+`ce1acb8a784b746ac43e4f577677f9475a9b7e6adebe3e3f9edb11db7a3a3885`.
+Same-source API26/37 matrices41328422583 (Keystore15/four suites) and41328435853
+(preview21) are dispatched. Both original XML/cleanup replays are required before
+combined main promotion; compilation is not Android execution. Earlier failed
+host evidence below stays failed.
+
 The [opt-in local persistence package](approved-credential-persistence.md) main
 code is locally composed and independently reviewed, not fully host accepted.
 Host40843095033 at `fdd00f8` attempt1 failed `:app:lintDebug`: two

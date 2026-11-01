@@ -200,6 +200,22 @@ Data Exfiltration before execution. Do not retry through another route. Remote
 remains `0d5d9e6`; no new host/runtime dispatch. Local9/9 link-checker regressions,
 306 local links and diff checks pass; fresh hosted gates await permitted publication.
 
+## B7 complete host acceptance and fresh runtime dispatch
+
+Accepted source `586177eb81d5115ff9829e9b1bc25c29d01163e4`, host41326925424 attempt1.
+Independent original reports/log replay verifies452 JVM/52 XMLs/all46 B7 methods,
+nine clean lints,46 source-clean CA receipts/all joins, app/security instrumentation
+compilation,25 cleanup Node/19 verifier Python and every retained baseline gate.
+Actual dependencyInsight records sixteen Lifecycle modules selected2.11.0.
+Original `/tmp/b7-host-accepted.APAGfg`, trusted `/tmp/audit-b7-host.py`, stable ignored
+host audit SHA256 `ce1acb8a784b746ac43e4f577677f9475a9b7e6adebe3e3f9edb11db7a3a3885`.
+Root dispatched same-source API26/37 matrices41328422583 (Keystore15/four suites)
+and41328435853 (unchanged preview21). Original XML/cleanup replay on both APIs in
+each matrix is mandatory before combined main promotion. Remote coordinator is
+pinned at586177e; no B8 code integrated yet. Prior failures remain failed; no local
+Java/SDK/runtime, full approved-store Android lifecycle, authenticated provenance,
+production capture, C5/physical USB or freeze claim.
+
 ## B8 real approved-store Android lifecycle validation
 
 Scoped 29 October 2026 by root after independent read-only investigation

@@ -1,6 +1,20 @@
 # Approval-bound local credential persistence (B7)
 
-Status: main code is implemented locally after accepted [B6](selected-app-preflight.md).
+Status: host accepted at exact `586177eb81d5115ff9829e9b1bc25c29d01163e4`,
+run41326925424 attempt1. Independent original reports/log replay verifies452 JVM
+methods/52 XMLs including all46 new B7 cases, nine clean lint reports,46 clean-source
+CA receipts/all joins, app/security instrumentation compilation,25 cleanup Node
+and19 verifier Python cases, all old gates, and16 Lifecycle modules resolved2.11.0.
+Stable ignored host audit SHA256
+`ce1acb8a784b746ac43e4f577677f9475a9b7e6adebe3e3f9edb11db7a3a3885`.
+Fresh same-source API26/37 matrices41328422583 (Keystore15 methods) and41328435853
+(preview21 methods) are dispatched, not accepted yet. Full original cleanup/XML
+replay on both APIs in each matrix remains mandatory before combined main promotion.
+No authenticated approval provenance, full approved-store Android lifecycle,
+production pairing/capture, CA trust, C5/USB or freeze claim.
+
+Earlier host failures (retained, not reclassified): main code was implemented
+locally after accepted [B6](selected-app-preflight.md).
 Host40843095033 attempt1 at exact `fdd00f8` FAILED strict app lint: two
 AndroidGradlePluginVersion errors (pinned9.4.1, available9.5.0). Independent original
 replay verifies partial364 JVM methods/38 XMLs, including all46 new methods,

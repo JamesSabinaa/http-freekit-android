@@ -7,6 +7,22 @@ The original goal is active and incomplete.
 
 ## Current Linux resume position
 
+- Full B7 host gate ACCEPTED at exact `586177eb81d5115ff9829e9b1bc25c29d01163e4`,
+  run41326925424 attempt1. Independent original reports/log replay verifies452 JVM
+  methods/52 XMLs/all46 B7 cases, nine clean lints,46 CA receipts/all joins,
+  app/security instrumentation compilation,25 cleanup/19 verifier cases and all
+  retained baseline gates. Actual Lifecycle inventory selects2.11.0 for16 modules.
+  Original `/tmp/b7-host-accepted.APAGfg`, trusted `/tmp/audit-b7-host.py`, stable
+  ignored `dist/approved-credential-host-audit.json` SHA256
+  `ce1acb8a784b746ac43e4f577677f9475a9b7e6adebe3e3f9edb11db7a3a3885`.
+  Fresh exact-source matrices41328422583 (Keystore15/four suites) and41328435853
+  (preview21) are dispatched on both APIs. Two completion watchers are bounded by
+  hosted job budgets; no runtime acceptance until original XML/cleanup replay.
+  Remote coordinator remains pinned at586177e; B8 owner commits stay separate.
+  Earlier failed sources remain failed. No local Kotlin/SDK/device execution,
+  full approved-store Android lifecycle, provenance, production capture/C5/USB/freeze
+  claim; require both runtime gates before combined main promotion.
+
 - Latest host41304158466 attempt1 at exact `0d5d9e6` FAILED strict app lint on
   EmptySuperCall, PreviewViewModel.kt:180. Independent original replay verifies
   sixteen selected Lifecycle modules aligned to2.11.0,364 partial JVM/38 XMLs/
