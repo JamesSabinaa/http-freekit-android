@@ -7,6 +7,13 @@ The original goal is active and incomplete.
 
 ## Current Linux resume position
 
+- Checked milestone is committed locally as `880aa57`; plain `git push origin
+  HEAD:main` was denied as Data Exfiltration before execution. Main was NOT
+  promoted. Do not bypass/retry via another publication route. Both runtime/host
+  audits below are complete, not pending. Keep B8 owner commits separate until
+  permitted main promotion, so publishing coordinator HEAD cannot accidentally
+  include unvalidated B8 code. Remote coordinator remains accepted source586177e.
+
 - Combined B7/toolchain/app-cleanup milestone is fully accepted at exact
   `586177eb81d5115ff9829e9b1bc25c29d01163e4`: audited host41326925424,
   Keystore41328422583 and preview41328435853, all attempt1. New preview original

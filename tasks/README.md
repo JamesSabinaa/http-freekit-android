@@ -235,7 +235,10 @@ joins; preview fixture enable/uninstall0. Original preview
 `/tmp/b7-preview-accepted.8QAJOv`, unchanged trusted `/tmp/audit-b6-preflight-runtime.py`,
 stable ignored audit SHA256
 `3d2336304e881ee0c39e740a29b88c13a0508e2b38fc4e8fd14c86e537ac47ed`.
-Root may promote this checked milestone; no B8 implementation is included yet.
+Root committed this checked milestone as `880aa57`; its plain HEAD:main push was
+denied as Data Exfiltration before execution. Main was NOT promoted; no alternate
+publication route/retry. No B8 implementation is included, and owner commits remain
+separate until permitted checked-main publication.
 Next integrate reviewed B8 commits705f41d/c7e8fdb/a037e05, run fresh host and exact
 21-method/five-suite Keystore matrix. No production provenance/app capture, full
 approved-store Android lifecycle, target CA trust, C5/USB or freeze claim.
