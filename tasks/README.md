@@ -72,13 +72,13 @@ shared-key computer Forget effects and all public/internal seams are explicit.
 
 | Package | Exclusive files | Owner / branch / status / dependencies |
 | --- | --- | --- |
-| B7-M model/codec | NEW AuthenticatedEnrollmentApproval.kt and ApprovedEnrolledCredentialRecord.kt only | `a972bddc9886c5f3e`, isolated same-ID worktree/branch; owner `4558923`, integrated `fffd98e`; independent M/S reviewer `ae0f85115127f5681` found no concrete defect; Kotlin/build UNRUN locally |
-| B7-I identity/validator/backend | existing AndroidDeviceIdentityStore.kt, AndroidEnrolledCredentialStore.kt; NEW EnrolledCredentialValidation.kt only | `a75b25bc7fbc37cd7`, isolated same-ID worktree/branch; owner `a893faf`, integrated `12a0629`; independent exact-commit review `ae37b1f1a6303823c` found no concrete defect; host/Android execution pending |
-| B7-S opt-in store | NEW AndroidApprovedEnrolledCredentialStore.kt only | `a2b3aa67ecaf7c3da`, isolated same-ID worktree/branch; owner `febe5bb`, integrated `d944baf`; M/I dependencies composed; independent M/S review found no concrete defect; host pending |
-| B7-T independent JVM tests | NEW three named tests and ApprovedCredentialTestFixture.kt only | `afbb69d18d48c03bd`, isolated same-ID worktree/branch; owner `4184e1a`, integrated `26c2004`;46 authored JVM methods, not executed; fresh isolated reviewer `a123e738a4f44b96c` found no concrete defect (prior review blocked before reading removed worktree) |
-| B7-A original-alias Android tests | NEW core-security androidTest AndroidOriginalDeviceEvidenceTest.kt only | `aeb629e931ce0a774`, isolated same-ID worktree/branch; owner `eb6ef7c`, integrated `b86a470`; three real owned-key methods authored, runtime UNRUN; independent A/V review found no concrete defect |
+| B7-M model/codec | NEW AuthenticatedEnrollmentApproval.kt and ApprovedEnrolledCredentialRecord.kt only | `a972bddc9886c5f3e`, isolated same-ID worktree/branch; owner `4558923`, integrated `fffd98e`; independent M/S reviewer `ae0f85115127f5681` found no concrete defect; Kotlin/build UNRUN locally; host41326925424 accepts model/codec JVM gates |
+| B7-I identity/validator/backend | existing AndroidDeviceIdentityStore.kt, AndroidEnrolledCredentialStore.kt; NEW EnrolledCredentialValidation.kt only | `a75b25bc7fbc37cd7`, isolated same-ID worktree/branch; owner `a893faf`, integrated `12a0629`; independent exact-commit review `ae37b1f1a6303823c` found no concrete defect; host41326925424 and original-evidence runtime41328422583 accepted on both APIs |
+| B7-S opt-in store | NEW AndroidApprovedEnrolledCredentialStore.kt only | `a2b3aa67ecaf7c3da`, isolated same-ID worktree/branch; owner `febe5bb`, integrated `d944baf`; M/I dependencies composed; independent M/S review found no concrete defect; host41326925424 accepts JVM store tests, full approved-store Android lifecycle remains B8 |
+| B7-T independent JVM tests | NEW three named tests and ApprovedCredentialTestFixture.kt only | `afbb69d18d48c03bd`, isolated same-ID worktree/branch; owner `4184e1a`, integrated `26c2004`;46 JVM methods executed/passed in audited host41326925424; fresh isolated reviewer `a123e738a4f44b96c` found no concrete defect (prior review blocked before reading removed worktree) |
+| B7-A original-alias Android tests | NEW core-security androidTest AndroidOriginalDeviceEvidenceTest.kt only | `aeb629e931ce0a774`, isolated same-ID worktree/branch; owner `eb6ef7c`, integrated `b86a470`; three real owned-key methods pass on both APIs in audited runtime41328422583; independent A/V review found no concrete defect |
 | B7-V exact runtime verifier | scripts/verify-keystore-results.py and scripts/tests/test_keystore_results.py only | `a201e8a8c75e4d6f7`, isolated same-ID worktree/branch; owner `ad4e155`, integrated `1d2dd18`; all fifteen exact methods/four suites required; coordinator19/19 focused synthetic tests pass; independent A/V review found no concrete defect |
-| B7-W bounded runtime cleanup | keystore-runtime.yml and NEW scripts/tests/keystore-emulator-cleanup.test.mjs only | `a0a661bbeb1925bc3`, isolated same-ID worktree/branch; owner `d585032`, integrated `a36fe7f`;25 new substitute-child tests, coordinator83/83 combined Keystore/preview cleanup/gate checks pass; independent fresh reviewer `a5106476be1592460` found no concrete defect after prior reviewer was blocked before reading targets; no emulator claim |
+| B7-W bounded runtime cleanup | keystore-runtime.yml and NEW scripts/tests/keystore-emulator-cleanup.test.mjs only | `a0a661bbeb1925bc3`, isolated same-ID worktree/branch; owner `d585032`, integrated `a36fe7f`;25 new substitute-child tests, coordinator83/83 combined Keystore/preview cleanup/gate checks pass; independent fresh reviewer `a5106476be1592460` found no concrete defect after prior reviewer was blocked before reading targets; actual emulator cleanup/termination/wait passes both APIs in runtime41328422583 |
 | B7-R contract review | read-only profile and existing security/research boundaries | `ae37b1f1a6303823c`, isolated same-ID worktree/branch; frozen e4087c2 contract review complete, no blocking concrete issue; independent I implementation review also complete |
 
 Root alone owns documentation, CI/build integration, reviews, artifact/evidence
@@ -212,9 +212,33 @@ host audit SHA256 `ce1acb8a784b746ac43e4f577677f9475a9b7e6adebe3e3f9edb11db7a3a3
 Root dispatched same-source API26/37 matrices41328422583 (Keystore15/four suites)
 and41328435853 (unchanged preview21). Original XML/cleanup replay on both APIs in
 each matrix is mandatory before combined main promotion. Remote coordinator is
-pinned at586177e; no B8 code integrated yet. Prior failures remain failed; no local
+pinned at586177e; no B8 code integrated yet. Keystore matrix41328422583 attempt1
+is now independently accepted: all15 methods/four suites once per API26/37, zero
+failures/errors/skips, actual runtime/stop/emulator0 and termination/join. Original
+`/tmp/b7-keystore-accepted.W5623p`, trusted `/tmp/audit-b7-keystore-runtime.py`, stable
+ignored audit SHA256
+`ebdccfe0a039e186dedf8da62c0f93a6c96753ed5dd994671ca88eeb367b4858`.
+Preview41328435853 remains pending; do not promote combined checkpoint or integrate
+B8 until its original replay passes. This is real original-owned-key evidence,
+not the full approved-store Android lifecycle. Prior failures remain failed; no local
 Java/SDK/runtime, full approved-store Android lifecycle, authenticated provenance,
 production capture, C5/physical USB or freeze claim.
+
+## B7 combined runtime acceptance and checked promotion
+
+Exact source586177e now passes independent original replay of host41326925424
+(452 JVM/52 XMLs/all46 B7 cases/nine clean lints/46 CA receipts/all prior gates),
+Keystore41328422583 (all15 exact methods/four suites per API26/37) and
+preview41328435853 (all21 exact methods per API26/37), each attempt1. Every runtime
+has zero failures/errors/skips, actual stop/runtime/emulator0, termination and wait
+joins; preview fixture enable/uninstall0. Original preview
+`/tmp/b7-preview-accepted.8QAJOv`, unchanged trusted `/tmp/audit-b6-preflight-runtime.py`,
+stable ignored audit SHA256
+`3d2336304e881ee0c39e740a29b88c13a0508e2b38fc4e8fd14c86e537ac47ed`.
+Root may promote this checked milestone; no B8 implementation is included yet.
+Next integrate reviewed B8 commits705f41d/c7e8fdb/a037e05, run fresh host and exact
+21-method/five-suite Keystore matrix. No production provenance/app capture, full
+approved-store Android lifecycle, target CA trust, C5/USB or freeze claim.
 
 ## B8 real approved-store Android lifecycle validation
 

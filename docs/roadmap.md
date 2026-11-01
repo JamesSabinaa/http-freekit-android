@@ -17,9 +17,12 @@ B7 full host acceptance is now independently verified at `586177e`,
 [run41326925424](https://github.com/JamesSabinaa/http-freekit-android/actions/runs/41326925424):
 452 JVM methods/52 XMLs/all46 B7 cases, nine clean lints,46 CA receipts/all joins,
 instrumentation compilation and actual sixteen-module Lifecycle2.11.0 alignment.
-Fresh same-source Keystore matrix41328422583 (15 methods) and preview matrix41328435853
-(21 methods), each API26/37, are dispatched. No runtime acceptance/main promotion
-until both original evidence replays pass. Prior failed runs below remain failed.
+Both fresh same-source matrices are now independently accepted: Keystore41328422583
+(all15 methods/four suites per API26/37) and preview41328435853 (all21 methods per
+API26/37), each attempt1 with zero failures/errors/skips and complete actual owned
+cleanup. The combined B7/toolchain/app-cleanup milestone is ready for checked main
+promotion. Full approved-store Android lifecycle is next in B8, not established by
+these original-owned-key tests. Prior failed runs below remain failed.
 
 B7 opt-in approval persistence is composed locally: M/I/S,46 new JVM methods,
 three real-owned-key instrumentation methods, strict15-case verifier and bounded

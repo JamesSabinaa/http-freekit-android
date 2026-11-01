@@ -864,9 +864,17 @@ module Lifecycle2.11.0 resolution. Original `/tmp/b7-host-accepted.APAGfg`, trus
 `/tmp/audit-b7-host.py`, stable ignored host audit SHA256
 `ce1acb8a784b746ac43e4f577677f9475a9b7e6adebe3e3f9edb11db7a3a3885`.
 Same-source API26/37 matrices41328422583 (Keystore15/four suites) and41328435853
-(preview21) are dispatched. Both original XML/cleanup replays are required before
-combined main promotion; compilation is not Android execution. Earlier failed
-host evidence below stays failed.
+(preview21) now pass independent original XML/cleanup replay, each attempt1: every
+exact method once per API, zero failures/errors/skips, runtime/stop/emulator0 and
+actual termination/wait join. Preview fixture enable/uninstall0. Original evidence
+`/tmp/b7-keystore-accepted.W5623p` and `/tmp/b7-preview-accepted.8QAJOv`; trusted
+`/tmp/audit-b7-keystore-runtime.py` and unchanged `/tmp/audit-b6-preflight-runtime.py`.
+Stable ignored runtime audit SHA256s respectively:
+`ebdccfe0a039e186dedf8da62c0f93a6c96753ed5dd994671ca88eeb367b4858`,
+`3d2336304e881ee0c39e740a29b88c13a0508e2b38fc4e8fd14c86e537ac47ed`.
+Both runtime gates now permit combined checked promotion; full approved-store
+Android lifecycle and authenticated approval provenance are not proved. Earlier
+failed host evidence below stays failed.
 
 The [opt-in local persistence package](approved-credential-persistence.md) main
 code is locally composed and independently reviewed, not fully host accepted.

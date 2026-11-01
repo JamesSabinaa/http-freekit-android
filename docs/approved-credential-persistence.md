@@ -7,9 +7,19 @@ CA receipts/all joins, app/security instrumentation compilation,25 cleanup Node
 and19 verifier Python cases, all old gates, and16 Lifecycle modules resolved2.11.0.
 Stable ignored host audit SHA256
 `ce1acb8a784b746ac43e4f577677f9475a9b7e6adebe3e3f9edb11db7a3a3885`.
-Fresh same-source API26/37 matrices41328422583 (Keystore15 methods) and41328435853
-(preview21 methods) are dispatched, not accepted yet. Full original cleanup/XML
-replay on both APIs in each matrix remains mandatory before combined main promotion.
+Fresh same-source API26/37 Keystore matrix41328422583 attempt1 is now accepted by
+independent original XML/cleanup replay: all15 exact methods/four suites per API,
+zero failures/errors/skips, runtime/stop/emulator exit0, actual termination/join.
+Stable ignored runtime audit SHA256
+`ebdccfe0a039e186dedf8da62c0f93a6c96753ed5dd994671ca88eeb367b4858`.
+This executes original-owned-key public evidence, not the full approved-store
+Android lifecycle. Same-source preview21-method matrix41328435853 attempt1 is also
+accepted by independent original XML/cleanup/PNG replay: all21 exact methods once
+per API26/37, zero failures/errors/skips, fixture enable/uninstall0 and runtime/
+stop/emulator0 with actual termination/join. Stable ignored preview audit SHA256
+`3d2336304e881ee0c39e740a29b88c13a0508e2b38fc4e8fd14c86e537ac47ed`.
+Both required runtime gates now pass at the host-accepted source; combined checked
+main promotion is ready. Earlier failed runs remain failed.
 No authenticated approval provenance, full approved-store Android lifecycle,
 production pairing/capture, CA trust, C5/USB or freeze claim.
 

@@ -7,6 +7,34 @@ The original goal is active and incomplete.
 
 ## Current Linux resume position
 
+- Combined B7/toolchain/app-cleanup milestone is fully accepted at exact
+  `586177eb81d5115ff9829e9b1bc25c29d01163e4`: audited host41326925424,
+  Keystore41328422583 and preview41328435853, all attempt1. New preview original
+  replay verifies all21 exact methods once per API26/37, zero failures/errors/skips,
+  fixture enable/uninstall0, runtime/stop/emulator0 and actual termination/join.
+  Original `/tmp/b7-preview-accepted.8QAJOv`, unchanged trusted
+  `/tmp/audit-b6-preflight-runtime.py`, stable ignored preview audit SHA256
+  `3d2336304e881ee0c39e740a29b88c13a0508e2b38fc4e8fd14c86e537ac47ed`.
+  Host452 JVM/52 XMLs/all46 B7 cases/nine clean lints/46 CA receipts and Keystore15
+  exact methods/four suites per API remain independently verified below. Main
+  promotion is ready; no unchecked B8 code is included. After promotion, integrate
+  reviewed B8 owner705f41d + cleanup correctionc7e8fdb and verifiera037e05, run fresh
+  full host then21-method/five-suite Keystore matrix. This milestone does not prove
+  full approved-store Android lifecycle, approval provenance, production capture,
+  target CA trust, desktop C5, physical USB or protocol freeze.
+
+- B7 original-owned-key Keystore runtime ACCEPTED at exact586177e,
+  matrix41328422583 attempt1. Independent original XML/cleanup replay verifies all15
+  exact methods/four suites once per API26/37, zero failures/errors/skips,
+  runtime/stop/emulator exit0, actual termination and wait joins. New original-chain
+  copy/reopen/absence/deletion/computer-binding tests execute with real owned keys;
+  not full approved-store Android lifecycle or authenticated provenance. Original
+  `/tmp/b7-keystore-accepted.W5623p`, trusted `/tmp/audit-b7-keystore-runtime.py`,
+  stable ignored audit SHA256
+  `ebdccfe0a039e186dedf8da62c0f93a6c96753ed5dd994671ca88eeb367b4858`.
+  Same-source preview matrix41328435853 is still pending; hold combined main
+  promotion and B8 integration until original preview replay passes too.
+
 - Full B7 host gate ACCEPTED at exact `586177eb81d5115ff9829e9b1bc25c29d01163e4`,
   run41326925424 attempt1. Independent original reports/log replay verifies452 JVM
   methods/52 XMLs/all46 B7 cases, nine clean lints,46 CA receipts/all joins,
