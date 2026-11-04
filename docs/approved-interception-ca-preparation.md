@@ -7,7 +7,9 @@ confirmed a snapshot-assertion coverage gap, corrected by57c561a integratede1885
 Independent exact correction review found the gap resolved and no further concrete
 defect; all35 names/assertions retained. Gradle/lint UNRUN locally because
 JAVA_HOME is unset and no java command exists. Fresh full hosted acceptance is
-still mandatory; no main promotion or B9 runtime/production claim.
+still mandatory; fresh full host41856346443 is running at published exact
+`b835bc3561be8d0444e5a68571805ad8d6434691`. No host acceptance, main promotion or
+B9 runtime/production claim.
 Depends on checked B8 milestone `4e9a4f5`, independently verified on published main.
 The [B7 envelope](approved-credential-persistence.md) retains an authenticated-caller
 CA digest commitment; it deliberately does not validate supplied CA bytes. Existing

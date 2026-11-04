@@ -7,6 +7,15 @@ The original goal is active and incomplete.
 
 ## Current Linux resume position
 
+- B9 source `b835bc3561be8d0444e5a68571805ad8d6434691` is published on the intended
+  coordinator branch via command-local CLI HTTPS helper. Fresh full host41856346443
+  is in progress at that exact source; one bounded completion watcher is active.
+  No B9 host acceptance or main promotion yet. After completion, retain original
+  run/attempt/artifacts and original direct API logs if CLI logs are empty, then
+  replay trusted `/tmp/audit-b9-host.py` against exact35-method manifest plus all
+  retained B7/B8 host gates. A failed run remains failed; do not silently retry.
+  Main remains verified4e9a4f5. No additional package or production wire work assigned.
+
 - B9 now composes implementation557340c ->65c6143, independent35-method tests
   47ab322 ->80f270f and additive snapshot-assertion correction57c561a ->e1885a5.
   Independent exact implementation/profile/security and test/correction reviews
