@@ -960,6 +960,26 @@ are unchanged by B8. Do not reinterpret B7's fifteen-method runtime as B8 eviden
 No authenticated approval provenance, process death, crash/power-loss, CA trust,
 production pairing/capture, C5/physical USB or protocol freeze follows.
 
+## Approved public-CA preparation validation (B9)
+
+The [frozen library package](approved-interception-ca-preparation.md) follows
+checked B8 main4e9a4f5. Independent profile and snapshot/security contract reviews
+at0f6690e found no concrete blocker; this is not implementation review or execution.
+Evidence reviewer confirms no workflow edit is needed: existing unfiltered
+`:core-security:testDebugUnitTest :core-security:assembleDebugAndroidTest
+:core-security:lintDebug` and full transport-interop/retained module matrix apply.
+After exact implementation and independent tests are reviewed, require a fresh
+full pinned host run at the integrated source and independent original-artifact
+replay. Require the finalized exact annotated JVM method manifest once each in
+`TEST-com.httpfreekit.security.ApprovedInterceptionCaTest.xml`, reconciled counters
+and zero failure/error/skip; retain all46 B7 methods, research CA binding/client/TLS
+suites,46 distinct TLS receipts/all joins, nine clean lints, instrumentation compile,
+actual Lifecycle resolution and every existing documentation/native/protocol gate.
+Do not infer execution from a filename, source regex, green workflow or APK assembly.
+B8's accepted emulator evidence stays bound to8fdadb2; B9's pure-library host work
+does not rerun that runtime, validate live keys/registry or establish production
+capture, target CA trust, desktop C5, physical USB or protocol freeze.
+
 ## Preview runtime evidence
 
 Latest [B6 selected-app preflight](selected-app-preflight.md) checkpoint is accepted

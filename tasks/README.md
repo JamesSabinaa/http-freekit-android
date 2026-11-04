@@ -256,9 +256,9 @@ All five owners have separate isolated worktrees/branches from frozen0f6690e:
 | --- | --- | --- |
 | B9-I implementation | New ApprovedInterceptionCa.kt, InterceptionCaValidation.kt, optional InterceptionCaDer.kt; existing samePublicKey visibility only | `ab3fbddf4f8a6c86d`, isolated same-ID worktree/branch; assigned; follows frozen B9 API/profile, no research/build/UI edits |
 | B9-T independent tests | New ApprovedInterceptionCaTest.kt and optional ApprovedInterceptionCaTestFixture.kt only | `af258279fbcb27505`, isolated same-ID worktree/branch; assigned against frozen API; local Java/SDK unavailable |
-| B9-R profile review | Read-only research-profile equivalence/actual seams, later exact implementation | `a69105dd9e2b288c1`, isolated same-ID worktree/branch; assigned |
-| B9-S security review | Read-only snapshot, redaction, expiry and mathematical-key separation, later exact code/tests | `a9b6ef86cc4c8cee7`, isolated same-ID worktree/branch; assigned |
-| B9-V evidence review | Read-only existing host tasks/reports/exact-method replay planning | `ab2273343eb64c4d4`, isolated same-ID worktree/branch; assigned, no workflow or audit edits |
+| B9-R profile review | Read-only research-profile equivalence/actual seams, later exact implementation | `a69105dd9e2b288c1`, isolated same-ID worktree/branch; frozen0f6690e profile review complete, no concrete contradiction/blocker; exact implementation review pending |
+| B9-S security review | Read-only snapshot, redaction, expiry and mathematical-key separation, later exact code/tests | `a9b6ef86cc4c8cee7`, isolated same-ID worktree/branch; frozen0f6690e snapshot/security contract review complete, no concrete contradiction; exact implementation/test review pending |
+| B9-V evidence review | Read-only existing host tasks/reports/exact-method replay planning | `ab2273343eb64c4d4`, isolated same-ID worktree/branch; complete, existing unfiltered host tasks discover annotated tests and retain original XML/lint/compile evidence; no workflow change needed, no acceptance claim |
 
 No production wire/app or research-source edits are assigned. Root owns all
 contracts/docs/integration/dispatch/audits. B9 does not change B8 acceptance scope.
