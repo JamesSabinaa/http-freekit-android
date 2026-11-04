@@ -1,15 +1,26 @@
 # Real Android approved-store lifecycle validation (B8)
 
-Status: implemented locally after checked B7 main `c2419b7`, verified published
-4 November2026. Android owner `705f41d` is integrated `9ee9ac2`, primary-failure
+Status: full host ACCEPTED at exact `8fdadb27a25fabb233095520b04a071184a5adb3`,
+run41824622937 attempt1. Independent original XML/API-log replay verifies452 JVM
+methods/52 XMLs/all46 B7 methods, nine clean lints,46 CA receipts/all joins,26 exact
+verifier cases, every retained baseline gate, six frozen B8 instrumentation methods
+compiled and16 Lifecycle modules selected2.11.0. Original
+`/tmp/b8-host-accepted.XUwp69`; trusted `/tmp/audit-b8-host.py`; stable ignored host
+audit SHA256 `24a2dbd866424a7492aa7be3f009303cd94370f75c86d10f1676eb8d96640678`.
+CLI job-log reads returned empty; preserved empties plus original direct API job
+logs are retained. Trusted adapter print matching was corrected before successful
+replay; no host assertion was removed or weakened. Fresh same-source API26/37
+Keystore matrix41850942199 is dispatched, not accepted yet. All21 exact methods/
+five suites and actual owned cleanup must replay before main promotion.
+
+Implemented after checked B7 main `c2419b7`, verified published4 November2026. Android owner `705f41d` is integrated `9ee9ac2`, primary-failure
 cleanup correction `c7e8fdb` integrated `dc60809`, verifier `a037e05` integrated
 `820b15f`. Original independent Android review confirmed cleanup masking; a fresh
 exact correction review found no remaining concrete defect. Independent verifier
 and frozen-contract reviews found no concrete issue. Coordinator26/26 focused
-verifier and113/113 total Python checks pass. The six Android methods and private
-four-case cleanup-precedence regression are authored, not compiled/executed yet;
-Java/SDK absent locally. Fresh complete pinned host and then same-source API26/37
-21-method/five-suite Keystore matrix remain mandatory before checked promotion.
+verifier and113/113 total Python checks pass. The six Android methods and private four-case cleanup-precedence regression are
+host-compiled, not executed yet; Java/SDK remain absent locally. The same-source
+API26/37 21-method/five-suite Keystore matrix remains mandatory before promotion.
 
 Scoped 29 October2026 against B7 source `fdd00f8`; B7 later accepted audited host
 41326925424 and same-source Keystore41328422583/preview41328435853 at586177e.

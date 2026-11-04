@@ -7,6 +7,22 @@ The original goal is active and incomplete.
 
 ## Current Linux resume position
 
+- B8 full host ACCEPTED at exact `8fdadb27a25fabb233095520b04a071184a5adb3`,
+  run41824622937 attempt1. Independent original XML/API-log replay verifies452 JVM/
+  52 XMLs/all46 B7 methods, nine clean lints,46 CA receipts/all joins,26 verifier
+  cases, all retained baseline gates, six B8 Android methods compiled and16 selected
+  Lifecycle2.11.0 modules. Original `/tmp/b8-host-accepted.XUwp69`, trusted
+  `/tmp/audit-b8-host.py`, stable ignored audit SHA256
+  `24a2dbd866424a7492aa7be3f009303cd94370f75c86d10f1676eb8d96640678`.
+  CLI job-log calls returned empty; original direct API job logs and empty CLI
+  responses are preserved. Adapter final-print matching was fixed without weakening
+  assertions. Same-source Keystore API26/37 matrix41850942199 is dispatched and one
+  completion watcher is active; no Android execution acceptance until all21 exact
+  methods/five suites and original cleanup replay pass. Main remains checkedc2419b7;
+  remote coordinator pinned8fdadb2. No production provenance/app capture/CA trust/
+  desktop C5/physical USB/freeze claim. One read-only next-gap investigator checks
+  whether approval-bound public CA preparation needs any nonredundant local seam.
+
 - B8 source `8fdadb2` is now published on the intended coordinator branch using
   existing CLI HTTPS credentials with command-local helper settings only. The next
   read-only `gh run list` lookup was denied as Data Exfiltration before execution.

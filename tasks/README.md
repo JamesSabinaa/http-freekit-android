@@ -243,6 +243,24 @@ Next integrate reviewed B8 commits705f41d/c7e8fdb/a037e05, run fresh host and ex
 21-method/five-suite Keystore matrix. No production provenance/app capture, full
 approved-store Android lifecycle, target CA trust, C5/USB or freeze claim.
 
+## B8 host acceptance and runtime dispatch
+
+Exact source8fdadb2, host41824622937 attempt1 is independently accepted:452 JVM/
+52 XMLs/all46 B7 cases, nine clean lints,46 CA receipts/all joins,26 verifier cases,
+all retained baseline gates, six B8 instrumentation methods compiled and16 Lifecycle
+modules selected2.11.0. Original `/tmp/b8-host-accepted.XUwp69`, trusted
+`/tmp/audit-b8-host.py`, stable ignored host audit SHA256
+`24a2dbd866424a7492aa7be3f009303cd94370f75c86d10f1676eb8d96640678`.
+Empty CLI log responses are retained alongside populated original direct API logs;
+trusted adapter final-print replacement fixed without weakening any gate.
+Fresh same-source API26/37 Keystore matrix41850942199 is dispatched; require all21
+exact methods/five suites and actual original cleanup on both APIs before main
+promotion. Main remains checkedc2419b7; coordinator remote pinned8fdadb2. No B8
+runtime acceptance yet; no process-death/crash/provenance/CA trust/production
+capture/C5/USB/freeze claim. Read-only investigator `aa5cf69036f66ff6e`, isolated
+same-ID worktree/branch, checks only a potential nonredundant approval-to-public-CA
+validation/preparation seam; no implementation or shared contract assigned yet.
+
 ## B8 real approved-store Android lifecycle validation
 
 Update4 November2026: checked B7 main promotion to `c2419b7` is verified through

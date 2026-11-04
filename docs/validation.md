@@ -938,10 +938,17 @@ The [test-only B8 package](approved-store-android-validation.md) is now locally
 integrated after verified B7 mainc2419b7: Android9ee9ac2, cleanup fixdc60809 and
 verifier820b15f. Coordinator26/26 verifier and113/113 total Python checks pass.
 Six real-key/file lifecycle methods plus private four-case primary/cleanup failure
-precedence regression are authored and independently reviewed; Java/SDK are absent
-locally, so no Kotlin compilation/lint/Android execution claim. Require fresh full
-pinned host and original reports, then same-source API26/37 Keystore matrix with
-all21 exact methods/five suites once each and source/API-bound actual cleanup.
+precedence regression are independently reviewed and now host-compiled at8fdadb2,
+run41824622937 attempt1. Independent original XML/API-log replay accepts452 JVM/
+52 XMLs/all46 B7 cases, nine clean lints,46 CA receipts/all joins,26 verifier cases,
+all retained baseline gates and16 Lifecycle modules selected2.11.0. Original
+`/tmp/b8-host-accepted.XUwp69`, trusted `/tmp/audit-b8-host.py`, stable ignored host
+audit SHA256 `24a2dbd866424a7492aa7be3f009303cd94370f75c86d10f1676eb8d96640678`.
+Empty CLI log responses/direct API originals are preserved; adapter print matching
+was fixed without reducing gates. Fresh same-source API26/37 Keystore matrix
+41850942199 is dispatched; all21 exact methods/five suites once per API and actual
+source/API-bound cleanup must independently replay before main promotion. No Android
+execution is accepted yet; no local Java/SDK compilation/lint claim.
 Existing production code, dependency pins, workflow and all old fifteen methods
 are unchanged by B8. Do not reinterpret B7's fifteen-method runtime as B8 evidence.
 No authenticated approval provenance, process death, crash/power-loss, CA trust,
