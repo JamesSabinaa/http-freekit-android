@@ -49,7 +49,7 @@ class ApprovedEnrolledCredentialRecord(
 
 private fun sha256(bytes: ByteArray): ByteArray = MessageDigest.getInstance("SHA-256").digest(bytes)
 
-private fun samePublicKey(first: PublicKey, second: PublicKey): Boolean {
+internal fun samePublicKey(first: PublicKey, second: PublicKey): Boolean {
     if (first == second || MessageDigest.isEqual(first.encoded, second.encoded)) return true
     // Key separation concerns mathematical keys, even with alternative parameter encodings.
     return when {
