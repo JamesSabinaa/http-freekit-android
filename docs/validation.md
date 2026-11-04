@@ -954,7 +954,7 @@ trusted `/tmp/audit-b8-keystore-runtime.py`, stable ignored
 `b939965ed32ff425251dd39d5cb72f9a857a153d575fe3012db65be35fbe6065`.
 All six B8 methods/private cleanup-precedence self-check executed on both hosted
 emulators; no local Java/SDK compilation/lint or physical-device claim. Checked
-main promotion is ready.
+milestone `4e9a4f5` is published to main and independently verified.
 Existing production code, dependency pins, workflow and all old fifteen methods
 are unchanged by B8. Do not reinterpret B7's fifteen-method runtime as B8 evidence.
 No authenticated approval provenance, process death, crash/power-loss, CA trust,

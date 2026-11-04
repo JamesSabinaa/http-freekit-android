@@ -274,7 +274,8 @@ stable ignored runtime audit SHA256
 `b939965ed32ff425251dd39d5cb72f9a857a153d575fe3012db65be35fbe6065`.
 B8-A's six methods/private self-check execute on both hosted emulators; B8-V's
 strict21/five-suite gate replays both originals. No local Java/SDK or physical
-hardware checks. Checked main promotion is ready; no production API/wire change.
+hardware checks. Checked milestone `4e9a4f5` is published to main and independently
+verified; no production API/wire change.
 No process-death/crash/provenance/CA trust/capture/C5/USB/freeze claim.
 Investigator `aa5cf69036f66ff6e` completed read-only at8fdadb2: recommends one
 library-only approved-record/supplied-public-CA binding using existing research

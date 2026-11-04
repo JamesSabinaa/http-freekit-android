@@ -16,7 +16,8 @@ skips, runtime/stop/emulator exit0 and actual termination/wait joins. Original
 `/tmp/b8-keystore-accepted.iEuNSJ`; trusted `/tmp/audit-b8-keystore-runtime.py`;
 stable ignored `dist/approved-store-keystore-runtime-audit.json` SHA256
 `b939965ed32ff425251dd39d5cb72f9a857a153d575fe3012db65be35fbe6065`.
-Checked main promotion is ready; no production or wire contracts changed.
+Checked milestone `4e9a4f52ea1bfc37cf72d21627afbc3a6cc7b73a` is published to
+main and independently verified. No production or wire contracts changed.
 
 Implemented after checked B7 main `c2419b7`, verified published4 November2026. Android owner `705f41d` is integrated `9ee9ac2`, primary-failure
 cleanup correction `c7e8fdb` integrated `dc60809`, verifier `a037e05` integrated
