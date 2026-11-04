@@ -32,7 +32,11 @@ class ApprovedInterceptionCa internal constructor(/* validated public snapshot *
 ```
 
 Every returned byte array and certificate is a defensive snapshot; fixed redacted
-`toString`. Reject invalid input with fresh cause-free
+`toString`. The certificate getter reparses retained copied DER, but distinct
+certificate object identity is not promised: providers may intern immutable
+certificates. Mutation of returned DER/hash/encoded/signature arrays or mutable
+Date values must not alter retained material or subsequent getter observations.
+Reject invalid input with fresh cause-free
 `IllegalArgumentException("Invalid approved interception CA")`, without provider
 text, identifying material, paths or nested exceptions. Take one injected time
 observation per preparation. No network, files, trust-store mutation or key-manager
