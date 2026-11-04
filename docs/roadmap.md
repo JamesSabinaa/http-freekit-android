@@ -21,15 +21,18 @@ Both fresh same-source matrices are now independently accepted: Keystore41328422
 (all15 methods/four suites per API26/37) and preview41328435853 (all21 methods per
 API26/37), each attempt1 with zero failures/errors/skips and complete actual owned
 cleanup. The combined B7/toolchain/app-cleanup milestone was published to main `c2419b7`
-and independently verified4 November. Full approved-store Android lifecycle is next
-in B8, not established by these original-owned-key tests. B8 six lifecycle methods,
-cleanup fix and21-method/five-suite verifier are now integrated locally as9ee9ac2,
+and independently verified4 November. B8 now adds six scoped approved-store lifecycle
+methods, cleanup fix and21-method/five-suite verifier integrated as9ee9ac2,
 dc60809 and820b15f. Local26/26 verifier and113/113 Python checks pass. Fresh host41824622937 at8fdadb2
-is now independently accepted:452 JVM/52 XMLs/nine clean lints/46 CA receipts, all
+is independently accepted:452 JVM/52 XMLs/nine clean lints/46 CA receipts, all
 six B8 instrumentation methods compiled, and actual Lifecycle2.11.0 alignment.
-Same-source API26/37 Keystore matrix41850942199 is dispatched; runtime acceptance
-requires all21 methods/five suites and actual cleanup on both APIs before main.
-Prior failed runs below remain failed.
+Same-source API26/37 Keystore matrix41850942199 attempt1 is now independently
+accepted: all21 methods/five suites once per API, zero failures/errors/skips,
+runtime/stop/emulator exit0 and actual termination/wait joins. Runtime audit SHA256
+`b939965ed32ff425251dd39d5cb72f9a857a153d575fe3012db65be35fbe6065`.
+Checked B8 main promotion is ready. This is not process death, crash/power-loss,
+authenticated approval provenance, CA trust, production capture or physical USB.
+Prior failed runs below remain failed; pending states below are historical.
 
 B7 opt-in approval persistence is composed locally: M/I/S,46 new JVM methods,
 three real-owned-key instrumentation methods, strict15-case verifier and bounded
@@ -51,8 +54,8 @@ Latest host41304158466 at `0d5d9e6` observes sixteen Lifecycle modules aligned t
 again verifies364 partial JVM/all46 B7 methods, not full acceptance. Root's
 independently reviewed one-line removal preserves all owned cleanup. Fresh full
 host and unchanged preview21-case/Keystore15-case API26/37 matrices remain mandatory
-before main promotion. Separately scoped [B8 real approved-store lifecycle tests](approved-store-android-validation.md)
-are authored and reviewed after the cleanup correction; no device execution.
+before main promotion. The separately scoped [B8 real approved-store lifecycle tests](approved-store-android-validation.md)
+are now accepted by the exact-source host and both-API runtime replay above.
 
 | Area | Verified progress | Remaining work |
 | --- | --- | --- |

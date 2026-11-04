@@ -945,10 +945,16 @@ all retained baseline gates and16 Lifecycle modules selected2.11.0. Original
 `/tmp/b8-host-accepted.XUwp69`, trusted `/tmp/audit-b8-host.py`, stable ignored host
 audit SHA256 `24a2dbd866424a7492aa7be3f009303cd94370f75c86d10f1676eb8d96640678`.
 Empty CLI log responses/direct API originals are preserved; adapter print matching
-was fixed without reducing gates. Fresh same-source API26/37 Keystore matrix
-41850942199 is dispatched; all21 exact methods/five suites once per API and actual
-source/API-bound cleanup must independently replay before main promotion. No Android
-execution is accepted yet; no local Java/SDK compilation/lint claim.
+was fixed without reducing gates. Same-source API26/37 Keystore matrix41850942199
+attempt1 now passes independent original replay: all21 exact methods/five suites
+once per API, zero failures/errors/skips, source/API-bound runtime/stop/emulator
+exit0 and actual termination/wait joins. Original `/tmp/b8-keystore-accepted.iEuNSJ`,
+trusted `/tmp/audit-b8-keystore-runtime.py`, stable ignored
+`dist/approved-store-keystore-runtime-audit.json` and checksum; audit SHA256
+`b939965ed32ff425251dd39d5cb72f9a857a153d575fe3012db65be35fbe6065`.
+All six B8 methods/private cleanup-precedence self-check executed on both hosted
+emulators; no local Java/SDK compilation/lint or physical-device claim. Checked
+main promotion is ready.
 Existing production code, dependency pins, workflow and all old fifteen methods
 are unchanged by B8. Do not reinterpret B7's fifteen-method runtime as B8 evidence.
 No authenticated approval provenance, process death, crash/power-loss, CA trust,

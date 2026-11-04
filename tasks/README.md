@@ -243,6 +243,24 @@ Next integrate reviewed B8 commits705f41d/c7e8fdb/a037e05, run fresh host and ex
 21-method/five-suite Keystore matrix. No production provenance/app capture, full
 approved-store Android lifecycle, target CA trust, C5/USB or freeze claim.
 
+## B8 runtime acceptance and checked promotion
+
+Root independently accepts exact8fdadb2 host41824622937 and Keystore41850942199,
+both attempt1. Original runtime XML verifies all21 methods/five suites once per
+API26/37 with zero failures/errors/skips; actual source/API-bound cleanup verifies
+runtime/stop/emulator0 and observed termination/wait joins. Original
+`/tmp/b8-keystore-accepted.iEuNSJ`, trusted `/tmp/audit-b8-keystore-runtime.py`,
+stable ignored runtime audit SHA256
+`b939965ed32ff425251dd39d5cb72f9a857a153d575fe3012db65be35fbe6065`.
+B8-A's six methods/private self-check execute on both hosted emulators; B8-V's
+strict21/five-suite gate replays both originals. No local Java/SDK or physical
+hardware checks. Checked main promotion is ready; no production API/wire change.
+No process-death/crash/provenance/CA trust/capture/C5/USB/freeze claim.
+Investigator `aa5cf69036f66ff6e` completed read-only at8fdadb2: recommends one
+library-only approved-record/supplied-public-CA binding using existing research
+profile checks. No next implementation assigned. Earlier pending states below
+are historical and superseded by this acceptance.
+
 ## B8 host acceptance and runtime dispatch
 
 Exact source8fdadb2, host41824622937 attempt1 is independently accepted:452 JVM/

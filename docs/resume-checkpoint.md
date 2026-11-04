@@ -7,6 +7,22 @@ The original goal is active and incomplete.
 
 ## Current Linux resume position
 
+- Update4 November2026: B8 runtime41850942199 attempt1 is independently ACCEPTED
+  at exact `8fdadb27a25fabb233095520b04a071184a5adb3`, matching accepted host41824622937.
+  Original XML verifies all21 exact methods/five suites once per API26/37, zero
+  failures/errors/skips. Original source/API-bound cleanup verifies runtime/stop/
+  emulator exit0, termination and actual wait joins; TERM attempted, KILL not needed.
+  Original `/tmp/b8-keystore-accepted.iEuNSJ`; trusted
+  `/tmp/audit-b8-keystore-runtime.py`; stable ignored runtime audit/checksum in dist,
+  SHA256 `b939965ed32ff425251dd39d5cb72f9a857a153d575fe3012db65be35fbe6065`.
+  Six B8 methods and their private cleanup-precedence self-check executed on both
+  emulators; no local Java/SDK or physical-device checks. Main promotion is ready.
+  No process-death/crash/provenance/CA trust/production capture/C5/USB/freeze claim.
+  Read-only investigator `aa5cf69036f66ff6e` completed: recommends a library-only
+  approved-record/supplied-public-CA binding, reusing strict research validation.
+  No next implementation or contract is assigned yet. Entries below are historical
+  checkpoints; their pending states are superseded by this acceptance.
+
 - B8 full host ACCEPTED at exact `8fdadb27a25fabb233095520b04a071184a5adb3`,
   run41824622937 attempt1. Independent original XML/API-log replay verifies452 JVM/
   52 XMLs/all46 B7 methods, nine clean lints,46 CA receipts/all joins,26 verifier

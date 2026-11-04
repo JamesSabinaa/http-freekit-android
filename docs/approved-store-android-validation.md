@@ -10,8 +10,13 @@ audit SHA256 `24a2dbd866424a7492aa7be3f009303cd94370f75c86d10f1676eb8d96640678`.
 CLI job-log reads returned empty; preserved empties plus original direct API job
 logs are retained. Trusted adapter print matching was corrected before successful
 replay; no host assertion was removed or weakened. Fresh same-source API26/37
-Keystore matrix41850942199 is dispatched, not accepted yet. All21 exact methods/
-five suites and actual owned cleanup must replay before main promotion.
+Keystore matrix41850942199 attempt1 is now independently ACCEPTED at the same
+source: all21 exact methods/five suites once per API26/37, zero failures/errors/
+skips, runtime/stop/emulator exit0 and actual termination/wait joins. Original
+`/tmp/b8-keystore-accepted.iEuNSJ`; trusted `/tmp/audit-b8-keystore-runtime.py`;
+stable ignored `dist/approved-store-keystore-runtime-audit.json` SHA256
+`b939965ed32ff425251dd39d5cb72f9a857a153d575fe3012db65be35fbe6065`.
+Checked main promotion is ready; no production or wire contracts changed.
 
 Implemented after checked B7 main `c2419b7`, verified published4 November2026. Android owner `705f41d` is integrated `9ee9ac2`, primary-failure
 cleanup correction `c7e8fdb` integrated `dc60809`, verifier `a037e05` integrated
@@ -19,8 +24,9 @@ cleanup correction `c7e8fdb` integrated `dc60809`, verifier `a037e05` integrated
 exact correction review found no remaining concrete defect. Independent verifier
 and frozen-contract reviews found no concrete issue. Coordinator26/26 focused
 verifier and113/113 total Python checks pass. The six Android methods and private four-case cleanup-precedence regression are
-host-compiled, not executed yet; Java/SDK remain absent locally. The same-source
-API26/37 21-method/five-suite Keystore matrix remains mandatory before promotion.
+host-compiled and executed successfully on hosted API26/37 emulators in the
+accepted matrix; Java/SDK remain absent locally. Fresh-instance reopen is not
+process death, and simulated orphan pending files are not actual crash recovery.
 
 Scoped 29 October2026 against B7 source `fdd00f8`; B7 later accepted audited host
 41326925424 and same-source Keystore41328422583/preview41328435853 at586177e.
