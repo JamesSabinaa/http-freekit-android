@@ -299,6 +299,10 @@ class ApprovedInterceptionCaTest {
         val f = ApprovedInterceptionCaTestFixture()
         val input = f.ca.encoded
         val expected = input.copyOf()
+        val expectedSignature = f.ca.signature.copyOf()
+        val expectedSpki = f.ca.publicKey.encoded.copyOf()
+        val expectedNotBeforeMillis = f.ca.notBefore.time
+        val expectedNotAfterMillis = f.ca.notAfter.time
         val actual = f.prepare(input)
         input.fill(0)
         actual.certificateDer.fill(0)
@@ -317,6 +321,12 @@ class ApprovedInterceptionCaTest {
         assertArrayEquals(expected, actual.certificate.encoded)
         assertEquals(f.ca.notBefore, actual.certificate.notBefore)
         assertEquals(f.ca.notAfter, actual.certificate.notAfter)
+        for (certificate in listOf(first, second, actual.certificate)) {
+            assertArrayEquals(expectedSignature, certificate.signature)
+            assertArrayEquals(expectedSpki, certificate.publicKey.encoded)
+            assertEquals(expectedNotBeforeMillis, certificate.notBefore.time)
+            assertEquals(expectedNotAfterMillis, certificate.notAfter.time)
+        }
     }
 
     @Test fun successfulAndStalePreparationsObserveInjectedClockExactlyOnceWithoutManagerCalls() {
