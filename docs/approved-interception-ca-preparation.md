@@ -1,6 +1,10 @@
 # Approved public interception-CA preparation (B9)
 
-Status: frozen local library package, 4 November 2026; implementation UNRUN.
+Status: local implementation owner557340c integrated65c6143, 4 November2026;
+independent exact-source profile and snapshot/security reviews found no concrete
+defect. Independent JVM tests remain pending; Gradle/lint UNRUN locally because
+JAVA_HOME is unset and no java command exists. Fresh full hosted acceptance is
+still mandatory; no main promotion or B9 runtime/production claim.
 Depends on checked B8 milestone `4e9a4f5`, independently verified on published main.
 The [B7 envelope](approved-credential-persistence.md) retains an authenticated-caller
 CA digest commitment; it deliberately does not validate supplied CA bytes. Existing

@@ -7,6 +7,15 @@ The original goal is active and incomplete.
 
 ## Current Linux resume position
 
+- B9 implementation owner557340c is integrated locally as65c6143. Four assigned
+  files only; existing B7 helper changes visibility only. Independent exact-source
+  profile and snapshot/security reviews found no concrete defect; independent JVM
+  tests are still being authored. Owner Gradle attempt stopped before build because
+  JAVA_HOME is unset/no java. No B9 compilation/lint/host acceptance or main promotion.
+  Main remains checked4e9a4f5. Root's113/113 Python,9/9 documentation-checker tests
+  and314 local links pass. Five isolated implementation/test/review roles are
+  recorded; completed reviews are source-only, not execution evidence.
+
 - Checked B8 milestone `4e9a4f52ea1bfc37cf72d21627afbc3a6cc7b73a` is published to
   main via command-local CLI HTTPS helper and independently verified. Root freezes
   [B9 library-only approved CA preparation](approved-interception-ca-preparation.md),
