@@ -932,6 +932,21 @@ or freeze wire. Legacy no-synthesis and shared-key Forget effects are mandatory
 negative checks. New exact-owned-alias Android evidence access needs separately
 gated device execution before any runtime claim; host compilation is insufficient.
 
+## Real Android approved-store lifecycle validation (B8)
+
+The [test-only B8 package](approved-store-android-validation.md) is now locally
+integrated after verified B7 mainc2419b7: Android9ee9ac2, cleanup fixdc60809 and
+verifier820b15f. Coordinator26/26 verifier and113/113 total Python checks pass.
+Six real-key/file lifecycle methods plus private four-case primary/cleanup failure
+precedence regression are authored and independently reviewed; Java/SDK are absent
+locally, so no Kotlin compilation/lint/Android execution claim. Require fresh full
+pinned host and original reports, then same-source API26/37 Keystore matrix with
+all21 exact methods/five suites once each and source/API-bound actual cleanup.
+Existing production code, dependency pins, workflow and all old fifteen methods
+are unchanged by B8. Do not reinterpret B7's fifteen-method runtime as B8 evidence.
+No authenticated approval provenance, process death, crash/power-loss, CA trust,
+production pairing/capture, C5/physical USB or protocol freeze follows.
+
 ## Preview runtime evidence
 
 Latest [B6 selected-app preflight](selected-app-preflight.md) checkpoint is accepted

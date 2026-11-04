@@ -18,8 +18,10 @@ accepted by independent original XML/cleanup/PNG replay: all21 exact methods onc
 per API26/37, zero failures/errors/skips, fixture enable/uninstall0 and runtime/
 stop/emulator0 with actual termination/join. Stable ignored preview audit SHA256
 `3d2336304e881ee0c39e740a29b88c13a0508e2b38fc4e8fd14c86e537ac47ed`.
-Both required runtime gates now pass at the host-accepted source; combined checked
-main promotion is ready. Earlier failed runs remain failed.
+Both required runtime gates pass at the host-accepted source; the combined checked
+milestone was published to main `c2419b7` and independently verified4 November.
+Earlier failed runs remain failed. Separate [B8 real lifecycle tests](approved-store-android-validation.md)
+are locally integrated after that promotion and need their own host/runtime gates.
 No authenticated approval provenance, full approved-store Android lifecycle,
 production pairing/capture, CA trust, C5/USB or freeze claim.
 

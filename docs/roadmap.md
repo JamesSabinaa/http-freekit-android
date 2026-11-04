@@ -20,9 +20,13 @@ instrumentation compilation and actual sixteen-module Lifecycle2.11.0 alignment.
 Both fresh same-source matrices are now independently accepted: Keystore41328422583
 (all15 methods/four suites per API26/37) and preview41328435853 (all21 methods per
 API26/37), each attempt1 with zero failures/errors/skips and complete actual owned
-cleanup. The combined B7/toolchain/app-cleanup milestone is ready for checked main
-promotion. Full approved-store Android lifecycle is next in B8, not established by
-these original-owned-key tests. Prior failed runs below remain failed.
+cleanup. The combined B7/toolchain/app-cleanup milestone was published to main `c2419b7`
+and independently verified4 November. Full approved-store Android lifecycle is next
+in B8, not established by these original-owned-key tests. B8 six lifecycle methods,
+cleanup fix and21-method/five-suite verifier are now integrated locally as9ee9ac2,
+dc60809 and820b15f. Local26/26 verifier and113/113 Python checks pass; no Android
+compilation/execution claim until fresh full host and new API26/37 Keystore matrix.
+Prior failed runs below remain failed.
 
 B7 opt-in approval persistence is composed locally: M/I/S,46 new JVM methods,
 three real-owned-key instrumentation methods, strict15-case verifier and bounded

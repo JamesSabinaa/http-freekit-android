@@ -1,8 +1,20 @@
 # Real Android approved-store lifecycle validation (B8)
 
-Status: scoped 29 October 2026 against B7 source `fdd00f8`. B7 host40843095033
-is still running; B7 runtime acceptance remains separate. This is test-only work,
-not production authenticated enrollment or app integration. The existing
+Status: implemented locally after checked B7 main `c2419b7`, verified published
+4 November2026. Android owner `705f41d` is integrated `9ee9ac2`, primary-failure
+cleanup correction `c7e8fdb` integrated `dc60809`, verifier `a037e05` integrated
+`820b15f`. Original independent Android review confirmed cleanup masking; a fresh
+exact correction review found no remaining concrete defect. Independent verifier
+and frozen-contract reviews found no concrete issue. Coordinator26/26 focused
+verifier and113/113 total Python checks pass. The six Android methods and private
+four-case cleanup-precedence regression are authored, not compiled/executed yet;
+Java/SDK absent locally. Fresh complete pinned host and then same-source API26/37
+21-method/five-suite Keystore matrix remain mandatory before checked promotion.
+
+Scoped 29 October2026 against B7 source `fdd00f8`; B7 later accepted audited host
+41326925424 and same-source Keystore41328422583/preview41328435853 at586177e.
+This is test-only work, not production authenticated enrollment or app integration.
+The existing
 [B7 profile](approved-credential-persistence.md) and draft [protocol](protocol.md)
 keep their meanings. No production API, dependency, build or workflow edit is
 assigned. Local Java/SDK absence remains explicit.

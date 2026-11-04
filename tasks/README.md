@@ -245,6 +245,16 @@ approved-store Android lifecycle, target CA trust, C5/USB or freeze claim.
 
 ## B8 real approved-store Android lifecycle validation
 
+Update4 November2026: checked B7 main promotion to `c2419b7` is verified through
+GitHub after the user's HTTPS push; SSH agent was unavailable and no persistent
+Git configuration changed. B8 owner705f41d -> `9ee9ac2`, cleanup correctionc7e8fdb ->
+`dc60809`, verifiera037e05 -> `820b15f` are now integrated locally. Coordinator
+26/26 focused and113/113 total Python tests pass. Six real Android methods and
+private four-case primary/cleanup failure-precedence regression are authored,
+UNRUN locally (Java/SDK absent). Fresh full host then exact-source21/five-suite
+Keystore API26/37 runtime/original cleanup replay remain mandatory; no app/main
+production code or workflow changed by B8 implementation. No runtime/host claim yet.
+
 Scoped 29 October 2026 by root after independent read-only investigation
 `ad33438e30d4fe181` against `fdd00f8`. See the frozen
 [B8 profile](../docs/approved-store-android-validation.md). B7 host40843095033 is
@@ -252,8 +262,8 @@ still running; B8 authorship does not constitute B7 host/runtime acceptance.
 
 | Package | Exclusive files | Owner / branch / status / dependencies |
 | --- | --- | --- |
-| B8-A Android lifecycle tests | NEW AndroidApprovedEnrolledCredentialStoreTest.kt only | `a7d21b15805c12139`, isolated same-ID worktree/branch from4497161; owner `705f41d` plus cleanup correction `c7e8fdb` complete, intentionally not integrated pending B7 recovery; six frozen methods authored, Java/SDK UNRUN; independent review confirmed primary-failure masking; fresh correction reviewer `a90c0bef0515ffd42` found no remaining concrete defect, private four-case precedence regression authored/UNRUN |
-| B8-V exact result verifier | scripts/verify-keystore-results.py and scripts/tests/test_keystore_results.py only | `af6babd817ca2803b`, isolated same-ID worktree/branch from4497161; owner `a037e05` complete, intentionally not integrated until B7 fifteen-case replay; owner26/26 focused and113/113 Python pass; exact21/five suites; independent reviewer `a2a1dc04ba0bbfb68` found no concrete defect; no runtime claim |
+| B8-A Android lifecycle tests | NEW AndroidApprovedEnrolledCredentialStoreTest.kt only | `a7d21b15805c12139`, isolated same-ID worktree/branch from4497161; owner `705f41d` integrated `9ee9ac2`, cleanup correction `c7e8fdb` integrated `dc60809`; six frozen methods authored, Java/SDK UNRUN; independent review confirmed primary-failure masking; fresh correction reviewer `a90c0bef0515ffd42` found no remaining concrete defect, private four-case precedence regression authored/UNRUN |
+| B8-V exact result verifier | scripts/verify-keystore-results.py and scripts/tests/test_keystore_results.py only | `af6babd817ca2803b`, isolated same-ID worktree/branch from4497161; owner `a037e05` integrated `820b15f` after verified B7 main promotion; coordinator26/26 focused and113/113 Python pass; exact21/five suites; independent reviewer `a2a1dc04ba0bbfb68` found no concrete defect; no runtime claim |
 | B8-R contract review | read-only frozen profile and actual existing key/store/test seams | `a599839e4e1ad28b6`, isolated same-ID worktree/branch; exact4497161 review complete, no concrete contradiction/impossible assertion; existing seams suffice, source-only |
 
 Root owns docs/CI/evidence/integration/reviews. Keep B7's exact published source

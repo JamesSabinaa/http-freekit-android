@@ -7,6 +7,17 @@ The original goal is active and incomplete.
 
 ## Current Linux resume position
 
+- Update4 November: user HTTPS push published checked milestone `c2419b7` to main;
+  GitHub main ref independently matches. SSH agent unavailable, CLI credentials
+  valid; no persistent Git configuration change. B8 now locally integrates owner
+  705f41d as9ee9ac2, cleanup fixc7e8fdb asdc60809 and verifiera037e05 as820b15f.
+  Independent original/correction/verifier reviews are recorded on the board;
+  coordinator26/26 focused and113/113 Python tests pass. Six real Android lifecycle
+  methods/private four-case cleanup self-check are authored, compilation/execution
+  still UNRUN (no local Java/SDK). Fresh complete pinned host then same-source
+  API26/37 Keystore matrix21 methods/five suites and original cleanup replay are
+  the next gates. B8 is test-only; no production API/dependency/wire/app change.
+
 - Checked milestone is committed locally as `880aa57`; plain `git push origin
   HEAD:main` was denied as Data Exfiltration before execution. Main was NOT
   promoted. Do not bypass/retry via another publication route. Both runtime/host
