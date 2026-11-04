@@ -968,7 +968,18 @@ at0f6690e found no concrete blocker. Implementation557340c (integrated65c6143)
 now has independent exact profile/security reviews with no concrete defect.
 Independent tests47ab322 (80f270f),35 methods, had a confirmed snapshot-assertion
 coverage gap; additive57c561a (e1885a5) resolves it in exact corrective re-review.
-No JVM/Gradle/lint execution yet locally; root113/113 Python and314 links pass.
+No JVM/Gradle/lint execution locally; root113/113 Python and314 links pass.
+Fresh full host41856346443 attempt1 at exactb835bc3 is independently ACCEPTED:
+487 JVM/53 XMLs/all35 new methods once/zero failure-error-skip, all46 B7 methods,
+research CA suites7/7/6, nine clean lints,46 CA receipts/all joins, security/interop
+instrumentation compilation and16 Lifecycle2.11.0 selections. Native original logs
+verify39 Python tests/four IPv4/IPv6 HTTP/CONNECT flows with exact byte counts,
+half-close and gated streaming. Original `/tmp/b9-host-accepted.NyfKX6`, trusted
+`/tmp/audit-b9-host.py`, stable ignored host audit/checksum in dist; SHA256
+`cbb020a8695df3ccc719b8910af871a1f6103789ba8f7fd7b75900546001137f`.
+Initial replay refused planned client-suite count1; source and XML prove7, now
+required by exact method manifest without weakening other assertions or retrying.
+Checked main promotion is ready; no new Android runtime claim.
 Evidence reviewer confirms no workflow edit is needed: existing unfiltered
 `:core-security:testDebugUnitTest :core-security:assembleDebugAndroidTest
 :core-security:lintDebug` and full transport-interop/retained module matrix apply.

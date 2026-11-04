@@ -7,6 +7,24 @@ The original goal is active and incomplete.
 
 ## Current Linux resume position
 
+- B9 full host ACCEPTED: exact `b835bc3561be8d0444e5a68571805ad8d6434691`,
+  run41856346443 attempt1. Independent original XML/direct API-log replay verifies
+  all35 new methods once,487 JVM/53 XMLs/zero failure-error-skip, all46 B7 methods,
+  research CA binding/client/TLS7/7/6, nine clean lints,46 CA receipts/all joins,
+  security/interop instrumentation compilation,16 Lifecycle2.11.0 selections and
+  all retained host assertions. Native original replay adds39 Python tests/four
+  IPv4/IPv6 HTTP/CONNECT flows with complete byte counts/half-close/gated streaming.
+  Original `/tmp/b9-host-accepted.NyfKX6`; trusted `/tmp/audit-b9-host.py`; stable
+  ignored audit/checksum in dist, SHA256
+  `cbb020a8695df3ccc719b8910af871a1f6103789ba8f7fd7b75900546001137f`.
+  Initial audit rejected an incorrect planned client-suite count1; original source
+  and XML establish7 and all seven exact methods are now required. No weakened
+  host assertions or retries. Checked B9 main promotion is ready. No new emulator
+  matrix required for this pure library claim; B8 remains bound to8fdadb2.
+  New public local preparation API only; no wire contract changes, fetching,
+  provenance/live authorization/trust/install/production capture/C5/USB/freeze.
+  Entries below are historical; their pending B9 states are superseded here.
+
 - B9 source `b835bc3561be8d0444e5a68571805ad8d6434691` is published on the intended
   coordinator branch via command-local CLI HTTPS helper. Fresh full host41856346443
   is in progress at that exact source; one bounded completion watcher is active.

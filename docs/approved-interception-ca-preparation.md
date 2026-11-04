@@ -1,15 +1,26 @@
 # Approved public interception-CA preparation (B9)
 
-Status: local implementation owner557340c integrated65c6143, 4 November2026;
-independent exact-source profile and snapshot/security reviews found no concrete
-defect. Independent35-method JVM tests owner47ab322 integrated80f270f; review
-confirmed a snapshot-assertion coverage gap, corrected by57c561a integratede1885a5.
-Independent exact correction review found the gap resolved and no further concrete
-defect; all35 names/assertions retained. Gradle/lint UNRUN locally because
-JAVA_HOME is unset and no java command exists. Fresh full hosted acceptance is
-still mandatory; fresh full host41856346443 is running at published exact
-`b835bc3561be8d0444e5a68571805ad8d6434691`. No host acceptance, main promotion or
-B9 runtime/production claim.
+Status: library host ACCEPTED at exact `b835bc3561be8d0444e5a68571805ad8d6434691`,
+run41856346443 attempt1. Independent original XML/API-log replay verifies all35
+new methods once,487 JVM methods/53 XMLs/zero failure-error-skip, all46 B7 methods,
+research CA binding/client/TLS suites7/7/6, nine clean lints,46 CA receipts/all joins,
+security/interop instrumentation compilation,16 Lifecycle2.11.0 selections and
+all retained host assertions. Native original replay verifies39 Python tests and
+four IPv4/IPv6 HTTP/CONNECT flows, complete bytes/half-close/gated streaming.
+Original `/tmp/b9-host-accepted.NyfKX6`; trusted `/tmp/audit-b9-host.py`; stable ignored
+`dist/approved-ca-preparation-host-audit.json` SHA256
+`cbb020a8695df3ccc719b8910af871a1f6103789ba8f7fd7b75900546001137f`.
+An incorrect planned client-suite count1 caused initial audit rejection; checked
+source and XML establish7, now required by exact method manifest. No host gate
+removed or run retried. Checked main promotion is ready. No new Android execution,
+production integration or wire contract claim; local Java/SDK remain unavailable.
+
+Implementation owner557340c integrated65c6143; independent exact profile/security
+reviews found no concrete defect. Independent35-method tests47ab322 integrated
+80f270f; confirmed snapshot-assertion gap corrected57c561a ->e1885a5 and independently
+re-reviewed with no remaining concrete defect. Provider identity is not promised;
+mutation isolation assertions execute successfully in the accepted hosted JVM.
+
 Depends on checked B8 milestone `4e9a4f5`, independently verified on published main.
 The [B7 envelope](approved-credential-persistence.md) retains an authenticated-caller
 CA digest commitment; it deliberately does not validate supplied CA bytes. Existing

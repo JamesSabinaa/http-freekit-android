@@ -36,8 +36,14 @@ a library-only binding between the retained approval commitment and caller-suppl
 public DER, reusing the strict research CA profile. Implementation65c6143,
 independent35-method tests80f270f and snapshot-assertion correctione1885a5 are
 locally integrated; exact implementation and corrected-test reviews find no
-remaining concrete defect. Local JVM/Gradle/lint UNRUN; fresh complete pinned
-host/original evidence replay required before main promotion. No fetching/install/trust state,
+remaining concrete defect. Fresh full host41856346443 attempt1 atb835bc3 is now
+independently accepted:487 JVM/53 XMLs/all35 new methods/all46 B7 methods,
+research CA suites7/7/6, nine clean lints,46 CA receipts/all joins, instrumentation
+compilation and all retained host assertions; native39 Python/four packet flows.
+Stable ignored host audit SHA256
+`cbb020a8695df3ccc719b8910af871a1f6103789ba8f7fd7b75900546001137f`.
+Checked B9 main promotion is ready. Local JVM/Gradle/lint remain unavailable.
+No new emulator execution or fetching/install/trust state,
 production wire/app integration or v1 freeze is assigned. This is not process death, crash/power-loss,
 authenticated approval provenance, CA trust, production capture or physical USB.
 Prior failed runs below remain failed; pending states below are historical.

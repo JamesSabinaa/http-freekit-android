@@ -254,8 +254,8 @@ All five owners have separate isolated worktrees/branches from frozen0f6690e:
 
 | Package | Exclusive scope | Owner / status / dependencies |
 | --- | --- | --- |
-| B9-I implementation | New ApprovedInterceptionCa.kt, InterceptionCaValidation.kt, optional InterceptionCaDer.kt; existing samePublicKey visibility only | `ab3fbddf4f8a6c86d`, isolated same-ID worktree/branch; owner557340c integrated65c6143, four assigned files only; exact profile review found no concrete defect; Gradle UNRUN (JAVA_HOME unset/no java), independent implementation/security/test reviews complete; fresh host41856346443 pending |
-| B9-T independent tests | New ApprovedInterceptionCaTest.kt and optional ApprovedInterceptionCaTestFixture.kt only | `af258279fbcb27505`, isolated same-ID worktree/branch; owner47ab322 integrated80f270f,35 new methods; independent exact review found missing post-mutation signature/SPKI assertions and interned-date oracle risk; owner57c561a correction integratede1885a5, independent exact re-review confirms gap resolved/no further concrete defect; all35 names/old assertions retained; Java/SDK UNRUN, fresh full host required |
+| B9-I implementation | New ApprovedInterceptionCa.kt, InterceptionCaValidation.kt, optional InterceptionCaDer.kt; existing samePublicKey visibility only | `ab3fbddf4f8a6c86d`, isolated same-ID worktree/branch; owner557340c integrated65c6143, four assigned files only; exact profile review found no concrete defect; Gradle UNRUN (JAVA_HOME unset/no java), independent implementation/security/test reviews complete; host41856346443 independently accepted |
+| B9-T independent tests | New ApprovedInterceptionCaTest.kt and optional ApprovedInterceptionCaTestFixture.kt only | `af258279fbcb27505`, isolated same-ID worktree/branch; owner47ab322 integrated80f270f,35 new methods; independent exact review found missing post-mutation signature/SPKI assertions and interned-date oracle risk; owner57c561a correction integratede1885a5, independent exact re-review confirms gap resolved/no further concrete defect; all35 names/old assertions retained; all35 execute/pass in audited host41856346443, local Java/SDK UNRUN |
 | B9-R profile review | Read-only research-profile equivalence/actual seams, later exact implementation | `a69105dd9e2b288c1`, isolated same-ID worktree/branch; frozen0f6690e profile and exact557340c four-file implementation reviews complete, no concrete defect; manual canonical DER/profile comparison, optional script isolation-denied/not retried; source-only, no execution |
 | B9-S security review | Read-only snapshot, redaction, expiry and mathematical-key separation, later exact code/tests | `a9b6ef86cc4c8cee7`, isolated same-ID worktree/branch; frozen0f6690e contract and exact557340c implementation reviews complete, no concrete defect; snapshot/redaction/one-clock/key-separation source review only; independent test review/execution pending |
 | B9-V evidence review | Read-only existing host tasks/reports/exact-method replay planning | `ab2273343eb64c4d4`, isolated same-ID worktree/branch; host evidence plan complete, no workflow edit; exact47ab322 review found one concrete snapshot gap, exact57c561a review confirms resolved/no further concrete defect;35 names retained; source-only/no execution acceptance |
@@ -263,8 +263,16 @@ All five owners have separate isolated worktrees/branches from frozen0f6690e:
 No production wire/app or research-source edits are assigned. Root owns all
 contracts/docs/integration/dispatch/audits. B9 does not change B8 acceptance scope.
 Source `b835bc3561be8d0444e5a68571805ad8d6434691` is published on the coordinator
-branch; fresh full host41856346443 is running at that exact source with one
-completion watcher. No host acceptance or main promotion yet; main stays4e9a4f5.
+branch; fresh full host41856346443 attempt1 is independently ACCEPTED at that
+exact source. Original replay verifies487 JVM/53 XMLs/all35 new methods/all46 B7,
+research CA suites7/7/6, nine clean lints,46 CA receipts/all joins, instrumentation
+compilation/16 Lifecycle2.11.0 selections and retained host assertions; native39
+Python/four exact packet flows. Original `/tmp/b9-host-accepted.NyfKX6`, trusted
+`/tmp/audit-b9-host.py`, stable ignored audit SHA256
+`cbb020a8695df3ccc719b8910af871a1f6103789ba8f7fd7b75900546001137f`.
+Initial wrong planned client count1 rejected; source/XML establish7 now required
+by exact manifest. No weakened assertion/retry. Checked main promotion is ready;
+main currently4e9a4f5. No new Android execution/production/wire contract claim.
 Root's113/113 Python/314 links pass; local Java/SDK still unavailable.
 
 ## B8 runtime acceptance and checked promotion
