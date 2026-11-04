@@ -2,7 +2,10 @@
 
 Status: local implementation owner557340c integrated65c6143, 4 November2026;
 independent exact-source profile and snapshot/security reviews found no concrete
-defect. Independent JVM tests remain pending; Gradle/lint UNRUN locally because
+defect. Independent35-method JVM tests owner47ab322 integrated80f270f; review
+confirmed a snapshot-assertion coverage gap, corrected by57c561a integratede1885a5.
+Independent exact correction review found the gap resolved and no further concrete
+defect; all35 names/assertions retained. Gradle/lint UNRUN locally because
 JAVA_HOME is unset and no java command exists. Fresh full hosted acceptance is
 still mandatory; no main promotion or B9 runtime/production claim.
 Depends on checked B8 milestone `4e9a4f5`, independently verified on published main.

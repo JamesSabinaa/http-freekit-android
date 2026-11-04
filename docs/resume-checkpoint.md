@@ -7,6 +7,18 @@ The original goal is active and incomplete.
 
 ## Current Linux resume position
 
+- B9 now composes implementation557340c ->65c6143, independent35-method tests
+  47ab322 ->80f270f and additive snapshot-assertion correction57c561a ->e1885a5.
+  Independent exact implementation/profile/security and test/correction reviews
+  found no remaining concrete defect. Confirmed test coverage gap was repaired;
+  no production behavior or API correction. Root113/113 Python and314 links pass;
+  local JVM/Gradle/lint remain UNRUN. Fresh full pinned host and original exact
+  35-method XML/retained gate replay are required before B9 main promotion.
+  Prepared trusted `/tmp/audit-b9-host.py` preserves B7/B8 host assertions, adds
+  literal35-method manifest/counters/research CA suites. Syntax passes; old B8
+  reports correctly reject at missing new-method total, not B9 acceptance.
+  Main remains checked4e9a4f5; publish next source only to the coordinator branch.
+
 - B9 implementation owner557340c is integrated locally as65c6143. Four assigned
   files only; existing B7 helper changes visibility only. Independent exact-source
   profile and snapshot/security reviews found no concrete defect; independent JVM

@@ -33,7 +33,11 @@ runtime/stop/emulator exit0 and actual termination/wait joins. Runtime audit SHA
 Checked B8 milestone `4e9a4f5` is now published on main and independently verified.
 Next independent work is [B9 approved public-CA preparation](approved-interception-ca-preparation.md):
 a library-only binding between the retained approval commitment and caller-supplied
-public DER, reusing the strict research CA profile. No fetching/install/trust state,
+public DER, reusing the strict research CA profile. Implementation65c6143,
+independent35-method tests80f270f and snapshot-assertion correctione1885a5 are
+locally integrated; exact implementation and corrected-test reviews find no
+remaining concrete defect. Local JVM/Gradle/lint UNRUN; fresh complete pinned
+host/original evidence replay required before main promotion. No fetching/install/trust state,
 production wire/app integration or v1 freeze is assigned. This is not process death, crash/power-loss,
 authenticated approval provenance, CA trust, production capture or physical USB.
 Prior failed runs below remain failed; pending states below are historical.
