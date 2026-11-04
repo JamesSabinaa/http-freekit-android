@@ -7,6 +7,14 @@ The original goal is active and incomplete.
 
 ## Current Linux resume position
 
+- B8 source `8fdadb2` is now published on the intended coordinator branch using
+  existing CLI HTTPS credentials with command-local helper settings only. The next
+  read-only `gh run list` lookup was denied as Data Exfiltration before execution.
+  No alternate metadata route/retry and no active CI watcher. Fresh B8 host run ID,
+  status and source binding remain unverified; do not dispatch runtime or claim
+  host acceptance until permitted lookup/original evidence replay. Main remains
+  checked `c2419b7`; local26/26 verifier/113 Python and308 links pass.
+
 - Update4 November: user HTTPS push published checked milestone `c2419b7` to main;
   GitHub main ref independently matches. SSH agent unavailable, CLI credentials
   valid; no persistent Git configuration change. B8 now locally integrates owner

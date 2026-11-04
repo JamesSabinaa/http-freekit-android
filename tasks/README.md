@@ -254,6 +254,11 @@ private four-case primary/cleanup failure-precedence regression are authored,
 UNRUN locally (Java/SDK absent). Fresh full host then exact-source21/five-suite
 Keystore API26/37 runtime/original cleanup replay remain mandatory; no app/main
 production code or workflow changed by B8 implementation. No runtime/host claim yet.
+Source `8fdadb2` is published on the coordinator branch through command-local CLI
+HTTPS helper settings. Subsequent read-only workflow lookup was denied as Data
+Exfiltration before execution; no alternate route/retry or active watcher. Fresh
+B8 host run identity/status/source remain unverified; runtime stays gated until
+permitted lookup and independent original host replay. Main remains checkedc2419b7.
 
 Scoped 29 October 2026 by root after independent read-only investigation
 `ad33438e30d4fe181` against `fdd00f8`. See the frozen
