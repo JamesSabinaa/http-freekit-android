@@ -250,9 +250,18 @@ main and independently verified. Root now freezes the library-only
 [B9 preparation contract](../docs/approved-interception-ca-preparation.md), based
 on completed investigator `aa5cf69036f66ff6e`. Root retains all documentation,
 integration and CI/evidence ownership on `worktree-coord-a23-resume`.
-Unique B9-I/T/R/S/V owners will be recorded immediately on launch; agents must
-wait for their recorded assignment before editing. No production wire/app or
-research-source edits are assigned. B9 does not change B8 acceptance scope.
+All five owners have separate isolated worktrees/branches from frozen0f6690e:
+
+| Package | Exclusive scope | Owner / status / dependencies |
+| --- | --- | --- |
+| B9-I implementation | New ApprovedInterceptionCa.kt, InterceptionCaValidation.kt, optional InterceptionCaDer.kt; existing samePublicKey visibility only | `ab3fbddf4f8a6c86d`, isolated same-ID worktree/branch; assigned; follows frozen B9 API/profile, no research/build/UI edits |
+| B9-T independent tests | New ApprovedInterceptionCaTest.kt and optional ApprovedInterceptionCaTestFixture.kt only | `af258279fbcb27505`, isolated same-ID worktree/branch; assigned against frozen API; local Java/SDK unavailable |
+| B9-R profile review | Read-only research-profile equivalence/actual seams, later exact implementation | `a69105dd9e2b288c1`, isolated same-ID worktree/branch; assigned |
+| B9-S security review | Read-only snapshot, redaction, expiry and mathematical-key separation, later exact code/tests | `a9b6ef86cc4c8cee7`, isolated same-ID worktree/branch; assigned |
+| B9-V evidence review | Read-only existing host tasks/reports/exact-method replay planning | `ab2273343eb64c4d4`, isolated same-ID worktree/branch; assigned, no workflow or audit edits |
+
+No production wire/app or research-source edits are assigned. Root owns all
+contracts/docs/integration/dispatch/audits. B9 does not change B8 acceptance scope.
 
 ## B8 runtime acceptance and checked promotion
 
