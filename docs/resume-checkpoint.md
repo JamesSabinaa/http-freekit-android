@@ -7,6 +7,14 @@ The original goal is active and incomplete.
 
 ## Current Linux resume position
 
+- Checked B8 milestone `4e9a4f52ea1bfc37cf72d21627afbc3a6cc7b73a` is published to
+  main via command-local CLI HTTPS helper and independently verified. Root freezes
+  [B9 library-only approved CA preparation](approved-interception-ca-preparation.md),
+  composing the saved approval commitment with caller-supplied public DER using
+  existing strict research profile checks. No production wire/app/CA trust state.
+  Unique implementation/test/review ownership is recorded on the board at launch;
+  no Java/SDK tests can run locally. Earlier readiness/pending states are historical.
+
 - Update4 November2026: B8 runtime41850942199 attempt1 is independently ACCEPTED
   at exact `8fdadb27a25fabb233095520b04a071184a5adb3`, matching accepted host41824622937.
   Original XML verifies all21 exact methods/five suites once per API26/37, zero

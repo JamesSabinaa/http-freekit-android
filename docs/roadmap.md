@@ -30,7 +30,11 @@ Same-source API26/37 Keystore matrix41850942199 attempt1 is now independently
 accepted: all21 methods/five suites once per API, zero failures/errors/skips,
 runtime/stop/emulator exit0 and actual termination/wait joins. Runtime audit SHA256
 `b939965ed32ff425251dd39d5cb72f9a857a153d575fe3012db65be35fbe6065`.
-Checked B8 main promotion is ready. This is not process death, crash/power-loss,
+Checked B8 milestone `4e9a4f5` is now published on main and independently verified.
+Next independent work is [B9 approved public-CA preparation](approved-interception-ca-preparation.md):
+a library-only binding between the retained approval commitment and caller-supplied
+public DER, reusing the strict research CA profile. No fetching/install/trust state,
+production wire/app integration or v1 freeze is assigned. This is not process death, crash/power-loss,
 authenticated approval provenance, CA trust, production capture or physical USB.
 Prior failed runs below remain failed; pending states below are historical.
 

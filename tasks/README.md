@@ -243,6 +243,17 @@ Next integrate reviewed B8 commits705f41d/c7e8fdb/a037e05, run fresh host and ex
 21-method/five-suite Keystore matrix. No production provenance/app capture, full
 approved-store Android lifecycle, target CA trust, C5/USB or freeze claim.
 
+## B9 approved public-CA preparation
+
+B8 checked milestone `4e9a4f52ea1bfc37cf72d21627afbc3a6cc7b73a` is published on
+main and independently verified. Root now freezes the library-only
+[B9 preparation contract](../docs/approved-interception-ca-preparation.md), based
+on completed investigator `aa5cf69036f66ff6e`. Root retains all documentation,
+integration and CI/evidence ownership on `worktree-coord-a23-resume`.
+Unique B9-I/T/R/S/V owners will be recorded immediately on launch; agents must
+wait for their recorded assignment before editing. No production wire/app or
+research-source edits are assigned. B9 does not change B8 acceptance scope.
+
 ## B8 runtime acceptance and checked promotion
 
 Root independently accepts exact8fdadb2 host41824622937 and Keystore41850942199,
